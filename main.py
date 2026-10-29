@@ -14,6 +14,9 @@ import chess.engine
 DB_PATH = "chess_trainer.db"
 app = FastAPI(title="Chess Trainer")
 
+# ==========================================
+# УКАЖИ ЗДЕСЬ ПУТЬ К СКАЧАННОМУ ФАЙЛУ STOCKFISH
+# ==========================================
 STOCKFISH_PATH = "./stockfish-windows-x86-64-universal.exe"
 
 for folder in ["js", "css", "img"]:
@@ -33,6 +36,7 @@ def init_db():
 
 init_db()
 
+# ============ ПЛАН ============
 PHASES = [
     {"name": "Фаза 1: Основы и борьба со зевками", "weeks": (1, 2), "elo": "800–900", "tactics": "вилки, связки, двойные удары", "endgames": "мат королём и ладьёй", "opening": "принципы: центр, развитие"},
     {"name": "Фаза 2: Тактика и базовые эндшпили", "weeks": (3, 6), "elo": "900–1050", "tactics": "отвлечение, завлечение, маты в 2", "endgames": "король + пешка, оппозиция", "opening": "1 дебют за белых, 2 за чёрных"},
@@ -76,6 +80,7 @@ def generate_plan():
 
 PLAN = generate_plan()
 
+# ============ ЗАДАЧИ ============
 PUZZLES = [
     {"id": 1, "title": "Мат в 1: Ладья", "fen": "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1", "solution": "a1a8", "hint": "Ладья по последней горизонтали."},
     {"id": 2, "title": "Мат в 1: Ферзь", "fen": "6k1/5ppp/8/8/8/8/5PPP/3Q2K1 w - - 0 1", "solution": "d1d8", "hint": "Ферзь по открытой линии."},
@@ -83,6 +88,7 @@ PUZZLES = [
     {"id": 4, "title": "Мат в 1: Взятие с матом", "fen": "4r1k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1", "solution": "e1e8", "hint": "Бей фигуру соперника."},
 ]
 
+# ============ ДЕБЮТЫ ============
 OPENINGS = [
     {"id": "scotch_two_knights", "side": "white", "family": "Шотландская партия", "name": "Вариант двух коней", "moves": ["e4", "e5", "Nf3", "Nc6", "d4", "exd4", "Nxd4", "Nf6", "Nxc6", "bxc6", "e5", "Qe7", "Qe2", "Nd5", "c4", "Ba6", "b3"], "description": "Острый вариант, где белые получают пространство и инициативу в центре.", "plans_white": "Захватить центр, использовать пешку e5 как клин.", "plans_black": "Использовать двух слонов и открытую линию 'b'."},
     {"id": "fried_liver", "side": "white", "family": "Шотландская партия", "name": "Атака «Жареная печень»", "moves": ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "Ng5", "d5", "exd5", "Nxd5", "Nxf7", "Kxf7", "Qf3+", "Ke6", "Nc3", "Nb4", "a3"], "description": "Яркая тактическая атака. Белые жертвуют коня на f7.", "plans_white": "Атаковать короля, вскрыть линии.", "plans_black": "Отбиться, вернуть материал и использовать лишнюю фигуру."},
@@ -91,31 +97,11 @@ OPENINGS = [
 ]
 
 POPULAR_OPENINGS = [
-    ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"],
-    ["e4", "e5", "Nf3", "Nc6", "Bb5"],
-    ["e4", "e5", "Nf3", "Nc6", "d4"],
-    ["e4", "e5", "Bc4"],
-    ["e4", "e5", "Nc3"],
-    ["e4", "e5", "f4"],
-    ["e4", "e5", "Nf3", "Nf6"],
-    ["e4", "c5", "Nf3", "d6"],
-    ["e4", "c5", "Nf3", "Nc6"],
-    ["e4", "c5", "Nc3"],
-    ["e4", "c5", "c3"],
-    ["e4", "e6", "d4", "d5"],
-    ["e4", "e6", "d4", "d5", "Nc3"],
-    ["e4", "c6"],
-    ["e4", "d5"],
-    ["e4", "d6"],
-    ["e4", "Nf6"],
-    ["d4", "d5", "c4", "e6"],
-    ["d4", "d5", "c4", "c6"],
-    ["d4", "Nf6", "c4", "g6"],
-    ["d4", "Nf6", "c4", "e6"],
-    ["d4", "Nf6", "c4", "e5"],
-    ["d4", "f5"],
-    ["c4"],
-    ["Nf3"],
+    ["e4", "e5", "Nf3", "Nc6", "Bc4", "Bc5"], ["e4", "e5", "Nf3", "Nc6", "Bb5"], ["e4", "e5", "Nf3", "Nc6", "d4"],
+    ["e4", "e5", "Bc4"], ["e4", "e5", "Nc3"], ["e4", "e5", "f4"], ["e4", "e5", "Nf3", "Nf6"], ["e4", "c5", "Nf3", "d6"],
+    ["e4", "c5", "Nf3", "Nc6"], ["e4", "c5", "Nc3"], ["e4", "c5", "c3"], ["e4", "e6", "d4", "d5"], ["e4", "e6", "d4", "d5", "Nc3"],
+    ["e4", "c6"], ["e4", "d5"], ["e4", "d6"], ["e4", "Nf6"], ["d4", "d5", "c4", "e6"], ["d4", "d5", "c4", "c6"],
+    ["d4", "Nf6", "c4", "g6"], ["d4", "Nf6", "c4", "e6"], ["d4", "Nf6", "c4", "e5"], ["d4", "f5"], ["c4"], ["Nf3"],
 ] + [o["moves"] for o in OPENINGS]
 
 def is_book_move(history_san):
@@ -126,17 +112,10 @@ def is_book_move(history_san):
     return False
 
 RECOMMENDATION_RULES = {
-    "вилк": "Отработка тактики: коневые и пешечные вилки",
-    "связк": "Тренировка связок: как использовать и как защищаться",
-    "мат": "Матовые сети: отработка матов в 1-2 хода",
-    "зев": "Концентрация: обязательно проговаривать чек-лист перед каждым ходом",
-    "время": "Тайм-менеджмент: сыграть 5 партий с контролем 15+10",
-    "цейтнот": "Тайм-менеджмент: сыграть 5 партий с контролем 15+10",
-    "дебют": "Углубить знания в дебюте: повторить 10-12 ходов своего репертуара",
-    "эндшпиль": "Практика эндшпиля: отработать пешечные окончания и оппозицию",
-    "ферз": "Осторожность с ферзем: не выводить его рано и следить за ловушками",
-    "фигур": "Безопасность фигур: проверять, защищена ли фигура перед ходом",
-    "пешк": "Пешечная структура: изучить слабые и сильные пешки"
+    "вилк": "Отработка тактики: коневые и пешечные вилки", "связк": "Тренировка связок", "мат": "Матовые сети", 
+    "зев": "Концентрация: проговаривать чек-лист", "время": "Тайм-менеджмент", "цейтнот": "Тайм-менеджмент",
+    "дебют": "Углубить знания в дебюте", "эндшпиль": "Практика эндшпиля", "ферз": "Осторожность с ферзем",
+    "фигур": "Безопасность фигур", "пешк": "Пешечная структура"
 }
 
 class CompleteBody(BaseModel):
@@ -180,8 +159,7 @@ def get_recommendations():
     found_themes = set()
     for note in notes:
         for keyword, theme in RECOMMENDATION_RULES.items():
-            if keyword in note:
-                found_themes.add(theme)
+            if keyword in note: found_themes.add(theme)
     return {"recommendations": list(found_themes)}
 
 @app.post("/api/complete")
@@ -204,46 +182,29 @@ def save_note(body: NoteBody):
     return {"ok": True}
 
 @app.get("/api/puzzles")
-def get_puzzles():
-    return {"puzzles": PUZZLES}
+def get_puzzles(): return {"puzzles": PUZZLES}
 
 @app.get("/api/openings")
-def get_openings():
-    return {"openings": OPENINGS}
+def get_openings(): return {"openings": OPENINGS}
 
-# ============ УЛУЧШЕННАЯ ЛОГИКА КЛАССИФИКАЦИИ (БЛИЖЕ К CHESS.COM) ============
+# ============ ЛОГИКА АНАЛИЗА ============
 
 PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
 
 def is_true_sacrifice(board_before, move):
     piece = board_before.piece_at(move.from_square)
-    if not piece or piece.piece_type == chess.PAWN:
-        return False
-        
+    if not piece or piece.piece_type == chess.PAWN: return False
     piece_val = PIECE_VALUES.get(piece.piece_type, 0)
     captured = board_before.piece_at(move.to_square)
     captured_val = PIECE_VALUES.get(captured.piece_type, 0) if captured else 0
-    
-    # Если мы забираем равную или более ценную фигуру, это не жертва
-    if captured_val >= piece_val:
-        return False
-        
+    if captured_val >= piece_val: return False
     board_after = board_before.copy()
     board_after.push(move)
     to_sq = move.to_square
-    
-    # Фигура должна быть атакована соперником
-    if not board_after.is_attacked_by(not board_after.turn, to_sq):
-        return False
-        
+    if not board_after.is_attacked_by(not board_after.turn, to_sq): return False
     attackers = board_after.attackers(not board_after.turn, to_sq)
     defenders = board_after.attackers(board_after.turn, to_sq)
-    
-    # Если защитников больше или столько же, это не чистая жертва
-    if len(defenders) >= len(attackers):
-        return False
-        
-    # Хотя бы один атакующий должен быть дешевле нашей фигуры
+    if len(defenders) >= len(attackers): return False
     min_attacker_val = min([PIECE_VALUES.get(board_after.piece_at(a).piece_type, 0) for a in attackers])
     return min_attacker_val < piece_val
 
@@ -266,7 +227,7 @@ def parse_score(score_obj):
         if val is None: val = 0
         return {"eval": round(val / 100.0, 2), "is_mate": False, "mate_in": 0}
 
-def get_multipv_lines(engine, board, depth=16):
+def get_multipv_lines(engine, board, depth=14):
     infos = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=3)
     lines = []
     for info in infos:
@@ -286,26 +247,12 @@ def calc_expected_points(eval_cp):
     if eval_cp < -1000: return 0.0
     return 1 / (1 + math.exp(-0.00368208 * eval_cp))
 
-def classify_move(is_best, is_sac, is_forced, prev_eval, curr_eval, prev_is_mate, curr_is_mate):
-    if is_forced:
-        return "forced"
-
-    if prev_eval > 200 and curr_eval < 50:
-        return "miss"
-
-    # СТРОГАЯ ЛОГИКА БРИЛЛИАНТА (!!)
-    if is_best and is_sac:
-        # 1. Позиция не была полностью выиграна (перевес < +4.0)
-        if prev_eval < 400:
-            # 2. После жертвы мы не проигрываем (оценка >= -1.0)
-            if curr_eval >= -100:
-                return "brilliant"
-
-    # ЛОГИКА ВЕЛИКОГО ХОДА (!)
-    if is_best and abs(prev_eval - curr_eval) <= 10:
-        return "great"
-
-    # ОБЫЧНЫЕ КЛАССИФИКАЦИИ
+def classify_move(is_best, is_sac, is_forced, prev_eval, curr_eval):
+    if is_forced: return "forced"
+    if prev_eval > 200 and curr_eval < 50: return "miss"
+    if is_best and is_sac and prev_eval < 400 and curr_eval >= -100: return "brilliant"
+    if is_best and abs(prev_eval - curr_eval) <= 10: return "great"
+    
     ep_before = calc_expected_points(prev_eval * 100)
     ep_after = calc_expected_points(curr_eval * 100)
     ep_loss = ep_before - ep_after
@@ -318,6 +265,7 @@ def classify_move(is_best, is_sac, is_forced, prev_eval, curr_eval, prev_is_mate
 
 @app.post("/api/analyze")
 def analyze_game(body: AnalyzeBody):
+    engine = None
     try:
         game = chess.pgn.read_game(io.StringIO(body.pgn))
         if not game: raise HTTPException(status_code=400, detail="Не удалось прочитать PGN")
@@ -328,20 +276,15 @@ def analyze_game(body: AnalyzeBody):
         moves_data = []
         history_san = []
         moves_list = list(game.mainline_moves())
+        evals = [] # Для графика
         
-        try: engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
-        except Exception as e: raise HTTPException(status_code=500, detail=f"Ошибка Stockfish: {e}")
+        engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
         
-        # Анализ глубины 16 позволяет точнее видеть последствия жертв
-        prev_info = engine.analyse(board, chess.engine.Limit(depth=16))
+        # Глубина 10 для всей партии (быстро), 14 для топа линий
+        prev_info = engine.analyse(board, chess.engine.Limit(depth=10))
         prev_parsed = parse_score(prev_info["score"].white())
         prev_eval = prev_parsed["eval"]
         best_move_uci = prev_info["pv"][0].uci() if "pv" in prev_info else None
-
-        stats = {
-            "white": {"brilliant": 0, "great": 0, "best": 0, "excellent": 0, "good": 0, "inaccuracy": 0, "mistake": 0, "blunder": 0, "book": 0, "miss": 0},
-            "black": {"brilliant": 0, "great": 0, "best": 0, "excellent": 0, "good": 0, "inaccuracy": 0, "mistake": 0, "blunder": 0, "book": 0, "miss": 0}
-        }
 
         for i, move in enumerate(moves_list):
             san_move = board.san(move)
@@ -353,7 +296,9 @@ def analyze_game(body: AnalyzeBody):
             is_sac = is_true_sacrifice(board, move)
             
             board.push(move)
-            info_after = engine.analyse(board, chess.engine.Limit(depth=16))
+            
+            # Анализ после хода (глубина 10 для скорости)
+            info_after = engine.analyse(board, chess.engine.Limit(depth=10))
             curr_parsed = parse_score(info_after["score"].white())
             curr_eval = curr_parsed["eval"]
 
@@ -363,44 +308,48 @@ def analyze_game(body: AnalyzeBody):
             if is_book:
                 classification = "book"
             else:
-                classification = classify_move(
-                    is_best, is_sac, is_forced, 
-                    prev_eval, curr_eval, 
-                    prev_parsed["is_mate"], curr_parsed["is_mate"]
-                )
+                classification = classify_move(is_best, is_sac, is_forced, prev_eval, curr_eval)
             
-            color = "white" if i % 2 == 0 else "black"
-            if classification in stats[color]:
-                stats[color][classification] += 1
-            
-            next_top_moves = get_multipv_lines(engine, board, depth=16)
+            # Для топа линий даем глубину 14 (только для текущей позиции)
+            next_top_moves = get_multipv_lines(engine, board, depth=14)
 
             moves_data.append({
-                "move_num": i + 1, "san": san_move, "eval": curr_eval, 
+                "move_num": board.fullmove_number, 
+                "san": san_move, "eval": curr_eval, 
                 "is_mate": curr_parsed["is_mate"], "mate_in": curr_parsed["mate_in"],
                 "cp_loss": max(0, cp_loss), "classification": classification, "fen": board.fen(),
                 "next_top_moves": next_top_moves
             })
             
+            # Записываем оценку для графика (ограничиваем от -10 до +10)
+            graph_eval = max(-10, min(10, curr_eval))
+            evals.append(graph_eval)
+            
             prev_eval = curr_eval
             prev_parsed = curr_parsed
             best_move_uci = info_after["pv"][0].uci() if "pv" in info_after else None
 
-        engine.quit()
-        return {"moves": moves_data, "white_player": white_player, "black_player": black_player, "stats": stats}
-    except Exception as e: raise HTTPException(status_code=500, detail=str(e))
+        return {"moves": moves_data, "white_player": white_player, "black_player": black_player, "evals": evals}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if engine:
+            engine.quit()
 
 @app.post("/api/evaluate")
 def evaluate_position(body: EvaluateBody):
+    engine = None
     try:
         board = chess.Board(body.fen)
         engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
-        top_moves = get_multipv_lines(engine, board, depth=16)
-        score_dict = parse_score(engine.analyse(board, chess.engine.Limit(depth=16))["score"].white())
-        engine.quit()
+        top_moves = get_multipv_lines(engine, board, depth=14)
+        score_dict = parse_score(engine.analyse(board, chess.engine.Limit(depth=14))["score"].white())
         return {**score_dict, "top_moves": top_moves}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if engine:
+            engine.quit()
 
 @app.get("/", response_class=HTMLResponse)
 def index():

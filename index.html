@@ -30,6 +30,8 @@
   .tab-btn.active { background: #262626; color: #fff; font-weight: 600; }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
+  
+  /* Стили плана */
   .progress-bar { background: #262626; border-radius: 8px; height: 18px; overflow: hidden; margin-bottom: 6px; }
   .progress-fill { background: linear-gradient(90deg, #4ade80, #22c55e); height: 100%; width: 0; transition: width 0.4s; }
   .progress-text { color: #999; font-size: 12px; margin-bottom: 22px; }
@@ -76,37 +78,16 @@
   .family-header { font-size: 12px; color: #4ade80; font-weight: 600; padding: 8px 4px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
   .board-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
   
-  #puzzleBoard, #openingBoard { width: 400px; max-width: 100%; transition: box-shadow 0.3s; }
-  #analysisBoard { width: 500px; max-width: 100%; transition: box-shadow 0.3s; }
+  #puzzleBoard, #openingBoard { width: 400px; max-width: 100%; }
   
-  .highlight-move::after {
-    content: ''; position: absolute; top: 35%; left: 35%; width: 30%; height: 30%;
-    background: rgba(74, 222, 128, 0.6); border-radius: 50%; z-index: 10; pointer-events: none;
-  }
-  .highlight-capture::after {
-    content: ''; position: absolute; top: 5%; left: 5%; width: 90%; height: 90%;
-    border: 4px solid rgba(239, 68, 68, 0.7); border-radius: 50%; z-index: 10; pointer-events: none;
-  }
+  .highlight-move::after { content: ''; position: absolute; top: 35%; left: 35%; width: 30%; height: 30%; background: rgba(74, 222, 128, 0.6); border-radius: 50%; z-index: 10; pointer-events: none; }
+  .highlight-capture::after { content: ''; position: absolute; top: 5%; left: 5%; width: 90%; height: 90%; border: 4px solid rgba(239, 68, 68, 0.7); border-radius: 50%; z-index: 10; pointer-events: none; }
   .square-55d63 { position: relative; }
   .variation-active { box-shadow: 0 0 15px 5px rgba(74, 222, 128, 0.4); border-radius: 4px; }
 
-  .brilliant-anim::after {
-    content: '!!'; position: absolute; top: -10px; right: -10px;
-    background: #0f766e; color: #fff; font-weight: bold; font-size: 14px;
-    padding: 2px 6px; border-radius: 4px; animation: pop 0.5s ease-out;
-    z-index: 20; pointer-events: none;
-  }
-  .excellent-anim::after {
-    content: '!'; position: absolute; top: -10px; right: -10px;
-    background: #15803d; color: #fff; font-weight: bold; font-size: 14px;
-    padding: 2px 6px; border-radius: 4px; animation: pop 0.5s ease-out;
-    z-index: 20; pointer-events: none;
-  }
-  @keyframes pop {
-    0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.2); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-  }
+  .brilliant-anim::after { content: '!!'; position: absolute; top: -10px; right: -10px; background: #0f766e; color: #fff; font-weight: bold; font-size: 14px; padding: 2px 6px; border-radius: 4px; animation: pop 0.5s ease-out; z-index: 20; pointer-events: none; }
+  .excellent-anim::after { content: '!'; position: absolute; top: -10px; right: -10px; background: #15803d; color: #fff; font-weight: bold; font-size: 14px; padding: 2px 6px; border-radius: 4px; animation: pop 0.5s ease-out; z-index: 20; pointer-events: none; }
+  @keyframes pop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 
   .feedback { font-size: 14px; font-weight: 600; min-height: 22px; text-align: center; }
   .feedback.ok { color: #4ade80; } .feedback.err { color: #f87171; }
@@ -126,41 +107,38 @@
   .side-btn:hover { background: #262626; }
   .side-btn.active { background: #4ade80; border-color: #4ade80; color: #111; font-weight: bold; }
   
-  .analysis-container { display: flex; flex-direction: column; gap: 20px; }
-  .analysis-main { display: grid; grid-template-columns: auto 1fr; gap: 20px; align-items: start; }
-  @media (max-width: 950px) { .analysis-main { grid-template-columns: 1fr; } .board-section { justify-content: center; } }
-  .board-section { display: flex; gap: 10px; align-items: stretch; position: sticky; top: 20px; }
-  .eval-bar-wrapper { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 40px; }
-  .eval-bar-vertical { width: 100%; height: 500px; background: #333; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #444; }
-  .eval-bar-white { background: #eee; width: 100%; transition: height 0.3s; }
-  .eval-text { font-size: 13px; font-weight: bold; color: #ccc; text-align: center; }
-
-  .board-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; }
-  .player-name { font-weight: bold; background: #1e1e1e; padding: 8px 12px; border-radius: 4px; text-align: left; width: 500px; max-width: 100%; border: 1px solid #333; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
-  .player-name.top { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; }
-  .player-name.bottom { border-top-left-radius: 0; border-top-right-radius: 0; border-top: none; }
-  .captured-pieces { font-size: 16px; color: #888; letter-spacing: -2px; }
-
-  .flip-btn { position: absolute; right: -50px; top: 50%; transform: translateY(-50%); background: #262626; border: none; color: #ddd; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
-  .flip-btn:hover { background: #333; }
-
-  .analysis-panel { display: flex; flex-direction: column; gap: 15px; height: calc(100vh - 250px); min-height: 500px; }
+  /* НОВЫЙ ДИЗАЙН АНАЛИЗА */
+  .analysis-container { display: grid; grid-template-columns: 1fr 400px; gap: 20px; align-items: start; }
+  @media (max-width: 1000px) { .analysis-container { grid-template-columns: 1fr; } }
   
-  .chesscom-input-group { display: flex; gap: 10px; margin-bottom: 10px; }
-  .chesscom-input-group input { flex: 1; background: #141414; border: 1px solid #333; border-radius: 6px; padding: 10px; color: #fff; font-size: 14px; }
-  .chesscom-games-list { max-height: 200px; overflow-y: auto; border: 1px solid #2a2a2a; border-radius: 6px; background: #141414; }
-  .chesscom-game-card { padding: 10px 12px; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; border-left: 3px solid transparent; }
-  .chesscom-game-card:hover { background: #1e1e1e; }
-  .chesscom-game-card:last-child { border-bottom: none; }
-  .game-info { display: flex; flex-direction: column; gap: 4px; }
-  .game-opponent { font-weight: 600; font-size: 13px; }
-  .game-meta { font-size: 11px; color: #888; display: flex; gap: 10px; }
-  .game-result { font-weight: bold; font-size: 12px; padding: 3px 8px; border-radius: 4px; }
-  .game-result.win { background: #166534; color: #bbf7d0; }
-  .game-result.loss { background: #7f1d1d; color: #fecaca; }
-  .game-result.draw { background: #4d4d4d; color: #d4d4d4; }
-  .game-accuracy { font-size: 12px; color: #4ade80; font-weight: bold; }
+  .left-panel { display: flex; gap: 15px; }
+  .board-area { position: relative; }
+  #analysisBoard { width: 500px; max-width: 100%; }
+  #arrowOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+  
+  /* Вертикальная полоса оценки */
+  .eval-bar-wrapper { display: flex; flex-direction: column; align-items: center; width: 30px; margin-right: 10px; }
+  .eval-bar-vertical { width: 100%; height: 500px; background: #262626; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; border: 1px solid #444; position: relative; }
+  .eval-bar-white { background: #f0f0f0; width: 100%; transition: height 0.3s; position: absolute; bottom: 0; left: 0; }
+  .eval-text { font-size: 12px; font-weight: bold; color: #ccc; text-align: center; margin-top: 5px; }
 
+  .right-panel { display: flex; flex-direction: column; gap: 15px; height: calc(100vh - 150px); min-height: 600px; }
+  
+  /* График */
+  .graph-container { background: #1e1e1e; border-radius: 8px; padding: 10px; border: 1px solid #2a2a2a; }
+  canvas#evalGraph { width: 100%; height: 100px; display: block; }
+  
+  /* Топ-линии */
+  .top-lines { background: #1e1e1e; border-radius: 8px; padding: 12px; border: 1px solid #2a2a2a; }
+  .top-line { display: flex; justify-content: space-between; padding: 8px 6px; border-bottom: 1px solid #2a2a2a; font-size: 13px; cursor: pointer; border-radius: 4px; }
+  .top-line:hover { background: #2a2a2a; }
+  .top-line:last-child { border-bottom: none; }
+  .top-line-move { font-weight: bold; min-width: 50px; }
+  .top-line-pv { color: #aaa; flex: 1; margin: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
+  .top-line-eval { font-weight: bold; }
+
+  /* Таблица ходов */
+  .move-table-container { flex: 1; overflow-y: auto; background: #1e1e1e; border-radius: 8px; border: 1px solid #2a2a2a; }
   .move-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .move-table th { text-align: left; padding: 8px 6px; border-bottom: 1px solid #333; color: #888; font-weight: normal; position: sticky; top: 0; background: #1e1e1e; z-index: 2; }
   .move-table td { padding: 6px; border-bottom: 1px solid #2a2a2a; }
@@ -179,20 +157,24 @@
   .cls-blunder { background: #7f1d1d; color: #fecaca; }
   .cls-miss { background: #b45309; color: #fef3c7; }
   .cls-forced { background: #333; color: #fff; }
-  
-  .top-lines { background: #1e1e1e; border-radius: 8px; padding: 12px; width: 100%; border: 1px solid #2a2a2a; }
-  .top-line { display: flex; justify-content: space-between; padding: 8px 6px; border-bottom: 1px solid #2a2a2a; font-size: 13px; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
-  .top-line:hover { background: #2a2a2a; }
-  .top-line:last-child { border-bottom: none; }
-  .top-line-move { font-weight: bold; color: #4ade80; min-width: 50px; }
-  .top-line-pv { color: #aaa; flex: 1; margin: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
-  .top-line-eval { font-weight: bold; }
 
-  /* Стили для статистики */
-  .stats-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; background: #1e1e1e; padding: 15px; border-radius: 8px; border: 1px solid #2a2a2a; width: 500px; max-width: 100%; }
-  .stats-col h4 { margin: 0 0 10px; font-size: 14px; text-align: center; color: #4ade80; }
-  .stats-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #2a2a2a; }
-  .stats-row:last-child { border-bottom: none; }
+  .chesscom-input-group { display: flex; gap: 10px; margin-bottom: 15px; background: #1e1e1e; padding: 15px; border-radius: 8px; }
+  .chesscom-input-group input { flex: 1; background: #141414; border: 1px solid #333; border-radius: 6px; padding: 10px; color: #fff; font-size: 14px; }
+  .chesscom-games-list { max-height: 200px; overflow-y: auto; border: 1px solid #2a2a2a; border-radius: 6px; background: #141414; margin-bottom: 15px; }
+  .chesscom-game-card { padding: 10px 12px; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-left: 3px solid transparent; }
+  .chesscom-game-card:hover { background: #1e1e1e; }
+  .chesscom-game-card:last-child { border-bottom: none; }
+  .game-info { display: flex; flex-direction: column; gap: 4px; }
+  .game-opponent { font-weight: 600; font-size: 13px; }
+  .game-meta { font-size: 11px; color: #888; display: flex; gap: 10px; }
+  .game-result { font-weight: bold; font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+  .game-result.win { background: #166534; color: #bbf7d0; }
+  .game-result.loss { background: #7f1d1d; color: #fecaca; }
+  .game-result.draw { background: #4d4d4d; color: #d4d4d4; }
+  .game-accuracy { font-size: 12px; color: #4ade80; font-weight: bold; }
+
+  .player-name { font-weight: bold; background: #1e1e1e; padding: 8px 12px; border-radius: 4px; text-align: left; width: 500px; max-width: 100%; border: 1px solid #333; font-size: 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .captured-pieces { font-size: 16px; color: #888; letter-spacing: -2px; }
 </style>
 </head>
 <body>
@@ -217,10 +199,9 @@
   <!-- ПЛАН -->
   <div id="tab-plan" class="tab-content active">
     <div id="recommendations-banner">
-      <h3>💡 Персональные рекомендации (на основе твоих заметок):</h3>
+      <h3>💡 Персональные рекомендации:</h3>
       <ul id="recommendations-list"></ul>
     </div>
-
     <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
     <div class="progress-text" id="progressText"></div>
     <div class="layout">
@@ -280,71 +261,68 @@
 
   <!-- АНАЛИЗ -->
   <div id="tab-analysis" class="tab-content">
-    <div class="analysis-container">
-      
-      <div style="background: #1e1e1e; padding: 15px; border-radius: 8px;">
-        <h3 style="margin: 0 0 10px; font-size: 15px;">Загрузить игры с Chess.com</h3>
-        <div class="chesscom-input-group">
-          <input type="text" id="chesscomUsername" placeholder="Ник на Chess.com" />
-          <button class="action-btn" id="loadGamesBtn" style="background: #4ade80; color: #111; font-weight: bold;">Найти</button>
-        </div>
-        <div id="chesscomGamesList" class="chesscom-games-list" style="display: none;"></div>
-      </div>
-
-      <div class="analysis-main">
-        <div class="board-section">
-          <div class="eval-bar-wrapper">
-            <div class="eval-text" id="evalText">0.0</div>
-            <div class="eval-bar-vertical">
-              <div class="eval-bar-white" id="evalBarWhite" style="height: 50%;"></div>
-            </div>
-          </div>
-          
-          <div class="board-wrapper">
-            <div id="topPlayer" class="player-name top">
-              <span>Black Player</span><span class="captured-pieces"></span>
-            </div>
-            <div id="analysisBoard"></div>
-            <div id="bottomPlayer" class="player-name bottom">
-              <span>White Player</span><span class="captured-pieces"></span>
-            </div>
-            <button class="flip-btn" id="flipBoardBtn" title="Перевернуть доску">🔄</button>
-            
-            <!-- Блок статистики -->
-            <div class="stats-container" id="statsContainer" style="display: none;">
-              <div class="stats-col">
-                <h4 id="statsWhiteName">Белые</h4>
-                <div id="statsWhite"></div>
-              </div>
-              <div class="stats-col">
-                <h4 id="statsBlackName">Черные</h4>
-                <div id="statsBlack"></div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <div class="analysis-panel">
-          <div class="top-lines">
-            <div style="font-size:12px; color:#888; margin-bottom:8px;">Топ-3 линии движка для текущей позиции:</div>
-            <div id="topLinesList" style="color:#666;">Выберите игру выше...</div>
-          </div>
-          
-          <div class="list-box" style="flex: 1; overflow-y: auto; padding: 0;">
-            <table class="move-table" id="moveTable">
-              <thead><tr><th>№</th><th>Ход</th><th>Оценка</th><th>Класс</th></tr></thead>
-              <tbody id="moveTableBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
+    
+    <div class="chesscom-input-group">
+      <input type="text" id="chesscomUsername" placeholder="Ник на Chess.com" />
+      <button class="action-btn" id="loadGamesBtn" style="background: #4ade80; color: #111; font-weight: bold;">Найти игры</button>
     </div>
+    <div id="chesscomGamesList" class="chesscom-games-list" style="display: none;"></div>
+
+    <div class="analysis-container">
+      <!-- Левая часть: Доска, оценка, стрелки -->
+      <div class="left-panel">
+        <div class="eval-bar-wrapper">
+          <div class="eval-text" id="evalText">0.0</div>
+          <div class="eval-bar-vertical">
+            <div class="eval-bar-white" id="evalBarWhite" style="height: 50%;"></div>
+          </div>
+        </div>
+        <div>
+          <div id="topPlayer" class="player-name">
+            <span>Black Player</span><span class="captured-pieces"></span>
+          </div>
+          <div class="board-area">
+            <div id="analysisBoard"></div>
+            <svg id="arrowOverlay"></svg>
+          </div>
+          <div id="bottomPlayer" class="player-name" style="margin-top: 5px;">
+            <span>White Player</span><span class="captured-pieces"></span>
+          </div>
+          <div class="btn-row" style="justify-content: space-between; margin-top: 10px;">
+            <button class="action-btn" id="analysisStart">⏮</button>
+            <button class="action-btn" id="analysisPrev">← Назад</button>
+            <button class="action-btn" id="analysisNext">Вперёд →</button>
+            <button class="action-btn" id="analysisEnd">⏭</button>
+            <button class="action-btn" id="flipBoardBtn">🔄 Перевернуть</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Правая часть: График, Линии, Ходы -->
+      <div class="right-panel">
+        <div class="graph-container">
+          <canvas id="evalGraph" width="380" height="100"></canvas>
+        </div>
+
+        <div class="top-lines">
+          <div style="font-size:12px; color:#888; margin-bottom:8px;">Топ-3 линии (кликни, чтобы поставить):</div>
+          <div id="topLinesList" style="color:#666;">Выберите игру...</div>
+        </div>
+        
+        <div class="move-table-container">
+          <table class="move-table" id="moveTable">
+            <thead><tr><th>№</th><th>Ход</th><th>Оценка</th><th>Класс</th></tr></thead>
+            <tbody id="moveTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
 <script>
+// --- Общая логика ---
 const daysMap = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 const monthsMap = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 
@@ -390,12 +368,11 @@ let analysisMoves = [];
 let currentAnalysisIndex = -1;
 
 let analysisGame = new Chess();
-let analysisVariationActive = false;
 let isAnalyzing = false;
-
 let currentWhitePlayer = "White";
 let currentBlackPlayer = "Black";
 let isBoardFlipped = false;
+let fullEvals = []; // Для графика
 
 const PIECE_THEME = 'img/pieces/{piece}.png';
 const moveSound = new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-self.mp3');
@@ -494,37 +471,114 @@ function updatePlayerNamesAndMaterial(fen) {
   }
 }
 
-function updateStatsUI(stats) {
-  const container = document.getElementById('statsContainer');
-  const whiteDiv = document.getElementById('statsWhite');
-  const blackDiv = document.getElementById('statsBlack');
+// --- СТРЕЛКИ ---
+function drawArrows(lines) {
+  const svg = document.getElementById('arrowOverlay');
+  svg.innerHTML = ''; // Очищаем
+  if (!lines || lines.length === 0) return;
   
-  document.getElementById('statsWhiteName').textContent = currentWhitePlayer;
-  document.getElementById('statsBlackName').textContent = currentBlackPlayer;
+  const boardWidth = document.getElementById('analysisBoard').offsetWidth;
+  const squareSize = boardWidth / 8;
+  const files = ['a','b','c','d','e','f','g','h'];
   
-  const labels = {
-    brilliant: '!! Бриллиант', great: '! Великий', best: '★ Лучший',
-    excellent: '✓ Отличный', good: '✓ Хороший', book: '📖 Теория',
-    inaccuracy: '?! Неточность', mistake: '? Ошибка', miss: '✗ Упущ. победа', blunder: '?? Зевок'
-  };
+  lines.forEach((line, index) => {
+    const from = line.uci.substring(0, 2);
+    const to = line.uci.substring(2, 4);
+    
+    let startX = (files.indexOf(from[0]) * squareSize) + squareSize / 2;
+    let startY = ((8 - parseInt(from[1])) * squareSize) + squareSize / 2;
+    let endX = (files.indexOf(to[0]) * squareSize) + squareSize / 2;
+    let endY = ((8 - parseInt(to[1])) * squareSize) + squareSize / 2;
+    
+    if (isBoardFlipped) {
+      startX = boardWidth - startX;
+      startY = boardWidth - startY;
+      endX = boardWidth - endX;
+      endY = boardWidth - endY;
+    }
+    
+    const thickness = index === 0 ? 10 : (index === 1 ? 6 : 3);
+    const color = index === 0 ? 'rgba(74, 222, 128, 0.9)' : (index === 1 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(168, 85, 247, 0.7)');
+    
+    // Рисуем линию
+    const lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    lineEl.setAttribute('x1', startX);
+    lineEl.setAttribute('y1', startY);
+    lineEl.setAttribute('x2', endX);
+    lineEl.setAttribute('y2', endY);
+    lineEl.setAttribute('stroke', color);
+    lineEl.setAttribute('stroke-width', thickness);
+    lineEl.setAttribute('stroke-linecap', 'round');
+    lineEl.setAttribute('marker-end', `url(#arrowhead${index})`);
+    svg.appendChild(lineEl);
+    
+    // Рисуем наконечник стрелки
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', `arrowhead${index}`);
+    marker.setAttribute('markerWidth', '4');
+    marker.setAttribute('markerHeight', '4');
+    marker.setAttribute('refX', '2');
+    marker.setAttribute('refY', '2');
+    marker.setAttribute('orient', 'auto');
+    
+    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    polygon.setAttribute('points', '0,0 4,2 0,4');
+    polygon.setAttribute('fill', color);
+    
+    marker.appendChild(polygon);
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+  });
+}
 
-  const renderRows = (colorStats) => {
-    return Object.keys(labels).map(key => {
-      if (colorStats[key] > 0) {
-        return `<div class="stats-row"><span>${labels[key]}</span><span>${colorStats[key]}</span></div>`;
-      }
-      return '';
-    }).join('');
-  };
-
-  whiteDiv.innerHTML = renderRows(stats.white);
-  blackDiv.innerHTML = renderRows(stats.black);
-  container.style.display = 'grid';
+// --- ГРАФИК ---
+function drawGraph(evals) {
+  const canvas = document.getElementById('evalGraph');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  ctx.clearRect(0, 0, w, h);
+  if (!evals || evals.length === 0) return;
+  
+  // Фон
+  ctx.fillStyle = '#333';
+  ctx.fillRect(0, 0, w, h);
+  
+  // Белая часть
+  ctx.fillStyle = '#eee';
+  ctx.fillRect(0, 0, w, h / 2);
+  
+  const step = w / (evals.length || 1);
+  
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2); // Начало по центру
+  
+  for (let i = 0; i < evals.length; i++) {
+    const x = i * step;
+    // Ограничиваем от -10 до +10
+    let evalVal = Math.max(-10, Math.min(10, evals[i]));
+    // Инвертируем Y (ось Y идет вниз)
+    let y = (h / 2) - (evalVal / 10 * (h / 2)); 
+    
+    ctx.lineTo(x, y);
+  }
+  
+  ctx.lineTo(w, h / 2); // Конец по центру
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Заливка
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.fillStyle = 'rgba(74, 222, 128, 0.2)';
+  ctx.fill();
 }
 
 document.addEventListener('keydown', function(e) {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     e.preventDefault();
     if (document.getElementById('tab-analysis').classList.contains('active')) {
@@ -666,16 +720,13 @@ function selectPuzzle(puzzle) {
 
   if (!puzzleBoard) {
     puzzleBoard = Chessboard('puzzleBoard', {
-      position: puzzle.fen,
-      draggable: true,
+      position: puzzle.fen, draggable: true,
       onDragStart: (source, piece) => {
         const turn = puzzleGame.turn() === 'w' ? 'w' : 'b';
         if ((turn === 'w' && piece.search(/^b/) !== -1) || (turn === 'b' && piece.search(/^w/) !== -1)) return false;
         highlightMoves(puzzleGame, source);
       },
-      onDrop: handlePuzzleDrop,
-      onSnapEnd: () => clearHighlights(),
-      pieceTheme: PIECE_THEME
+      onDrop: handlePuzzleDrop, onSnapEnd: () => clearHighlights(), pieceTheme: PIECE_THEME
     });
   } else {
     puzzleBoard.position(puzzle.fen); puzzleBoard.resize();
@@ -687,7 +738,6 @@ function handlePuzzleDrop(source, target) {
   if (!currentPuzzle || puzzleSolved) return 'snapback';
   const move = puzzleGame.move({ from: source, to: target, promotion: 'q' });
   if (!move) return 'snapback';
-
   if (source + target === currentPuzzle.solution) {
     puzzleSolved = true; puzzleBoard.position(puzzleGame.fen());
     setFeedback('✅ Верно! Это мат.', 'ok'); return;
@@ -772,23 +822,21 @@ document.getElementById('openingEnd').onclick = () => { if (currentOpening) { cu
 
 function initAnalysis() {
   analysisBoard = Chessboard('analysisBoard', {
-    position: 'start',
-    draggable: true,
+    position: 'start', draggable: true,
     onDragStart: (source, piece) => {
       if (isAnalyzing) return false;
       const turn = analysisGame.turn() === 'w' ? 'w' : 'b';
       if ((turn === 'w' && piece.search(/^b/) !== -1) || (turn === 'b' && piece.search(/^w/) !== -1)) return false;
       highlightMoves(analysisGame, source);
     },
-    onDrop: handleAnalysisDrop,
-    onSnapEnd: () => clearHighlights(),
-    pieceTheme: PIECE_THEME
+    onDrop: handleAnalysisDrop, onSnapEnd: () => clearHighlights(), pieceTheme: PIECE_THEME
   });
 
   document.getElementById('flipBoardBtn').onclick = () => {
     analysisBoard.flip();
     isBoardFlipped = !isBoardFlipped;
     updatePlayerNamesAndMaterial(analysisGame.fen());
+    drawArrows(analysisMoves[currentAnalysisIndex]?.next_top_moves);
   };
 
   document.getElementById('loadGamesBtn').onclick = async () => {
@@ -797,13 +845,13 @@ function initAnalysis() {
     const btn = document.getElementById('loadGamesBtn'); btn.disabled = true; btn.textContent = 'Загрузка...';
     const listContainer = document.getElementById('chesscomGamesList');
     listContainer.style.display = 'block';
-    listContainer.innerHTML = '<p style="color: #888; padding: 10px;">Загрузка игр с Chess.com...</p>';
+    listContainer.innerHTML = '<p style="color: #888; padding: 10px;">Загрузка игр...</p>';
 
     try {
       const archivesRes = await fetch(`https://api.chess.com/pub/player/${username}/games/archives`);
       if (!archivesRes.ok) {
         if (archivesRes.status === 404) throw new Error('Игрок не найден.');
-        throw new Error('Ошибка доступа к API. Возможно, провайдер блокирует сайт.');
+        throw new Error('Ошибка доступа к API.');
       }
       const archivesData = await archivesRes.json();
       const archives = archivesData.archives || [];
@@ -830,13 +878,8 @@ function initAnalysis() {
         let opponent = '';
         const userLower = username.toLowerCase();
 
-        if (white.username.toLowerCase() === userLower) {
-          myResult = white.result;
-          opponent = black.username;
-        } else {
-          myResult = black.result;
-          opponent = white.username;
-        }
+        if (white.username.toLowerCase() === userLower) { myResult = white.result; opponent = black.username; }
+        else { myResult = black.result; opponent = white.username; }
 
         let gameResult = '';
         if (myResult === 'win') gameResult = 'Победа';
@@ -871,10 +914,10 @@ function initAnalysis() {
       });
 
     } catch (e) {
-      listContainer.innerHTML = `<p style="color: #f87171; padding: 10px;">Ошибка: ${e.message}<br><br><strong>Если ошибка не исчезает, включите VPN на компьютере.</strong></p>`;
+      listContainer.innerHTML = `<p style="color: #f87171; padding: 10px;">Ошибка: ${e.message}<br><br><strong>Включите VPN, если сайт блокируется.</strong></p>`;
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Найти';
+      btn.textContent = 'Найти игры';
     }
   };
 }
@@ -886,22 +929,23 @@ function playMoveSound() {
 
 async function analyzePGN(pgn) {
   document.getElementById('evalText').textContent = 'Анализ...';
-  document.getElementById('topLinesList').innerHTML = '<span style="color:#4ade80;">Анализ партии движком... Это может занять до 20 секунд.</span>';
+  document.getElementById('topLinesList').innerHTML = '<span style="color:#4ade80;">Анализ... Это может занять 10-20 секунд.</span>';
   document.getElementById('moveTableBody').innerHTML = '';
-  document.getElementById('statsContainer').style.display = 'none';
+  document.getElementById('arrowOverlay').innerHTML = '';
   isAnalyzing = true;
   try {
     const res = await fetch('/api/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({pgn}) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Ошибка анализа');
     analysisMoves = data.moves; 
+    fullEvals = data.evals; // Сохраняем для графика
     
     currentWhitePlayer = data.white_player || "White";
     currentBlackPlayer = data.black_player || "Black";
     
     renderMoveTable();
+    drawGraph(fullEvals);
     if (analysisMoves.length > 0) showAnalysisMove(0);
-    if (data.stats) updateStatsUI(data.stats);
   } catch (e) { 
     alert('Ошибка: ' + e.message); 
     document.getElementById('evalText').textContent = '0.0';
@@ -917,12 +961,9 @@ function handleAnalysisDrop(source, target) {
 
   playMoveSound();
   analysisBoard.position(analysisGame.fen());
-  analysisVariationActive = true;
-  
-  document.getElementById('analysisBoard').classList.add('variation-active');
   document.querySelectorAll('#moveTableBody tr').forEach(tr => tr.classList.remove('active'));
   
-  evaluateCurrentPosition(analysisGame.fen(), true);
+  evaluateCurrentPosition(analysisGame.fen());
 }
 
 function formatEvalString(isMate, mateIn, evalScore) {
@@ -939,24 +980,23 @@ function updateEvalBar(isMate, mateIn, evalScore) {
   document.getElementById('evalText').textContent = formatEvalString(isMate, mateIn, evalScore);
 }
 
-async function evaluateCurrentPosition(fen, isVariation = false) {
+async function evaluateCurrentPosition(fen) {
   document.getElementById('evalText').textContent = '...';
   document.getElementById('topLinesList').innerHTML = 'Анализ позиции...';
   try {
     const res = await fetch('/api/evaluate', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({fen})
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({fen})
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail);
     
     updateEvalBar(data.is_mate, data.mate_in, data.eval);
-    document.getElementById('evalText').style.color = isVariation ? '#4ade80' : '#ccc';
     updatePlayerNamesAndMaterial(fen);
     
-    if (data.top_moves) renderTopLines(data.top_moves);
-    else document.getElementById('topLinesList').innerHTML = 'Нет данных.';
+    if (data.top_moves) {
+      renderTopLines(data.top_moves);
+      drawArrows(data.top_moves);
+    }
   } catch (e) {
     document.getElementById('evalText').textContent = 'Error';
   }
@@ -964,13 +1004,11 @@ async function evaluateCurrentPosition(fen, isVariation = false) {
 
 function renderTopLines(lines) {
   const container = document.getElementById('topLinesList');
-  if (!lines || lines.length === 0) {
-    container.innerHTML = 'Нет данных';
-    return;
-  }
+  if (!lines || lines.length === 0) { container.innerHTML = 'Нет данных'; return; }
+  
   container.innerHTML = lines.map((line, idx) => `
-    <div class="top-line" onclick="playTopMove('${line.uci}')" title="Сделать ход ${line.san} на доске">
-      <span class="top-line-move">${idx + 1}. ${line.san}</span>
+    <div class="top-line" onclick="playTopMove('${line.uci}')" title="Сделать ход">
+      <span class="top-line-move" style="color: ${idx === 0 ? '#4ade80' : (idx === 1 ? '#3b82f6' : '#a855f7')}">${idx + 1}. ${line.san}</span>
       <span class="top-line-pv">${line.pv}</span>
       <span class="top-line-eval">${formatEvalString(line.is_mate, line.mate_in, line.eval)}</span>
     </div>
@@ -988,11 +1026,10 @@ window.playTopMove = function(uci) {
 
   playMoveSound();
   analysisBoard.position(analysisGame.fen());
-  analysisVariationActive = true;
-  document.getElementById('analysisBoard').classList.add('variation-active');
   document.querySelectorAll('#moveTableBody tr').forEach(tr => tr.classList.remove('active'));
+  document.getElementById('arrowOverlay').innerHTML = '';
 
-  evaluateCurrentPosition(analysisGame.fen(), true);
+  evaluateCurrentPosition(analysisGame.fen());
 };
 
 function renderMoveTable() {
@@ -1015,7 +1052,7 @@ function renderMoveTable() {
     const tr = document.createElement('tr'); tr.id = `move-row-${idx}`; tr.onclick = () => showAnalysisMove(idx);
     const sym = classSymbols[m.classification] || { text: m.classification, title: '' };
     const evalStr = formatEvalString(m.is_mate, m.mate_in, m.eval);
-    tr.innerHTML = `<td>${Math.ceil((idx+1)/2)}${idx % 2 === 0 ? '.' : '...'}</td><td>${m.san}</td><td>${evalStr}</td><td><span class="move-class-badge cls-${m.classification}" title="${sym.title}">${sym.text}</span></td>`;
+    tr.innerHTML = `<td>${m.move_num}</td><td>${m.san}</td><td>${evalStr}</td><td><span class="move-class-badge cls-${m.classification}" title="${sym.title}">${sym.text}</span></td>`;
     tbody.appendChild(tr);
   });
 }
@@ -1049,19 +1086,25 @@ function showAnalysisMove(index) {
     }
   }
 
-  analysisVariationActive = false;
-  document.getElementById('analysisBoard').classList.remove('variation-active');
-  
   updateEvalBar(move.is_mate, move.mate_in, move.eval);
-  document.getElementById('evalText').style.color = '#ccc';
-  
   updatePlayerNamesAndMaterial(move.fen);
   
-  if (move.next_top_moves) renderTopLines(move.next_top_moves);
-  else document.getElementById('topLinesList').innerHTML = 'Нет данных';
+  if (move.next_top_moves) {
+    renderTopLines(move.next_top_moves);
+    drawArrows(move.next_top_moves);
+  } else {
+    document.getElementById('topLinesList').innerHTML = 'Нет данных';
+    document.getElementById('arrowOverlay').innerHTML = '';
+  }
   
   currentAnalysisIndex = index;
 }
+
+// Кнопки навигации по партии в анализе
+document.getElementById('analysisStart').onclick = () => showAnalysisMove(0);
+document.getElementById('analysisPrev').onclick = () => { if (currentAnalysisIndex > 0) showAnalysisMove(currentAnalysisIndex - 1); };
+document.getElementById('analysisNext').onclick = () => { if (currentAnalysisIndex < analysisMoves.length - 1) showAnalysisMove(currentAnalysisIndex + 1); };
+document.getElementById('analysisEnd').onclick = () => { if (analysisMoves.length > 0) showAnalysisMove(analysisMoves.length - 1); };
 </script>
 </body>
 </html>
