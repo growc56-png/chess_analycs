@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Шахматный тренажёр 800 → 1300</title>
+<link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
+<link rel="stylesheet" href="/index.css">
+<style>
+  .user-draw-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 20;
+  }
+  .board-wrap, .board-bg, .board-bg img {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  #puzzleBoard, #endgameBoard, #blindfoldBoard { width: 480px; max-width: 100%; }
+  #analysisBoard { width: 620px; max-width: 100%; }
+</style>
+<script src="/js/jquery.min.js"></script>
+<script src="/js/chessboard-1.0.0.min.js"></script>
+<script src="/js/chess.min.js"></script>
+<script src="/index.js" defer></script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>Шахматный тренажёр: 800 → 1300</h1>
+      <div class="subtitle">План на 16 недель · Задачи · Эндшпили · Анализ</div>
+    </div>
+    <div class="today-banner" id="today-date">Загрузка даты...</div>
+  </div>
+
+  <div class="quick-links">
+    <a href="/bots" class="quick-btn secondary">🤖 Игра с ботами</a>
+    <a href="/mates" class="quick-btn">♔ Практика матов</a>
+  </div>
+
+  <div id="error-banner"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="plan">План</button>
+    <button class="tab-btn" data-tab="puzzles">Задачи</button>
+    <button class="tab-btn" data-tab="endgames">Эндшпили</button>
+    <button class="tab-btn" data-tab="openings">Дебюты</button>
+    <button class="tab-btn" data-tab="analysis">Анализ</button>
+    <button class="tab-btn" data-tab="blindfold">Слепая игра</button>
+    <button class="tab-btn" data-tab="diary">Дневник</button>
+    <button class="tab-btn" data-tab="streak">🔥 Винстрик</button>
+  </div>
+
+  <!-- ПЛАН -->
+  <div id="tab-plan" class="tab-content active">
+    <div id="recommendations-banner">
+      <h3>💡 Персональные рекомендации:</h3>
+      <ul id="recommendations-list"></ul>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-text" id="progressText"></div>
+    <div class="layout">
+      <aside><div id="phases"></div><div class="week-list" id="weeks"></div></aside>
+      <main>
+        <div class="nav-buttons">
+          <button class="nav-btn" id="prevBtn">← Предыдущий</button>
+          <button class="nav-btn" id="nextBtn">Следующий →</button>
+          <button class="nav-btn" id="todayBtn">К сегодняшнему дню</button>
+        </div>
+        <div id="dayView"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ЗАДАЧИ -->
+  <div id="tab-puzzles" class="tab-content">
+    <div class="split">
+      <div class="list-box" id="puzzleList" style="max-height: 500px;">Загрузка...</div>
+      <div>
+        <div class="board-wrap" style="position: relative;" oncontextmenu="return false;">
+          <div id="puzzleBoard"></div>
+          <svg id="userDraw_puzzleBoard" class="user-draw-overlay"></svg>
+          <div id="puzzleFeedback" class="feedback"></div>
+          <div id="puzzleHint" class="hint"></div>
+          <div class="btn-row">
+            <button class="action-btn" id="puzzleResetBtn">↺ Сбросить</button>
+            <button class="action-btn" id="puzzleHintBtn">💡 Подсказка</button>
+            <button class="action-btn" id="puzzleSolutionBtn">Показать решение</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЭНДШПИЛИ -->
+  <div id="tab-endgames" class="tab-content">
+    <div class="split">
+      <div class="list-box" id="endgameList" style="max-height: 500px;">Загрузка...</div>
+      <div>
+        <div class="board-wrap" style="position: relative;" oncontextmenu="return false;">
+          <div id="endgameBoard"></div>
+          <svg id="userDraw_endgameBoard" class="user-draw-overlay"></svg>
+          <div id="endgameFeedback" class="feedback"></div>
+          <div class="btn-row">
+            <button class="action-btn" id="endgameResetBtn">↺ Сбросить (Новая позиция)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ДЕБЮТЫ -->
+  <div id="tab-openings" class="tab-content">
+    <div class="side-toggle">
+      <button class="side-btn active" data-side="white">♔ За белых</button>
+      <button class="side-btn" data-side="black">♚ За чёрных</button>
+    </div>
+    <div class="split">
+      <div class="list-box" id="openingList" style="max-height: 500px;">Загрузка...</div>
+      <div>
+        <div class="board-wrap" style="position: relative;" oncontextmenu="return false;">
+          <div id="openingBoard"></div>
+          <svg id="userDraw_openingBoard" class="user-draw-overlay"></svg>
+          <div class="btn-row" id="openingNav" style="display:none;">
+            <button class="action-btn" id="openingStart">⏮ В начало</button>
+            <button class="action-btn" id="openingPrev">← Назад</button>
+            <button class="action-btn" id="openingNext">Вперёд →</button>
+            <button class="action-btn" id="openingEnd">В конец ⏭</button>
+          </div>
+          <div class="opening-desc" id="openingDesc"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- АНАЛИЗ -->
+  <div id="tab-analysis" class="tab-content">
+    <div class="chesscom-input-group">
+      <input type="text" id="chesscomUsername" placeholder="Ник на Chess.com" />
+      <button class="action-btn" id="loadGamesBtn" style="background: #3d3a37; box-shadow: 0 3px 0 #262522;">📂 Посмотреть игры</button>
+      <button class="action-btn" id="analyzeLatestBtn" style="background: #81b64c; box-shadow: 0 3px 0 #537133;">⚡ Анализ</button>
+    </div>
+    <div id="chesscomGamesList" class="chesscom-games-list"></div>
+
+    <div class="analysis-container">
+      <div class="left-panel">
+        <div class="eval-bar-wrapper">
+          <div class="eval-text" id="evalText">0.0</div>
+          <div class="eval-bar-vertical">
+            <div class="eval-bar-white" id="evalBarWhite" style="height: 50%;"></div>
+          </div>
+        </div>
+        <div>
+          <div id="topPlayer" class="player-name">
+            <span>Black Player</span>
+            <span class="player-clock" id="topClock">10:00</span>
+          </div>
+          <div class="board-area" style="position: relative;" oncontextmenu="return false;">
+            <div id="analysisBoard"></div>
+            <svg id="userDraw_analysisBoard" class="user-draw-overlay"></svg>
+            <svg id="arrowOverlay"></svg>
+          </div>
+          <div id="bottomPlayer" class="player-name" style="margin-top: 5px;">
+            <span>White Player</span>
+            <span class="player-clock" id="bottomClock">10:00</span>
+          </div>
+          <div class="btn-row" style="justify-content: space-between; margin-top: 10px;">
+            <button class="action-btn" id="analysisStart">⏮</button>
+            <button class="action-btn" id="analysisPrev">← Назад</button>
+            <button class="action-btn" id="analysisNext">Вперёд →</button>
+            <button class="action-btn" id="analysisEnd">⏭</button>
+            <button class="action-btn" id="flipBoardBtn" style="background: #81b64c; box-shadow: 0 3px 0 #537133;">🔄 Перевернуть</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="graph-container">
+          <canvas id="evalGraph" width="420" height="100"></canvas>
+        </div>
+
+        <div class="top-lines">
+          <div style="font-size:13px; color:#b3b3b3; margin-bottom:8px; font-weight:600;">Топ-3 линии (кликни, чтобы поставить):</div>
+          <div id="topLinesList" style="color:#888;">Выберите игру...</div>
+        </div>
+        
+        <div class="move-list-container">
+          <div class="move-headers">
+            <div class="header-num">№</div>
+            <div class="header-white" id="headerWhite">Белые</div>
+            <div class="header-black" id="headerBlack">Черные</div>
+          </div>
+          <table class="move-table" id="moveTable">
+            <tbody id="moveTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- СЛЕПАЯ ИГРА -->
+  <div id="tab-blindfold" class="tab-content">
+    <div class="board-wrap" style="position: relative;" oncontextmenu="return false;">
+      <div id="blindfoldBoard"></div>
+      <svg id="userDraw_blindfoldBoard" class="user-draw-overlay"></svg>
+      <input type="text" id="blindfoldInput" class="blindfold-input" placeholder="Введи ход (например, e4 или Nf3)" autocomplete="off">
+      <div class="feedback" id="blindfoldFeedback"></div>
+      <div class="blindfold-history" id="blindfoldHistory"></div>
+      <div class="btn-row">
+        <button class="action-btn" id="blindfoldToggleBtn">👁️ Показать доску</button>
+        <button class="action-btn" id="blindfoldResetBtn">↺ Новая игра</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ДНЕВНИК -->
+  <div id="tab-diary" class="tab-content">
+    <div class="diary-container">
+      <h2 style="color:#fff; margin-top:0;">Твой прогресс</h2>
+      <canvas id="diaryCanvas" width="800" height="300"></canvas>
+    </div>
+  </div>
+
+  <!-- ВИНСТРИК -->
+  <div id="tab-streak" class="tab-content">
+    <div class="diary-container">
+      <h2 style="color:#fff; margin-top:0;">Статистика за сегодня</h2>
+      
+      <div class="chesscom-input-group" style="margin-bottom: 20px;">
+        <input type="text" id="streakUsername" placeholder="Ник на Chess.com" />
+        <button class="action-btn" id="analyzeTodayBtn" style="background: #81b64c; box-shadow: 0 3px 0 #537133;">⚡ Авто-анализ за сегодня</button>
+      </div>
+
+      <div class="streak-grid">
+        <div class="streak-card" style="border-top-color: #8b8987;">
+          <div class="streak-val" id="streak-total">0</div>
+          <div class="streak-lbl">Всего игр</div>
+        </div>
+        <div class="streak-card win">
+          <div class="streak-val" id="streak-wins">0</div>
+          <div class="streak-lbl">Побед</div>
+        </div>
+        <div class="streak-card draw">
+          <div class="streak-val" id="streak-draws">0</div>
+          <div class="streak-lbl">Ничьих</div>
+        </div>
+        <div class="streak-card loss">
+          <div class="streak-val" id="streak-losses">0</div>
+          <div class="streak-lbl">Поражений</div>
+        </div>
+      </div>
+      
+      <div class="streak-grid" style="margin-top: 20px;">
+        <div class="streak-card current">
+          <div class="streak-val" id="streak-current">0</div>
+          <div class="streak-lbl">Текущий винстрик</div>
+        </div>
+        <div class="streak-card max">
+          <div class="streak-val" id="streak-max">0</div>
+          <div class="streak-lbl">Рекорд за день</div>
+        </div>
+        <div class="streak-card" style="border-top-color: #3b82f6;">
+          <div class="streak-val" id="streak-winrate">0%</div>
+          <div class="streak-lbl">% Побед</div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top: 30px; justify-content: flex-start; gap: 15px;">
+        <button class="action-btn" style="background: #81b64c; color: #fff;" onclick="addStreakResult('win')">+ Победа</button>
+        <button class="action-btn" style="background: #8b8987; color: #fff;" onclick="addStreakResult('draw')">+ Ничья</button>
+        <button class="action-btn" style="background: #d95c5c; color: #fff;" onclick="addStreakResult('loss')">+ Поражение</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="promotionModal">
+  <div class="promotion-content">
+    <div class="promotion-btn" data-piece="q" title="Ферзь">♕</div>
+    <div class="promotion-btn" data-piece="r" title="Ладья">♖</div>
+    <div class="promotion-btn" data-piece="b" title="Слон">♗</div>
+    <div class="promotion-btn" data-piece="n" title="Конь">♘</div>
+  </div>
+</div>
+
+</body>
+</html>
