@@ -5,6 +5,8 @@ let PLAN = [], currentDay = 1, totalDays = 0;
 let puzzleBoard = null, puzzleGame = null, currentPuzzle = null, puzzleSolved = false;
 let endgameBoard = null, endgameGame = null, currentEndgame = null;
 let openingBoard = null, currentOpening = null, currentMoveIndex = 0;
+let openingGame = new Chess();
+let isOpponentMoving = false;
 let blindfoldBoard = null, blindfoldGame = new Chess();
 let analysisBoard = null;
 let puzzlesData = [], endgamesData = [], openingsData = [];
@@ -25,6 +27,7 @@ let pendingPromotion = null;
 
 const PIECE_THEME = '/img/pieces/{piece}.png';
 const moveSound = new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-self.mp3');
+const errorSound = new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/illegal.mp3');
 
 function getTodayInfo() {
   const now = new Date();
@@ -63,152 +66,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab === 'puzzles' && puzzleBoard) setTimeout(() => puzzleBoard.resize(), 50);
     if (btn.dataset.tab === 'endgames' && endgameBoard) setTimeout(() => endgameBoard.resize(), 50);
     if (btn.dataset.tab === 'openings' && openingBoard) setTimeout(() => openingBoard.resize(), 50);
-    if (btn.dataset.tab === 'analysis' && analysisBoard) setTimeout(() => {
-      analysisBoard.resize();
-      if (currentAnalysisIndex >= 0 && analysisMoves[currentAnalysisIndex]) {
-        drawBoardBadge(analysisMoves[currentAnalysisIndex]);
-      }
-    }, 50);
+    if (btn.dataset.tab === 'analysis' && analysisBoard) setTimeout(() => analysisBoard.resize(), 50);
     if (btn.dataset.tab === 'blindfold' && blindfoldBoard) setTimeout(() => blindfoldBoard.resize(), 50);
     if (btn.dataset.tab === 'diary') drawDiary();
     if (btn.dataset.tab === 'streak') loadStreak();
   };
 });
-
-// ========== ФУНКЦИОНАЛ РИСОВАНИЯ ПКМ ==========
-function initRightClickDrawing(boardId) {
-  const boardEl = document.getElementById(boardId);
-  const svgEl = document.getElementById(`userDraw_${boardId}`);
-  if (!boardEl || !svgEl) return;
-
-  svgEl.setAttribute('viewBox', '0 0 8 8');
-  svgEl.innerHTML = ''; 
-
-  let isDrawing = false;
-  let startX = -1, startY = -1;
-
-  const getSquareCoords = (e) => {
-    const rect = boardEl.getBoundingClientRect();
-    const size = rect.width / 8;
-    let x = Math.floor((e.clientX - rect.left) / size);
-    let y = Math.floor((e.clientY - rect.top) / size);
-    
-    if (boardId === 'analysisBoard' && isBoardFlipped) {
-      x = 7 - x;
-      y = 7 - y;
-    }
-    if (x < 0 || x > 7 || y < 0 || y > 7) return null;
-    return { x, y };
-  };
-
-  // capture: true - перехватываем ПКМ до библиотеки
-  boardEl.addEventListener('mousedown', e => {
-    if (e.button !== 2) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const sq = getSquareCoords(e);
-    if (!sq) return;
-
-    isDrawing = true;
-    startX = sq.x; startY = sq.y;
-    svgEl.innerHTML = ''; 
-    
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', startX + 0.5); circle.setAttribute('cy', startY + 0.5);
-    circle.setAttribute('r', '0.4');
-    circle.setAttribute('fill', 'none');
-    circle.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)');
-    circle.setAttribute('stroke-width', '0.15');
-    svgEl.appendChild(circle);
-  }, true);
-
-  boardEl.addEventListener('mousemove', e => {
-    if (!isDrawing) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const sq = getSquareCoords(e);
-    if (!sq) return;
-
-    const currentX = sq.x; const currentY = sq.y;
-    svgEl.innerHTML = '';
-
-    const x1 = startX + 0.5;
-    const y1 = startY + 0.5;
-    const x2 = currentX + 0.5;
-    const y2 = currentY + 0.5;
-
-    if (startX === currentX && startY === currentY) {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', x1); circle.setAttribute('cy', y1);
-      circle.setAttribute('r', '0.4');
-      circle.setAttribute('fill', 'none');
-      circle.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)');
-      circle.setAttribute('stroke-width', '0.15');
-      svgEl.appendChild(circle);
-    } else {
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)');
-      path.setAttribute('stroke-width', '0.15');
-      path.setAttribute('fill', 'none');
-
-      const dx = Math.abs(currentX - startX);
-      const dy = Math.abs(currentY - startY);
-      const isKnightMove = (dx === 1 && dy === 2) || (dx === 2 && dy === 1);
-
-      let endLineX = x2, endLineY = y2;
-
-      if (isKnightMove) {
-        if (dx === 2) {
-          path.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y1} L ${x2} ${y2}`);
-          endLineX = x2; endLineY = y2;
-        } else {
-          path.setAttribute('d', `M ${x1} ${y1} L ${x1} ${y2} L ${x2} ${y2}`);
-          endLineX = x2; endLineY = y2;
-        }
-      } else {
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        endLineX = x2 - 0.2 * Math.cos(angle);
-        endLineY = y2 - 0.2 * Math.sin(angle);
-        path.setAttribute('d', `M ${x1} ${y1} L ${endLineX} ${endLineY}`);
-      }
-      svgEl.appendChild(path);
-
-      // Математический треугольник
-      let angle = 0;
-      if (isKnightMove) {
-         if (dx === 2) angle = (currentY > startY) ? Math.PI/2 : -Math.PI/2;
-         else angle = (currentX > startX) ? 0 : Math.PI;
-      } else {
-         angle = Math.atan2(y2 - y1, x2 - x1);
-      }
-
-      const len = 0.4;
-      const ang = Math.PI / 6;
-      
-      const ax1 = x2 - len * Math.cos(angle - ang);
-      const ay1 = y2 - len * Math.sin(angle - ang);
-      const ax2 = x2 - len * Math.cos(angle + ang);
-      const ay2 = y2 - len * Math.sin(angle + ang);
-
-      const head = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      head.setAttribute('points', `${x2},${y2} ${ax1},${ay1} ${ax2},${ay2}`);
-      head.setAttribute('fill', 'rgba(255, 69, 0, 0.8)');
-      svgEl.appendChild(head);
-    }
-  }, true);
-
-  document.addEventListener('mouseup', e => {
-    if (e.button === 2 && isDrawing) {
-      isDrawing = false;
-    }
-  });
-}
-
-function clearUserDrawings(boardId) {
-  const svg = document.getElementById(`userDraw_${boardId}`);
-  if (svg) svg.innerHTML = '';
-}
-// ==============================================
 
 async function initApp() {
   try {
@@ -266,7 +129,6 @@ function updateRecommendationsUI(recommendations) {
   }
 }
 
-// --- ВИНСТРИК ---
 async function loadStreak() {
   try {
     const res = await fetch('/api/streak');
@@ -844,6 +706,7 @@ document.getElementById('puzzleSolutionBtn').onclick = () => {
   if (mv) { puzzleSolved = true; puzzleBoard.position(puzzleGame.fen()); setFeedback('Решение показано.', 'ok'); }
 };
 
+// --- ИНТЕРАКТИВНЫЕ ДЕБЮТЫ ---
 function renderSideButtons() {
   document.querySelectorAll('.side-btn').forEach(btn => {
     btn.onclick = () => {
@@ -853,61 +716,151 @@ function renderSideButtons() {
   });
   renderOpeningsList();
 }
+
 function renderOpeningsList() {
   const list = document.getElementById('openingList');
   const filtered = openingsData.filter(o => o.side === currentSide);
   if (filtered.length === 0) { list.innerHTML = '<div style="padding:10px; color:#888; font-weight:600;">Нет дебютов.</div>'; return; }
+  
   const groups = {};
   filtered.forEach(o => { if (!groups[o.family]) groups[o.family] = []; groups[o.family].push(o); });
+  
   let html = '';
   Object.keys(groups).forEach(family => {
     html += `<div class="family-header">${family}</div>`;
     groups[family].forEach(o => { html += `<div class="list-item" data-id="${o.id}">${o.name}</div>`; });
   });
   list.innerHTML = html;
+  
   list.querySelectorAll('.list-item').forEach(el => {
     el.onclick = () => {
       document.querySelectorAll('#openingList .list-item').forEach(i => i.classList.remove('active'));
-      el.classList.add('active'); selectOpening(filtered.find(o => o.id === el.dataset.id));
+      el.classList.add('active'); 
+      selectOpening(filtered.find(o => o.id === el.dataset.id));
     };
   });
+  
   if (filtered.length > 0) {
     const firstEl = document.querySelector(`#openingList .list-item[data-id="${filtered[0].id}"]`);
     if(firstEl) firstEl.classList.add('active');
     selectOpening(filtered[0]);
   }
 }
+
 function selectOpening(opening) {
-  currentOpening = opening; currentMoveIndex = 0;
-  if (!openingBoard) openingBoard = Chessboard('openingBoard', { position: 'start', draggable: false, pieceTheme: PIECE_THEME });
-  else openingBoard.resize();
-  document.getElementById('openingNav').style.display = 'flex'; updateOpeningView();
+  currentOpening = opening; 
+  currentMoveIndex = 0;
+  isOpponentMoving = false;
+  openingGame = new Chess();
+  clearUserDrawings('openingBoard');
+
+  if (!openingBoard) {
+    openingBoard = Chessboard('openingBoard', {
+      position: 'start', 
+      draggable: true,
+      onDragStart: (source, piece) => {
+        if (isOpponentMoving || currentMoveIndex >= currentOpening.moves.length) return false;
+        const turn = openingGame.turn() === 'w' ? 'w' : 'b';
+        const userSide = currentOpening.side === 'white' ? 'w' : 'b';
+        if (turn !== userSide) return false;
+        if ((turn === 'w' && piece.search(/^b/) !== -1) || (turn === 'b' && piece.search(/^w/) !== -1)) return false;
+        highlightMoves(openingGame, source);
+        return true;
+      },
+      onDrop: handleOpeningDrop,
+      onSnapEnd: () => { clearHighlights(); openingBoard.position(openingGame.fen()); },
+      pieceTheme: PIECE_THEME
+    });
+  } else {
+    openingBoard.position('start');
+    setTimeout(() => openingBoard.resize(), 100); // <--- ИСПРАВЛЕНИЕ РАЗМЕРА
+  }
+  
+  document.getElementById('openingNav').style.display = 'flex'; 
+  updateOpeningView();
 }
+
+function handleOpeningDrop(source, target) {
+  if (currentMoveIndex >= currentOpening.moves.length) return 'snapback';
+  
+  let move = null;
+  try { move = openingGame.move({ from: source, to: target, promotion: 'q' }); } catch(e) {}
+  if (!move) return 'snapback';
+
+  const expectedMoveStr = currentOpening.moves[currentMoveIndex];
+  
+  if (move.san !== expectedMoveStr) {
+    openingGame.undo();
+    errorSound.currentTime = 0;
+    errorSound.play().catch(e => {});
+    return 'snapback';
+  }
+  
+  moveSound.currentTime = 0;
+  moveSound.play().catch(e => {});
+  
+  currentMoveIndex++;
+  updateOpeningView();
+  clearHighlights();
+
+  if (currentMoveIndex < currentOpening.moves.length) {
+    isOpponentMoving = true;
+    setTimeout(() => {
+      openingGame.move(currentOpening.moves[currentMoveIndex]);
+      currentMoveIndex++;
+      openingBoard.position(openingGame.fen());
+      updateOpeningView();
+      isOpponentMoving = false;
+      moveSound.currentTime = 0;
+      moveSound.play().catch(e => {});
+    }, 400);
+  }
+  
+  return; 
+}
+
 function updateOpeningView() {
   if (!currentOpening) return;
-  const game = new Chess();
-  for (let i = 0; i < currentMoveIndex; i++) game.move(currentOpening.moves[i]);
-  openingBoard.position(game.fen());
+  
+  openingGame = new Chess();
+  for (let i = 0; i < currentMoveIndex; i++) {
+    openingGame.move(currentOpening.moves[i]);
+  }
+  openingBoard.position(openingGame.fen());
+  
   const movesHTML = currentOpening.moves.map((m, i) => {
     const cls = i < currentMoveIndex ? 'current' : '';
     const moveNum = i % 2 === 0 ? (Math.floor(i/2)+1) + '. ' : '';
     return `<span class="move-chip ${cls}" data-idx="${i+1}">${moveNum}${m}</span>`;
   }).join('');
+  
   document.getElementById('openingDesc').innerHTML = `
     <p><strong>${currentOpening.name}</strong></p><p>${currentOpening.description}</p>
     <p><strong>План белых:</strong> ${currentOpening.plans_white}</p>
     <p><strong>План чёрных:</strong> ${currentOpening.plans_black}</p>
+    <p style="color:#fcd34d; font-size:12px; margin-top:10px;">💡 Вы играете за ${currentOpening.side === 'white' ? 'белых' : 'чёрных'}. Сделайте правильный ход на доске или нажмите «Вперёд».</p>
     <div class="move-list">${movesHTML}</div>
   `;
+  
   document.querySelectorAll('#openingDesc .move-chip').forEach(chip => {
-    chip.onclick = () => { currentMoveIndex = +chip.dataset.idx; updateOpeningView(); };
+    chip.onclick = () => {
+      currentMoveIndex = +chip.dataset.idx; 
+      updateOpeningView();
+    };
   });
 }
+
 document.getElementById('openingStart').onclick = () => { currentMoveIndex = 0; updateOpeningView(); };
 document.getElementById('openingPrev').onclick = () => { if (currentMoveIndex > 0) { currentMoveIndex--; updateOpeningView(); } };
-document.getElementById('openingNext').onclick = () => { if (currentOpening && currentMoveIndex < currentOpening.moves.length) { currentMoveIndex++; updateOpeningView(); } };
+document.getElementById('openingNext').onclick = () => { 
+  if (currentOpening && currentMoveIndex < currentOpening.moves.length) { 
+    currentMoveIndex++; 
+    updateOpeningView(); 
+  } 
+};
 document.getElementById('openingEnd').onclick = () => { if (currentOpening) { currentMoveIndex = currentOpening.moves.length; updateOpeningView(); } };
 
+// --- АНАЛИЗ (ВСПОМОГАТЕЛЬНЫЕ) ---
 function initAnalysis() {
   analysisBoard = Chessboard('analysisBoard', {
     position: 'start', draggable: true,
@@ -927,544 +880,4 @@ function initAnalysis() {
     updatePlayerNamesAndMaterial(analysisGame.fen());
     if (currentAnalysisIndex >= 0 && analysisMoves[currentAnalysisIndex]) {
       drawBoardBadge(analysisMoves[currentAnalysisIndex]);
-      if (analysisMoves[currentAnalysisIndex].next_top_moves) {
-        drawArrows(analysisMoves[currentAnalysisIndex].next_top_moves);
-      }
-    } else {
-      const overlay = document.querySelector('#analysisBoard .custom-overlay');
-      if (overlay) overlay.innerHTML = '';
-      drawArrows(null);
-    }
-  };
-}
-
-const unicodePieces = { P: '♙', N: '♘', B: '♗', R: '♖', Q: '♕', p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
-
-function updatePlayerNamesAndMaterial(fen) {
-  const board = new Chess(fen).board();
-  const initialPieces = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
-  const currentWhite = { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 };
-  const currentBlack = { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 };
-  
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      const piece = board[r][c];
-      if (piece) {
-        if (piece.color === 'w') currentWhite[piece.type]++;
-        else currentBlack[piece.type]++;
-      }
-    }
-  }
-  
-  const values = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-  let whiteScore = 0, blackScore = 0;
-  let whiteCaptured = [], blackCaptured = [];
-  
-  for (const type in initialPieces) {
-    if (type === 'k') continue;
-    whiteScore += currentWhite[type] * values[type];
-    blackScore += currentBlack[type] * values[type];
-    
-    for (let i = 0; i < initialPieces[type] - currentWhite[type]; i++) blackCaptured.push(`w${type.toUpperCase()}`);
-    for (let i = 0; i < initialPieces[type] - currentBlack[type]; i++) whiteCaptured.push(`b${type.toUpperCase()}`);
-  }
-  
-  const diff = whiteScore - blackScore;
-  const whiteAdvStr = diff > 0 ? ` <span style="color:#81b64c;">+${diff}</span>` : '';
-  const blackAdvStr = diff < 0 ? ` <span style="color:#81b64c;">+${Math.abs(diff)}</span>` : '';
-  
-  const whiteCapturedStr = whiteCaptured.map(p => unicodePieces[p]).join('');
-  const blackCapturedStr = blackCaptured.map(p => unicodePieces[p]).join('');
-  
-  const whiteDisplay = `${currentWhitePlayer}${whiteAdvStr}`;
-  const blackDisplay = `${currentBlackPlayer}${blackAdvStr}`;
-  
-  const topEl = document.getElementById('topPlayer');
-  const bottomEl = document.getElementById('bottomPlayer');
-  
-  if (isBoardFlipped) {
-    topEl.innerHTML = `<span>${whiteDisplay} <span class="captured-pieces">${whiteCapturedStr}</span></span><span class="player-clock" id="topClock">${document.getElementById('topClock').textContent}</span>`;
-    bottomEl.innerHTML = `<span>${blackDisplay} <span class="captured-pieces">${blackCapturedStr}</span></span><span class="player-clock" id="bottomClock">${document.getElementById('bottomClock').textContent}</span>`;
-  } else {
-    topEl.innerHTML = `<span>${blackDisplay} <span class="captured-pieces">${blackCapturedStr}</span></span><span class="player-clock" id="topClock">${document.getElementById('topClock').textContent}</span>`;
-    bottomEl.innerHTML = `<span>${whiteDisplay} <span class="captured-pieces">${whiteCapturedStr}</span></span><span class="player-clock" id="bottomClock">${document.getElementById('bottomClock').textContent}</span>`;
-  }
-}
-
-function drawArrows(lines) {
-  const svg = document.getElementById('arrowOverlay');
-  svg.innerHTML = '';
-  if (!lines || lines.length === 0) return;
-  
-  const boardWidth = document.getElementById('analysisBoard').offsetWidth;
-  const squareSize = boardWidth / 8;
-  const files = ['a','b','c','d','e','f','g','h'];
-  
-  lines.forEach((line, index) => {
-    const from = line.uci.substring(0, 2);
-    const to = line.uci.substring(2, 4);
-    
-    let startX = (files.indexOf(from[0]) * squareSize) + squareSize / 2;
-    let startY = ((8 - parseInt(from[1])) * squareSize) + squareSize / 2;
-    let endX = (files.indexOf(to[0]) * squareSize) + squareSize / 2;
-    let endY = ((8 - parseInt(to[1])) * squareSize) + squareSize / 2;
-    
-    if (isBoardFlipped) {
-      startX = boardWidth - startX; startY = boardWidth - startY;
-      endX = boardWidth - endX; endY = boardWidth - endY;
-    }
-    
-    const thickness = index === 0 ? 10 : (index === 1 ? 6 : 3);
-    const color = index === 0 ? 'rgba(129, 182, 76, 0.9)' : (index === 1 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(168, 85, 247, 0.7)');
-    
-    const lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    lineEl.setAttribute('x1', startX); lineEl.setAttribute('y1', startY);
-    lineEl.setAttribute('x2', endX); lineEl.setAttribute('y2', endY);
-    lineEl.setAttribute('stroke', color); lineEl.setAttribute('stroke-width', thickness);
-    lineEl.setAttribute('stroke-linecap', 'round'); lineEl.setAttribute('marker-end', `url(#arrowhead${index})`);
-    svg.appendChild(lineEl);
-    
-    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
-    marker.setAttribute('id', `arrowhead${index}`); marker.setAttribute('markerWidth', '4');
-    marker.setAttribute('markerHeight', '4'); marker.setAttribute('refX', '2');
-    marker.setAttribute('refY', '2'); marker.setAttribute('orient', 'auto');
-    
-    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    polygon.setAttribute('points', '0,0 4,2 0,4'); polygon.setAttribute('fill', color);
-    marker.appendChild(polygon); defs.appendChild(marker); svg.appendChild(defs);
-  });
-}
-
-function drawBoardBadge(moveData) {
-  const boardEl = document.getElementById('analysisBoard');
-  let overlay = boardEl.querySelector('.custom-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.className = 'custom-overlay';
-    overlay.style.position = 'absolute';
-    overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.width = '100%'; overlay.style.height = '100%';
-    overlay.style.pointerEvents = 'none'; overlay.style.zIndex = '100';
-    boardEl.appendChild(overlay);
-  }
-
-  overlay.innerHTML = '';
-  if (!moveData || !moveData.uci) return;
-
-  const toSquare = moveData.uci.slice(2, 4);
-  const files = ['a','b','c','d','e','f','g','h'];
-  
-  let file = files.indexOf(toSquare[0]);
-  let rank = parseInt(toSquare[1]) - 1;
-  
-  if (file < 0 || rank < 0) return;
-
-  let xPct, yPct;
-  if (isBoardFlipped) {
-    xPct = (7 - file) * 100; yPct = rank * 100;
-  } else {
-    xPct = file * 100; yPct = (7 - rank) * 100;
-  }
-
-  const badge = document.createElement('div');
-  badge.className = 'board-badge';
-
-  let text = ''; let cls = '';
-
-  const classMap = {
-    'brilliant': { t: '!!', c: 'badge-brilliant' }, 'great': { t: '!', c: 'badge-great' },
-    'best': { t: '★', c: 'badge-best' }, 'excellent': { t: '✓', c: 'badge-excellent' },
-    'good': { t: '✓', c: 'badge-good' }, 'inaccuracy': { t: '?!', c: 'badge-inaccuracy' },
-    'mistake': { t: '?', c: 'badge-mistake' }, 'miss': { t: '✗', c: 'badge-miss' },
-    'blunder': { t: '??', c: 'badge-blunder' }, 'book': { t: '📖', c: 'badge-book' },
-    'forced': { t: '□', c: 'badge-forced' }
-  };
-
-  if (moveData.classification && classMap[moveData.classification]) {
-    text = classMap[moveData.classification].t; cls = classMap[moveData.classification].c;
-  } else if (moveData.is_mate) {
-    text = moveData.mate_in > 0 ? `М${moveData.mate_in}` : `-М${Math.abs(moveData.mate_in)}`; cls = 'badge-eval';
-  } else {
-    text = (moveData.eval > 0 ? '+' : '') + moveData.eval.toFixed(1); cls = 'badge-eval';
-  }
-
-  badge.textContent = text;
-  badge.classList.add(cls);
-  
-  badge.style.left = `calc(${xPct}% + 87.5% - 10px)`; 
-  badge.style.top = `calc(${yPct}% + 10px)`;
-  
-  overlay.appendChild(badge);
-}
-
-function drawGraph(evals, currentIndex = -1) {
-  const canvas = document.getElementById('evalGraph');
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width; const h = canvas.height;
-  
-  ctx.clearRect(0, 0, w, h);
-  if (!evals || evals.length === 0) return;
-  
-  ctx.fillStyle = '#262522'; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#312e2b'; ctx.fillRect(0, 0, w, h / 2);
-  
-  const step = w / (evals.length || 1);
-  ctx.beginPath(); ctx.moveTo(0, h / 2);
-  
-  for (let i = 0; i < evals.length; i++) {
-    const x = i * step;
-    let evalVal = Math.max(-10, Math.min(10, evals[i]));
-    let y = (h / 2) - (evalVal / 10 * (h / 2)); 
-    ctx.lineTo(x, y);
-  }
-  
-  ctx.lineTo(w, h / 2);
-  ctx.strokeStyle = '#81b64c'; ctx.lineWidth = 2; ctx.stroke();
-  
-  ctx.lineTo(w, h); ctx.lineTo(0, h);
-  ctx.fillStyle = 'rgba(129, 182, 76, 0.2)'; ctx.fill();
-
-  if (currentIndex >= 0 && currentIndex < evals.length) {
-    const curX = currentIndex * step;
-    ctx.beginPath(); ctx.moveTo(curX, 0); ctx.lineTo(curX, h);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 2; ctx.stroke();
-  }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-    e.preventDefault();
-    if (document.getElementById('tab-analysis').classList.contains('active')) {
-      if (e.key === 'ArrowLeft' && currentAnalysisIndex > 0) showAnalysisMove(currentAnalysisIndex - 1);
-      else if (e.key === 'ArrowRight' && currentAnalysisIndex < analysisMoves.length - 1) showAnalysisMove(currentAnalysisIndex + 1);
-    }
-    if (document.getElementById('tab-openings').classList.contains('active')) {
-      if (e.key === 'ArrowLeft') document.getElementById('openingPrev').click();
-      if (e.key === 'ArrowRight') document.getElementById('openingNext').click();
-    }
-  }
-});
-
-function highlightMoves(game, source) {
-  clearHighlights();
-  if (!game || !source) return;
-  const moves = game.moves({ square: source, verbose: true });
-  moves.forEach(move => {
-    const el = document.querySelector(`.square-${move.to}`);
-    if (el) {
-      const isCapture = move.flags.includes('c') || move.flags.includes('e');
-      el.classList.add(isCapture ? 'highlight-capture' : 'highlight-move');
-    }
-  });
-}
-
-function clearHighlights() {
-  document.querySelectorAll('.highlight-move, .highlight-capture').forEach(el => {
-    el.classList.remove('highlight-move', 'highlight-capture');
-  });
-}
-
-function playMoveSound() {
-  moveSound.currentTime = 0;
-  moveSound.play().catch(e => console.log("Звук не воспроизведен:", e));
-}
-
-async function analyzePGN(pgn, gameUrl) {
-  document.getElementById('evalText').textContent = 'Анализ...';
-  document.getElementById('topLinesList').innerHTML = '<span style="color:#81b64c; font-weight:600;">Анализ...</span>';
-  document.getElementById('moveTableBody').innerHTML = '';
-  document.getElementById('arrowOverlay').innerHTML = '';
-  const overlay = document.querySelector('#analysisBoard .custom-overlay');
-  if (overlay) overlay.innerHTML = '';
-  isAnalyzing = true;
-
-  const cacheKey = `analysis_${gameUrl || pgn.slice(0, 50)}`;
-  const cachedData = localStorage.getItem(cacheKey);
-  
-  if (cachedData) {
-    const data = JSON.parse(cachedData);
-    loadAnalysisData(data);
-    isAnalyzing = false;
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({pgn}) });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Ошибка анализа');
-    
-    localStorage.setItem(cacheKey, JSON.stringify(data));
-    loadAnalysisData(data);
-  } catch (e) { 
-    alert('Ошибка: ' + e.message); 
-    document.getElementById('evalText').textContent = '0.0';
-    document.getElementById('topLinesList').innerHTML = 'Ошибка';
-  }
-  finally { isAnalyzing = false; }
-}
-
-function formatClockTime(seconds) {
-  if (seconds === null || seconds === undefined) return '--:--';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function formatSpentTime(seconds) {
-  if (seconds === null || seconds === undefined) return '';
-  if (seconds < 1) return '0s';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
-
-function loadAnalysisData(data) {
-  analysisMoves = data.moves; 
-  fullEvals = data.evals;
-  
-  currentWhitePlayer = data.white_player || "White";
-  currentBlackPlayer = data.black_player || "Black";
-  
-  let whiteHeader = `♔ ${currentWhitePlayer}`;
-  let blackHeader = `♚ ${currentBlackPlayer}`;
-  if (myUsername) {
-    if (currentWhitePlayer.toLowerCase() === myUsername.toLowerCase()) whiteHeader += ' (Вы)';
-    if (currentBlackPlayer.toLowerCase() === myUsername.toLowerCase()) blackHeader += ' (Вы)';
-  }
-  document.getElementById('headerWhite').textContent = whiteHeader;
-  document.getElementById('headerBlack').textContent = blackHeader;
-  
-  renderMoveTable();
-  drawGraph(fullEvals, -1);
-  if (analysisMoves.length > 0) showAnalysisMove(0);
-}
-
-function handleAnalysisDrop(source, target) {
-  if (isAnalyzing) return 'snapback';
-  
-  const moves = analysisGame.moves({ verbose: true });
-  const isPromotion = moves.some(m => m.from === source && m.to === target && m.flags.includes('p'));
-  if (isPromotion) {
-    pendingPromotion = { source, target, context: 'analysis' };
-    document.getElementById('promotionModal').style.display = 'flex';
-    return 'snapback';
-  }
-
-  let move = null;
-  try { move = analysisGame.move({ from: source, to: target }); } catch(e) {}
-  if (!move) return 'snapback';
-
-  playMoveSound();
-  analysisBoard.position(analysisGame.fen());
-  document.querySelectorAll('.move-cell').forEach(el => el.classList.remove('active'));
-  
-  document.getElementById('arrowOverlay').innerHTML = '';
-  const overlay = document.querySelector('#analysisBoard .custom-overlay');
-  if (overlay) overlay.innerHTML = '';
-  document.getElementById('topLinesList').innerHTML = 'Анализ вариации...';
-
-  evaluateCurrentPosition(analysisGame.fen(), move);
-}
-
-function formatEvalString(isMate, mateIn, evalScore) {
-  if (isMate) return (mateIn > 0 ? "М" : "-М") + Math.abs(mateIn);
-  return (evalScore > 0 ? '+' : '') + evalScore.toFixed(1);
-}
-
-function updateEvalBar(isMate, mateIn, evalScore) {
-  let whitePercent = 50;
-  if (isMate) whitePercent = mateIn > 0 ? 100 : 0;
-  else whitePercent = Math.max(0, Math.min(100, 50 + (evalScore * 5)));
-  
-  document.getElementById('evalBarWhite').style.height = whitePercent + '%';
-  document.getElementById('evalText').textContent = formatEvalString(isMate, mateIn, evalScore);
-}
-
-async function evaluateCurrentPosition(fen, moveObj = null) {
-  document.getElementById('evalText').textContent = '...';
-  try {
-    const res = await fetch('/api/evaluate', {
-      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({fen})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail);
-    
-    updateEvalBar(data.is_mate, data.mate_in, data.eval);
-    updatePlayerNamesAndMaterial(fen);
-    
-    if (moveObj && moveObj.uci) {
-      drawBoardBadge({
-        uci: moveObj.uci,
-        is_mate: data.is_mate,
-        mate_in: data.mate_in,
-        eval: data.eval
-      });
-    }
-    
-    if (data.top_moves) {
-      renderTopLines(data.top_moves);
-      drawArrows(data.top_moves);
-    }
-  } catch (e) {
-    document.getElementById('evalText').textContent = 'Error';
-  }
-}
-
-function renderTopLines(lines) {
-  const container = document.getElementById('topLinesList');
-  if (!lines || lines.length === 0) { container.innerHTML = 'Нет данных'; return; }
-  
-  container.innerHTML = lines.map((line, idx) => `
-    <div class="top-line" onclick="playTopMove('${line.uci}')" title="Сделать ход">
-      <span class="top-line-move" style="color: ${idx === 0 ? '#81b64c' : '#fff'}">${idx + 1}. ${line.san}</span>
-      <span class="top-line-pv">${line.pv}</span>
-      <span class="top-line-eval">${formatEvalString(line.is_mate, line.mate_in, line.eval)}</span>
-    </div>
-  `).join('');
-}
-
-window.playTopMove = function(uci) {
-  if (isAnalyzing) return;
-  const from = uci.slice(0, 2);
-  const to = uci.slice(2, 4);
-  const promotion = uci.length > 4 ? uci[4] : 'q';
-  
-  let move = null;
-  try { move = analysisGame.move({ from, to, promotion }); } catch(e) {}
-  if (!move) return;
-
-  playMoveSound();
-  analysisBoard.position(analysisGame.fen());
-  document.querySelectorAll('.move-cell').forEach(el => el.classList.remove('active'));
-  
-  document.getElementById('arrowOverlay').innerHTML = '';
-  const overlay = document.querySelector('#analysisBoard .custom-overlay');
-  if (overlay) overlay.innerHTML = '';
-  document.getElementById('topLinesList').innerHTML = 'Анализ вариации...';
-
-  evaluateCurrentPosition(analysisGame.fen(), move);
-};
-
-function renderMoveTable() {
-  const tbody = document.getElementById('moveTableBody'); tbody.innerHTML = '';
-  
-  const classSymbols = {
-    'brilliant': { text: '!!', title: 'Бриллиантовый ход' },
-    'great': { text: '!', title: 'Великий ход' },
-    'best': { text: '★', title: 'Лучший ход' },
-    'excellent': { text: '✓', title: 'Отличный ход' },
-    'good': { text: '✓', title: 'Хороший ход' },
-    'inaccuracy': { text: '?!', title: 'Неточность' },
-    'mistake': { text: '?', title: 'Ошибка' },
-    'miss': { text: '✗', title: 'Упущение' },
-    'blunder': { text: '??', title: 'Зевок' },
-    'book': { text: '📖', title: 'Теория' },
-    'forced': { text: '□', title: 'Единственный ход' }
-  };
-
-  for (let i = 0; i < analysisMoves.length; i += 2) {
-    const whiteMove = analysisMoves[i];
-    const blackMove = analysisMoves[i+1];
-    
-    const tr = document.createElement('tr');
-    const moveNum = Math.floor(i/2) + 1;
-    
-    let whiteHtml = '';
-    if (whiteMove) {
-      const cls = classSymbols[whiteMove.classification] || { text: '', title: '' };
-      whiteHtml = `<div class="move-cell" onclick="showAnalysisMove(${i})" id="move-cell-${i}">
-        <span class="move-san">${whiteMove.san} <span class="move-class-badge ${whiteMove.classification ? 'cls-' + whiteMove.classification : ''}" title="${cls.title}">${cls.text}</span></span>
-        <span class="move-time">${whiteMove.time_spent ? formatSpentTime(whiteMove.time_spent) : ''}</span>
-      </div>`;
-    }
-    
-    let blackHtml = '';
-    if (blackMove) {
-      const cls = classSymbols[blackMove.classification] || { text: '', title: '' };
-      blackHtml = `<div class="move-cell" onclick="showAnalysisMove(${i+1})" id="move-cell-${i+1}">
-        <span class="move-san">${blackMove.san} <span class="move-class-badge ${blackMove.classification ? 'cls-' + blackMove.classification : ''}" title="${cls.title}">${cls.text}</span></span>
-        <span class="move-time">${blackMove.time_spent ? formatSpentTime(blackMove.time_spent) : ''}</span>
-      </div>`;
-    }
-
-    tr.innerHTML = `<td class="col-num">${moveNum}</td><td class="col-white">${whiteHtml}</td><td class="col-black">${blackHtml}</td>`;
-    tbody.appendChild(tr);
-  }
-}
-
-window.showAnalysisMove = function(index) {
-  if (index < 0 || index >= analysisMoves.length) return;
-  currentAnalysisIndex = index;
-  const moveData = analysisMoves[index];
-  
-  analysisGame = new Chess();
-  for (let i = 0; i <= index; i++) {
-    try { analysisGame.move(analysisMoves[i].san); } catch(e) {}
-  }
-  
-  analysisBoard.position(analysisGame.fen(), false);
-  
-  document.querySelectorAll('.move-cell').forEach(el => el.classList.remove('active'));
-  const activeCell = document.getElementById(`move-cell-${index}`);
-  if (activeCell) activeCell.classList.add('active');
-  
-  updateEvalBar(moveData.is_mate, moveData.mate_in, moveData.eval);
-  drawBoardBadge(moveData);
-  drawArrows(moveData.next_top_moves);
-  renderTopLines(moveData.next_top_moves);
-  drawGraph(fullEvals, index);
-};
-
-document.getElementById('analysisStart').onclick = () => showAnalysisMove(0);
-document.getElementById('analysisEnd').onclick = () => showAnalysisMove(analysisMoves.length - 1);
-document.getElementById('analysisPrev').onclick = () => { if (currentAnalysisIndex > 0) showAnalysisMove(currentAnalysisIndex - 1); };
-document.getElementById('analysisNext').onclick = () => { if (currentAnalysisIndex < analysisMoves.length - 1) showAnalysisMove(currentAnalysisIndex + 1); };
-
-document.getElementById('evalGraph').onclick = (e) => {
-  if (analysisMoves.length === 0) return;
-  const rect = e.target.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const pct = x / rect.width;
-  const index = Math.floor(pct * analysisMoves.length);
-  if (index >= 0 && index < analysisMoves.length) showAnalysisMove(index);
-};
-
-document.querySelectorAll('.promotion-btn').forEach(btn => {
-  btn.onclick = () => {
-    if (!pendingPromotion) return;
-    const piece = btn.dataset.piece;
-    const { source, target, context } = pendingPromotion;
-    
-    document.getElementById('promotionModal').style.display = 'none';
-    pendingPromotion = null;
-
-    if (context === 'puzzle') {
-      let move = null;
-      try { move = puzzleGame.move({ from: source, to: target, promotion: piece }); } catch(e) {}
-      if (!move) return;
-      if ((source + target + piece).toLowerCase() === currentPuzzle.solution.toLowerCase() || source + target === currentPuzzle.solution) {
-        puzzleSolved = true; puzzleBoard.position(puzzleGame.fen());
-        setFeedback('✅ Верно! Это мат.', 'ok');
-      } else {
-        puzzleGame.undo(); setFeedback('❌ Неверно, попробуй другой ход.', 'err');
-        puzzleBoard.position(puzzleGame.fen()); 
-      }
-    } else if (context === 'analysis') {
-      let move = null;
-      try { move = analysisGame.move({ from: source, to: target, promotion: piece }); } catch(e) {}
-      if (!move) return;
-      
-      playMoveSound();
-      analysisBoard.position(analysisGame.fen());
-      document.querySelectorAll('.move-cell').forEach(el => el.classList.remove('active'));
-      document.getElementById('arrowOverlay').innerHTML = '';
-      const overlay = document.querySelector('#analysisBoard .custom-overlay');
-      if (overlay) overlay.innerHTML = '';
-      document.getElementById('topLinesList').innerHTML = 'Анализ вариации...';
-      
-      evaluateCurrentPosition(analysisGame.fen(), move);
-    }
-  };
-});
+      if (analysisMoves[currentAnalysisIndex].

@@ -8,6 +8,8 @@
 <script src="/js/jquery.min.js"></script>
 <script src="/js/chessboard-1.0.0.min.js"></script>
 <script src="/js/chess.min.js"></script>
+<script src="/shared.js"></script>
+<script src="/mates.js" defer></script>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #312e2b; color: #e2e2e2; }
@@ -21,9 +23,10 @@
   @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
 
   .list-box { background: #262522; border-radius: 8px; padding: 10px; }
-  .list-item { padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; color: #b3b3b3; margin-bottom: 2px; }
+  .list-item { padding: 10px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; color: #b3b3b3; margin-bottom: 2px; display: flex; justify-content: space-between; }
   .list-item:hover { background: #3d3a37; color: #fff; }
   .list-item.active { background: #4b4847; color: #fff; }
+  .record-time { color: #81b64c; font-size: 12px; }
 
   .board-area { display: flex; flex-direction: column; align-items: center; gap: 14px; }
   #mateBoard { width: 550px; max-width: 100%; box-shadow: 0 10px 20px rgba(0,0,0,0.4); border-radius: 4px; overflow: hidden; }
@@ -37,7 +40,7 @@
   .feedback.err { color: #ef4444; }
   .feedback.info { color: #fcd34d; }
 
-  .btn-row { display: flex; gap: 10px; align-items: center; }
+  .btn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center;}
   .action-btn { background: #3d3a37; border: none; color: #fff; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
   .action-btn:hover { background: #4b4847; }
   .action-btn.primary { background: #81b64c; color: #fff; box-shadow: 0 3px 0 #537133; transition: 0.1s; }
@@ -61,8 +64,8 @@
 
   .board-area { -webkit-user-select: none; user-select: none; }
   #mateBoard img { -webkit-user-drag: none; user-drag: none; }
+  .overlay-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
 
-  /* МОДАЛЬНОЕ ОКНО */
   .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 2000; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; }
   .modal-overlay.active { display: flex; opacity: 1; }
   .modal-content { background: #262522; padding: 30px 40px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3d3a37; color: #fff; transform: translateY(20px); transition: transform 0.3s; min-width: 350px; }
@@ -70,12 +73,6 @@
   .modal-content h2 { font-size: 28px; margin: 0 0 20px; font-weight: 700; }
   .modal-content h2.win { color: #81b64c; }
   .modal-content h2.loss { color: #ef4444; }
-  .modal-content h2.draw { color: #8b8987; }
-  .modal-players { display: flex; justify-content: space-around; align-items: center; margin-bottom: 30px; font-size: 18px; font-weight: 600; background: #312e2b; padding: 15px; border-radius: 8px; }
-  .modal-player { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .piece-icon { font-size: 40px; line-height: 1; }
-  .modal-vs { color: #b3b3b3; font-size: 16px; font-weight: 700; }
-  .modal-buttons { display: flex; gap: 15px; justify-content: center; }
 </style>
 </head>
 <body>
@@ -89,356 +86,32 @@
     <div class="list-box" id="mateList"></div>
     <div class="board-area" oncontextmenu="return false;">
       <div class="timer" id="timer">30.0</div>
-      <div id="mateBoard"></div>
+      <div style="position: relative;">
+        <div id="mateBoard"></div>
+        <svg id="userDraw_mateBoard" class="overlay-svg" viewBox="0 0 8 8" preserveAspectRatio="none"></svg>
+      </div>
+      
       <div class="feedback" id="mateFeedback">Выбери позицию слева</div>
       <div class="desc" id="mateDesc"></div>
       
       <div class="btn-row">
         <input type="number" id="timeInput" class="time-input" value="30" min="5" max="300" title="Время в секундах">
         <button class="action-btn primary" id="mainBtn">▶ Старт</button>
+        <button class="action-btn" id="hintBtn">💡 Подсказка</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Модальное окно окончания игры -->
 <div id="mateModal" class="modal-overlay">
   <div class="modal-content">
     <h2 id="modalMateResult">Мат!</h2>
-    <div class="modal-players">
-      <div class="modal-player">
-        <span class="piece-icon">♔</span>
-        <span>Ты</span>
-      </div>
-      <div class="modal-vs">vs</div>
-      <div class="modal-player">
-        <span class="piece-icon">♚</span>
-        <span>Stockfish</span>
-      </div>
-    </div>
-    <div class="modal-buttons">
+    <div class="modal-buttons" style="margin-top: 20px;">
       <button class="action-btn primary" id="modalMateRetryBtn" style="background:#81b64c; color:#fff; padding:10px 20px; border:none; border-radius:6px; box-shadow:0 3px 0 #537133; cursor:pointer; font-weight:bold;">Заново</button>
       <button class="action-btn" id="modalMateCloseBtn" style="background:#3d3a37; color:#fff; padding:10px 20px; border:none; border-radius:6px; box-shadow:0 3px 0 #262522; cursor:pointer; font-weight:bold;">Закрыть</button>
     </div>
   </div>
 </div>
 
-<script>
-const MATES = [
-  { id: "kq", name: "Король и ферзь", fen: "8/8/8/4k3/8/8/6K1/7Q w - - 0 1", desc: "Мат ферзём и королём за 30 секунд." },
-  { id: "kr", name: "Король и ладья", fen: "8/8/8/4k3/8/8/6K1/7R w - - 0 1", desc: "Мат ладьёй и королём («лесенкой»)." },
-  { id: "kbb", name: "Король и два слона", fen: "8/8/8/4k3/8/3B4/6K1/2B5 w - - 0 1", desc: "Мат двумя слонами." }
-];
-
-let TIME_LIMIT = 30.0;
-const BOT_LEVEL = 6;
-
-let board = null;
-let game = new Chess();
-let currentMate = null;
-let gameActive = false;
-let premoveQueue = [];
-
-let timerId = null;
-let timerActive = false;
-let timeLeft = TIME_LIMIT;
-let lastTickAt = 0;
-
-const sounds = {
-  move: new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-self.mp3'),
-  capture: new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/capture.mp3'),
-  end: new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/game-end.mp3'),
-  error: new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/illegal.mp3')
-};
-
-function playSound(type) {
-  if (sounds[type]) { sounds[type].currentTime = 0; sounds[type].play().catch(e => {}); }
-}
-
-function loadMates() {
-  const list = document.getElementById('mateList');
-  list.innerHTML = MATES.map(m => `<div class="list-item" data-id="${m.id}">${m.name}</div>`).join('');
-  list.querySelectorAll('.list-item').forEach(el => {
-    el.onclick = () => selectMate(MATES.find(m => m.id === el.dataset.id));
-  });
-  if (MATES.length > 0) selectMate(MATES[0]);
-}
-
-function selectMate(mate) {
-  currentMate = mate;
-  document.querySelectorAll('#mateList .list-item').forEach(i => i.classList.remove('active'));
-  const el = document.querySelector(`#mateList .list-item[data-id="${mate.id}"]`);
-  if (el) el.classList.add('active');
-
-  game = new Chess(mate.fen);
-  if (!board) {
-    board = Chessboard('mateBoard', {
-      position: mate.fen, draggable: true,
-      onDragStart: onMateDragStart, onDrop: handleDrop,
-      onSnapEnd: () => { board.position(game.fen()); clearHighlights(); },
-      pieceTheme: '/img/pieces/{piece}.png'
-    });
-  } else {
-    board.position(mate.fen);
-  }
-
-  stopTimer();
-  timeLeft = TIME_LIMIT;
-  gameActive = false;
-  premoveQueue = [];
-  updateTimerDisplay();
-  document.getElementById('mateDesc').textContent = mate.desc;
-  document.getElementById('mainBtn').textContent = '▶ Старт';
-  document.getElementById('mainBtn').classList.add('primary');
-  document.getElementById('timeInput').disabled = false;
-  setFeedback('Нажми «Старт», чтобы начать', 'info');
-  document.getElementById('mateModal').classList.remove('active');
-}
-
-function highlightLegalMoves(game, source) {
-  clearHighlights();
-  if (!game || !source) return;
-  const moves = game.moves({ square: source, verbose: true });
-  moves.forEach(move => {
-    const el = document.querySelector(`.square-${move.to}`);
-    if (el) el.classList.add(move.flags.includes('c') || move.flags.includes('e') ? 'capture-hint' : 'move-hint');
-  });
-}
-
-function clearHighlights() {
-  document.querySelectorAll('.move-hint, .capture-hint').forEach(el => el.classList.remove('move-hint', 'capture-hint'));
-}
-
-function onMateDragStart(source, piece) {
-  if (!gameActive || piece.search(/^b/) !== -1) return false;
-  if (game.turn() === 'w') {
-    const moves = game.moves({ square: source });
-    if (moves.length === 0) return false;
-    highlightLegalMoves(game, source);
-  }
-}
-
-function handleDrop(source, target) {
-  if (!gameActive) return 'snapback';
-
-  if (game.turn() !== 'w') {
-    let dummyFen = game.fen().replace(/ (b|w) /, ' w ');
-    let dummyGame = new Chess(dummyFen);
-    let dummyMove = null;
-    try { dummyMove = dummyGame.move({ from: source, to: target, promotion: 'q' }); } catch (e) {}
-
-    if (dummyMove) {
-      premoveQueue.push({ from: source, to: target });
-      return; 
-    } else {
-      playSound('error');
-      return 'snapback';
-    }
-  }
-
-  premoveQueue = [];
-  
-  let move = null;
-  try { move = game.move({ from: source, to: target, promotion: 'q' }); } catch (e) {
-    playSound('error'); return 'snapback';
-  }
-  
-  if (!move) { playSound('error'); return 'snapback'; }
-
-  playSound(move.flags.includes('c') || move.flags.includes('e') ? 'capture' : 'move');
-  board.position(game.fen());
-
-  if (checkMateOrDraw()) return;
-  pauseTimer();
-  setTimeout(() => { makeBlackMove(); }, 400);
-}
-
-function executePremoves() {
-  if (premoveQueue.length === 0 || game.game_over() || !gameActive) return;
-  if (game.turn() !== 'w') return;
-
-  while (premoveQueue.length > 0 && game.turn() === 'w') {
-    let pm = premoveQueue[0];
-    let move = null;
-    try { move = game.move({ from: pm.from, to: pm.to, promotion: 'q' }); } catch (e) {}
-
-    if (move) {
-      premoveQueue.shift();
-      playSound(move.flags.includes('c') || move.flags.includes('e') ? 'capture' : 'move');
-      board.position(game.fen());
-      if (checkMateOrDraw()) return;
-    } else {
-      premoveQueue = [];
-      break;
-    }
-  }
-
-  if (game.turn() === 'b' && gameActive) {
-    pauseTimer();
-    setTimeout(() => { makeBlackMove(); }, 400);
-  }
-}
-
-async function makeBlackMove() {
-  if (!gameActive || game.game_over() || game.turn() !== 'b') return;
-
-  try {
-    const res = await fetch('/api/bot_move', {
-      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fen: game.fen(), level: BOT_LEVEL })
-    });
-    const data = await res.json();
-    if (data.move) {
-      try {
-        const applied = game.move({ from: data.move.slice(0, 2), to: data.move.slice(2, 4), promotion: 'q' });
-        if (applied) {
-          playSound(applied.flags.includes('c') || applied.flags.includes('e') ? 'capture' : 'move');
-          board.position(game.fen());
-        }
-      } catch (e) {}
-    }
-  } catch (e) {
-    const moves = game.moves();
-    if (moves.length > 0) { game.move(moves[0]); board.position(game.fen()); }
-  } finally {
-    resumeTimer();
-    if (gameActive) {
-      if (!checkMateOrDraw()) executePremoves();
-    }
-  }
-}
-
-function showMateModal(result, isWin) {
-  const modal = document.getElementById('mateModal');
-  const title = document.getElementById('modalMateResult');
-  
-  if (result === 'checkmate') {
-    if (isWin) {
-      title.textContent = 'Мат! Ты победил!';
-      title.className = 'win';
-    } else {
-      title.textContent = 'Мат! Ты проиграл';
-      title.className = 'loss';
-    }
-  } else if (result === 'timeout') {
-    title.textContent = 'Время вышло!';
-    title.className = 'loss';
-  } else {
-    title.textContent = 'Ничья';
-    title.className = 'draw';
-  }
-  
-  modal.classList.add('active');
-}
-
-function checkMateOrDraw() {
-  if (game.in_checkmate()) {
-    stopTimer();
-    gameActive = false;
-    playSound('end');
-    const isWin = game.turn() === 'b';
-    setFeedback(isWin ? `✅ Мат! Осталось ${timeLeft.toFixed(1)} с.` : '❌ Тебя заматовали.', isWin ? 'ok' : 'err');
-    document.getElementById('mainBtn').textContent = '↺ Заново';
-    document.getElementById('timeInput').disabled = false;
-    premoveQueue = [];
-    board.position(game.fen());
-    
-    setTimeout(() => showMateModal('checkmate', isWin), 300);
-    return true;
-  }
-  if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition() || game.insufficient_material()) {
-    stopTimer();
-    gameActive = false;
-    playSound('end');
-    setFeedback('❌ Ничья (пат). Попробуй ещё раз.', 'err');
-    document.getElementById('mainBtn').textContent = '↺ Заново';
-    document.getElementById('timeInput').disabled = false;
-    premoveQueue = [];
-    board.position(game.fen());
-    
-    setTimeout(() => showMateModal('draw', false), 300);
-    return true;
-  }
-  return false;
-}
-
-function startTimer() {
-  stopTimer();
-  timerActive = true;
-  lastTickAt = performance.now();
-  updateTimerDisplay();
-  timerId = setInterval(tickTimer, 100);
-}
-
-function tickTimer() {
-  if (!timerActive) return;
-  const now = performance.now();
-  timeLeft = Math.max(0, timeLeft - (now - lastTickAt) / 1000);
-  lastTickAt = now;
-  updateTimerDisplay();
-
-  if (timeLeft <= 0) {
-    stopTimer();
-    gameActive = false;
-    playSound('end');
-    setFeedback('⏰ Время вышло! Ты проиграл.', 'err');
-    document.getElementById('mainBtn').textContent = '↺ Заново';
-    document.getElementById('timeInput').disabled = false;
-    premoveQueue = [];
-    board.position(game.fen());
-    
-    setTimeout(() => showMateModal('timeout', false), 300);
-  }
-}
-
-function pauseTimer() { timerActive = false; }
-function resumeTimer() { if (gameActive && timeLeft > 0) { timerActive = true; lastTickAt = performance.now(); } }
-function stopTimer() { timerActive = false; if (timerId) { clearInterval(timerId); timerId = null; } }
-
-function updateTimerDisplay() {
-  const el = document.getElementById('timer');
-  el.textContent = timeLeft.toFixed(1);
-  el.classList.toggle('low', timeLeft <= 5 && gameActive);
-}
-
-function setFeedback(text, cls) {
-  const fb = document.getElementById('mateFeedback');
-  fb.textContent = text;
-  fb.className = 'feedback ' + (cls || '');
-}
-
-function startGame() {
-  if (!currentMate) return;
-  TIME_LIMIT = parseFloat(document.getElementById('timeInput').value) || 30.0;
-  timeLeft = TIME_LIMIT;
-  
-  game = new Chess(currentMate.fen);
-  board.position(currentMate.fen);
-  gameActive = true;
-  premoveQueue = [];
-  startTimer();
-  setFeedback(`Мат за ${TIME_LIMIT} секунд! Твой ход.`, 'info');
-  document.getElementById('mainBtn').textContent = '↺ Заново';
-  document.getElementById('mainBtn').classList.remove('primary');
-  document.getElementById('timeInput').disabled = true;
-  document.getElementById('mateModal').classList.remove('active');
-}
-
-document.getElementById('mainBtn').onclick = () => {
-  if (gameActive) selectMate(currentMate);
-  else startGame();
-};
-
-document.getElementById('modalMateRetryBtn').onclick = () => {
-  document.getElementById('mateModal').classList.remove('active');
-  startGame();
-};
-
-document.getElementById('modalMateCloseBtn').onclick = () => {
-  document.getElementById('mateModal').classList.remove('active');
-};
-
-loadMates();
-window.addEventListener('resize', () => board && board.resize());
-</script>
 </body>
 </html>

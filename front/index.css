@@ -88,8 +88,6 @@ h1 { font-size: 24px; margin: 0 0 6px; color: #fff; font-weight: 700; }
 .family-header { font-size: 12px; color: #81b64c; font-weight: 700; padding: 10px 4px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
 .board-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-#puzzleBoard, #endgameBoard, #blindfoldBoard, #openingBoard { width: 400px; max-width: 100%; box-shadow: 0 10px 20px rgba(0,0,0,0.4); border-radius: 4px; overflow: hidden; }
-
 .white-1e1d7 { background-color: #EBECD0 !important; color: #779556 !important; }
 .black-3c85d { background-color: #779556 !important; color: #EBECD0 !important; }
 
@@ -120,7 +118,6 @@ h1 { font-size: 24px; margin: 0 0 6px; color: #fff; font-weight: 700; }
 @media (max-width: 1000px) { .analysis-container { grid-template-columns: 1fr; } }
 .left-panel { display: flex; gap: 15px; }
 .board-area { position: relative; }
-#analysisBoard { width: 500px; max-width: 100%; position: relative; box-shadow: 0 10px 20px rgba(0,0,0,0.4); border-radius: 4px; overflow: hidden; }
 #arrowOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
 
 .board-badge { position: absolute; width: 26px; height: 26px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: #fff; font-size: 14px; font-weight: 700; z-index: 1000; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); font-family: system-ui, sans-serif; transform: translate(-50%, -50%); }
@@ -208,7 +205,7 @@ canvas#evalGraph { width: 100%; height: 100px; display: block; cursor: pointer; 
 .game-result.draw { background: #8b8987; color: #fff; }
 .game-accuracy { font-size: 12px; color: #81b64c; font-weight: 700; }
 
-.player-name { font-weight: 700; background: #262522; padding: 10px 15px; border-radius: 4px; text-align: left; width: 500px; max-width: 100%; font-size: 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; color: #fff; }
+.player-name { font-weight: 700; background: #262522; padding: 10px 15px; border-radius: 4px; text-align: left; width: 620px; max-width: 100%; font-size: 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; color: #fff; }
 .player-clock { color: #b3b3b3; font-family: monospace; font-size: 16px; background: #312e2b; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
 .captured-pieces { font-size: 16px; color: #888; letter-spacing: -3px; }
 
@@ -217,12 +214,20 @@ canvas#evalGraph { width: 100%; height: 100px; display: block; cursor: pointer; 
 .promotion-btn { width: 70px; height: 70px; background: #3d3a37; border: none; border-radius: 4px; cursor: pointer; font-size: 48px; color: #fff; display: flex; justify-content: center; align-items: center; transition: all 0.2s; }
 .promotion-btn:hover { background: #81b64c; transform: scale(1.1); }
 
-/* Слепая игра */
 .blindfold-input { width: 100%; max-width: 400px; padding: 12px; background: #262522; border: 1px solid #3d3a37; color: #fff; border-radius: 6px; font-size: 16px; text-align: center; outline: none; margin-bottom: 10px; }
 .blindfold-input:focus { border-color: #81b64c; }
 .blindfold-history { background: #262522; padding: 10px 15px; border-radius: 6px; width: 100%; max-width: 400px; font-family: monospace; font-size: 14px; color: #b3b3b3; max-height: 150px; overflow-y: auto; margin-bottom: 10px; }
 .blindfold-hidden img { visibility: hidden !important; }
 
-/* Дневник */
 .diary-container { background: #262522; border-radius: 8px; padding: 20px; }
 #diaryCanvas { width: 100%; height: 300px; background: #312e2b; border-radius: 4px; display: block; }
+
+.streak-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+.streak-card { background: #312e2b; border-radius: 8px; padding: 20px; text-align: center; border-top: 4px solid #555; }
+.streak-card.win { border-top-color: #81b64c; }
+.streak-card.draw { border-top-color: #8b8987; }
+.streak-card.loss { border-top-color: #d95c5c; }
+.streak-card.current { border-top-color: #f59e0b; }
+.streak-card.max { border-top-color: #a855f7; }
+.streak-val { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 5px; }
+.streak-lbl { font-size: 14px; color: #b3b3b3; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }

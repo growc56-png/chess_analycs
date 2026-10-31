@@ -7,18 +7,8 @@
 <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
 <link rel="stylesheet" href="/index.css">
 <style>
-  .user-draw-overlay {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    pointer-events: none; z-index: 20;
-  }
-  .board-wrap, .board-bg, .board-bg img {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-  }
+  .user-draw-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+  .board-wrap, .board-bg, .board-bg img { -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
   #puzzleBoard, #endgameBoard, #blindfoldBoard { width: 480px; max-width: 100%; }
   #analysisBoard { width: 620px; max-width: 100%; }
 </style>
@@ -55,7 +45,6 @@
     <button class="tab-btn" data-tab="streak">🔥 Винстрик</button>
   </div>
 
-  <!-- ПЛАН -->
   <div id="tab-plan" class="tab-content active">
     <div id="recommendations-banner">
       <h3>💡 Персональные рекомендации:</h3>
@@ -76,7 +65,6 @@
     </div>
   </div>
 
-  <!-- ЗАДАЧИ -->
   <div id="tab-puzzles" class="tab-content">
     <div class="split">
       <div class="list-box" id="puzzleList" style="max-height: 500px;">Загрузка...</div>
@@ -96,7 +84,6 @@
     </div>
   </div>
 
-  <!-- ЭНДШПИЛИ -->
   <div id="tab-endgames" class="tab-content">
     <div class="split">
       <div class="list-box" id="endgameList" style="max-height: 500px;">Загрузка...</div>
@@ -113,7 +100,6 @@
     </div>
   </div>
 
-  <!-- ДЕБЮТЫ -->
   <div id="tab-openings" class="tab-content">
     <div class="side-toggle">
       <button class="side-btn active" data-side="white">♔ За белых</button>
@@ -137,7 +123,6 @@
     </div>
   </div>
 
-  <!-- АНАЛИЗ -->
   <div id="tab-analysis" class="tab-content">
     <div class="chesscom-input-group">
       <input type="text" id="chesscomUsername" placeholder="Ник на Chess.com" />
@@ -202,7 +187,6 @@
     </div>
   </div>
 
-  <!-- СЛЕПАЯ ИГРА -->
   <div id="tab-blindfold" class="tab-content">
     <div class="board-wrap" style="position: relative;" oncontextmenu="return false;">
       <div id="blindfoldBoard"></div>
@@ -217,7 +201,6 @@
     </div>
   </div>
 
-  <!-- ДНЕВНИК -->
   <div id="tab-diary" class="tab-content">
     <div class="diary-container">
       <h2 style="color:#fff; margin-top:0;">Твой прогресс</h2>
@@ -225,7 +208,6 @@
     </div>
   </div>
 
-  <!-- ВИНСТРИК -->
   <div id="tab-streak" class="tab-content">
     <div class="diary-container">
       <h2 style="color:#fff; margin-top:0;">Статистика за сегодня</h2>

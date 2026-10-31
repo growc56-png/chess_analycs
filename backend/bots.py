@@ -40,13 +40,10 @@ def get_bot_move(req: BotMoveRequest):
         skill, depth = level_map.get(req.level, (20, 12))
         engine.configure({"Skill Level": skill})
         
-        # НАСТРОЙКА ВРЕМЕНИ И СЛОЖНОСТИ В ЗАВИСИМОСТИ ОТ РЕЖИМА
         if req.mode == "bullet":
-            # В пуле бот думает очень быстро (0.1 сек) и иногда ошибается
             infos = engine.analyse(board, chess.engine.Limit(time=0.1), multipv=3)
             if not infos:
                 return {"move": None}
-            # 50% шанс выбрать не лучший ход, а 2-й или 3-й
             if random.random() < 0.5 and len(infos) > 1:
                 chosen = random.choice(infos[1:])
             else:
@@ -54,12 +51,10 @@ def get_bot_move(req: BotMoveRequest):
             return {"move": chosen["pv"][0].uci() if chosen.get("pv") else None}
             
         elif req.mode in ["blitz", "rapid"]:
-            # В блице бот думает 0.5 сек
             result = engine.play(board, chess.engine.Limit(time=0.5))
             return {"move": result.move.uci() if result.move else None}
             
         else:
-            # Без времени (обычный режим)
             result = engine.play(board, chess.engine.Limit(depth=depth, time=1.0))
             return {"move": result.move.uci() if result.move else None}
         

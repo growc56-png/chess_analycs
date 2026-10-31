@@ -8,6 +8,8 @@
 <script src="/js/jquery.min.js"></script>
 <script src="/js/chessboard-1.0.0.min.js"></script>
 <script src="/js/chess.min.js"></script>
+<script src="/shared.js"></script>
+<script src="/bots.js" defer></script>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #312e2b; color: #e2e2e2; }
@@ -17,8 +19,8 @@
   a { color: #81b64c; text-decoration: none; font-size: 14px; font-weight: 600; }
   a:hover { text-decoration: underline; }
 
-  .controls { display: flex; gap: 10px; margin-bottom: 20px; background: #262522; padding: 15px; border-radius: 8px; align-items: center; flex-wrap: wrap; }
-  .controls select, .controls button { background: #3d3a37; border: none; color: #fff; padding: 10px 15px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 600; outline: none; }
+  .controls { display: flex; gap: 10px; margin-bottom: 20px; background: #262522; padding: 15px; border-radius: 8px; align-items: center; flex-wrap: wrap; font-size: 14px;}
+  .controls select, .controls button { background: #3d3a37; border: none; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 600; outline: none; }
   .controls select:hover, .controls button:hover { background: #4b4847; }
   .controls button.primary { background: #81b64c; color: #fff; border: none; box-shadow: 0 3px 0 #537133; transition: 0.1s; }
   .controls button.primary:hover { background: #a3d160; }
@@ -26,21 +28,25 @@
 
   .game-area { display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; }
   
+  .board-container { display: flex; gap: 15px; align-items: stretch; }
+  .eval-bar { width: 20px; background: #262522; border-radius: 4px; position: relative; overflow: hidden; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+  .eval-white { position: absolute; bottom: 0; width: 100%; background: #f0f0f0; transition: height 0.3s; height: 50%; }
+  
   .board-wrapper { position: relative; width: 600px; max-width: 100%; }
   #botBoard { width: 100%; box-shadow: 0 10px 20px rgba(0,0,0,0.4); border-radius: 4px; overflow: hidden; }
-  .user-draw-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+  
+  .overlay-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
 
   .player-info { width: 600px; max-width: 100%; background: #262522; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; }
   .player-info .name { color: #fff; display: flex; align-items: center; gap: 10px; }
   .player-info .captured { font-size: 18px; color: #b3b3b3; letter-spacing: -2px; margin-left: 5px; }
   .player-info .adv { color: #81b64c; font-weight: 700; }
   
-  /* ЧАСЫ */
   .clock { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; background: #3d3a37; padding: 4px 12px; border-radius: 6px; color: #b3b3b3; transition: 0.2s; min-width: 90px; text-align: center; }
   .clock.active { background: #f0f0f0; color: #111; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
   .clock.low { background: #d95c5c; color: #fff; }
 
-  .status { font-size: 16px; font-weight: 600; background: #262522; padding: 12px 20px; border-radius: 6px; border-left: 4px solid #81b64c; width: 600px; max-width: 100%; text-align: center; }
+  .status { font-size: 16px; font-weight: 600; background: #262522; padding: 12px 20px; border-radius: 6px; border-left: 4px solid #81b64c; width: 635px; max-width: 100%; text-align: center; }
   .status.thinking { border-left-color: #f59e0b; color: #fcd34d; }
   .status.gameover { border-left-color: #ef4444; color: #fca5a5; }
 
@@ -48,8 +54,18 @@
   .move-hint::after { content: ''; position: absolute; top: 50%; left: 50%; width: 30%; height: 30%; background: rgba(0, 0, 0, 0.2); border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; }
   .capture-hint::after { content: ''; position: absolute; top: 5%; left: 5%; width: 90%; height: 90%; border: 5px solid rgba(0, 0, 0, 0.2); border-radius: 50%; pointer-events: none; z-index: 10; }
 
-  .premove-from::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(239, 68, 68, 0.5); z-index: 1; pointer-events: none; }
-  .premove-to::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(239, 68, 68, 0.8); z-index: 1; pointer-events: none; }
+  /* НАДЕЖНЫЕ КРАСНЫЕ КВАДРАТЫ ПРЕМУВА (ИСПРАВЛЕНО) */
+  .square-55d63 { position: relative; }
+  .square-55d63 img { position: relative; z-index: 10 !important; }
+  
+  .premove-from::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(239, 68, 68, 0.5); z-index: 99 !important; pointer-events: none;
+  }
+  .premove-to::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(239, 68, 68, 0.9); z-index: 99 !important; pointer-events: none;
+  }
 
   .white-1e1d7 { background-color: #EBECD0 !important; color: #779556 !important; }
   .black-3c85d { background-color: #779556 !important; color: #EBECD0 !important; }
@@ -57,7 +73,6 @@
   .game-area { -webkit-user-select: none; user-select: none; }
   #botBoard img { -webkit-user-drag: none; user-drag: none; }
 
-  /* МОДАЛЬНОЕ ОКНО */
   .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 2000; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; }
   .modal-overlay.active { display: flex; opacity: 1; }
   .modal-content { background: #262522; padding: 30px 40px; border-radius: 12px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #3d3a37; color: #fff; transform: translateY(20px); transition: transform 0.3s; min-width: 350px; }
@@ -66,11 +81,7 @@
   .modal-content h2.win { color: #81b64c; }
   .modal-content h2.loss { color: #ef4444; }
   .modal-content h2.draw { color: #8b8987; }
-  .modal-players { display: flex; justify-content: space-around; align-items: center; margin-bottom: 30px; font-size: 18px; font-weight: 600; background: #312e2b; padding: 15px; border-radius: 8px; }
-  .modal-player { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .piece-icon { font-size: 40px; line-height: 1; }
-  .modal-vs { color: #b3b3b3; font-size: 16px; font-weight: 700; }
-  .modal-buttons { display: flex; gap: 15px; justify-content: center; }
+  .modal-buttons { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -91,6 +102,13 @@
       <option value="6">6 - Мастер (2000+)</option>
     </select>
     
+    <label>Сторона:</label>
+    <select id="sideSelect">
+      <option value="w">♔ Белые</option>
+      <option value="b">♚ Чёрные</option>
+      <option value="random">🎲 Наугад</option>
+    </select>
+
     <label>Время:</label>
     <select id="timeControl">
       <option value="unlimited">∞ Без времени</option>
@@ -105,20 +123,23 @@
   <div class="game-area" oncontextmenu="return false;">
     
     <div id="topPlayer" class="player-info">
-      <div class="name">Бот <span class="captured" id="botCaptured"></span></div>
+      <div class="name"><span id="topName">Бот</span> <span class="captured" id="botCaptured"></span></div>
       <div style="display:flex; align-items:center; gap:10px;">
         <div class="adv" id="botAdv"></div>
         <div class="clock" id="botClock">∞</div>
       </div>
     </div>
     
-    <div class="board-wrapper" id="boardWrapper" oncontextmenu="return false;">
-      <div id="botBoard"></div>
-      <svg id="userDraw_botBoard" class="user-draw-overlay" viewBox="0 0 8 8" preserveAspectRatio="none"></svg>
+    <div class="board-container">
+      <div class="eval-bar"><div class="eval-white" id="evalBarWhite"></div></div>
+      <div class="board-wrapper" id="boardWrapper">
+        <div id="botBoard"></div>
+        <svg id="userDraw_botBoard" class="overlay-svg" viewBox="0 0 8 8" preserveAspectRatio="none"></svg>
+      </div>
     </div>
     
     <div id="bottomPlayer" class="player-info">
-      <div class="name">Ты <span class="captured" id="playerCaptured"></span></div>
+      <div class="name"><span id="bottomName">Ты</span> <span class="captured" id="playerCaptured"></span></div>
       <div style="display:flex; align-items:center; gap:10px;">
         <div class="adv" id="playerAdv"></div>
         <div class="clock" id="playerClock">∞</div>
@@ -126,612 +147,24 @@
     </div>
     
     <div class="status" id="gameStatus" style="margin-top: 10px;">Нажми «Новая игра».</div>
+    
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="action-btn" id="resignBtn" style="background:#d95c5c; color:#fff; box-shadow:0 3px 0 #9e3e3e; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">🏳️ Сдаться</button>
+      <button class="action-btn" id="drawBtn" style="background:#8b8987; color:#fff; box-shadow:0 3px 0 #63615f; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">🤝 Ничья</button>
+      <button class="action-btn" id="downloadPgnBtn" style="background:#3d3a37; color:#fff; box-shadow:0 3px 0 #262522; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">💾 Скачать PGN</button>
+    </div>
   </div>
 </div>
 
-<!-- Модальное окно окончания игры -->
 <div id="gameOverModal" class="modal-overlay">
   <div class="modal-content">
     <h2 id="modalResult">Мат!</h2>
-    <div class="modal-players">
-      <div class="modal-player">
-        <span class="piece-icon">♔</span>
-        <span>Ты</span>
-      </div>
-      <div class="modal-vs">vs</div>
-      <div class="modal-player">
-        <span class="piece-icon">♚</span>
-        <span id="modalBotName">Бот</span>
-      </div>
-    </div>
-    <div class="modal-buttons">
+    <div class="modal-buttons" style="margin-top: 20px;">
       <button class="action-btn primary" id="modalRematchBtn" style="background:#81b64c; color:#fff; padding:10px 20px; border:none; border-radius:6px; box-shadow:0 3px 0 #537133; cursor:pointer; font-weight:bold;">Играть снова</button>
       <button class="action-btn" id="modalCloseBtn" style="background:#3d3a37; color:#fff; padding:10px 20px; border:none; border-radius:6px; box-shadow:0 3px 0 #262522; cursor:pointer; font-weight:bold;">Закрыть</button>
     </div>
   </div>
 </div>
 
-<script>
-let board = null;
-let game = new Chess();
-let isBotThinking = false;
-let premoveQueue = [];
-
-let timeControlMode = "unlimited";
-let baseTime = 0; // в секундах
-let increment = 0; // в секундах
-let whiteTime = 0;
-let blackTime = 0;
-let clockInterval = null;
-let turnStartTime = 0;
-let gameActive = false;
-
-const statusEl = document.getElementById('gameStatus');
-const botLevelEl = document.getElementById('botLevel');
-const timeControlEl = document.getElementById('timeControl');
-const playerClockEl = document.getElementById('playerClock');
-const botClockEl = document.getElementById('botClock');
-
-const sounds = {
-  move: new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/move-self.mp3'),
-  capture: new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/capture.mp3'),
-  end: new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/game-end.mp3'),
-  error: new Audio('https://images.chesscomfiles.com/chess-themes/sounds/_MP3_/default/illegal.mp3')
-};
-
-function playSound(type) {
-  if (sounds[type]) { sounds[type].currentTime = 0; sounds[type].play().catch(e => {}); }
-}
-
-function updateStatus(text, className = '') {
-  statusEl.textContent = text;
-  statusEl.className = 'status ' + className;
-}
-
-// --- ЧАСЫ ---
-function formatTime(seconds) {
-  if (seconds === Infinity) return '∞';
-  if (seconds < 0) seconds = 0;
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function updateClocksUI() {
-  if (timeControlMode === 'unlimited') {
-    playerClockEl.textContent = '∞';
-    botClockEl.textContent = '∞';
-    playerClockEl.className = 'clock';
-    botClockEl.className = 'clock';
-    return;
-  }
-
-  playerClockEl.textContent = formatTime(whiteTime);
-  botClockEl.textContent = formatTime(blackTime);
-
-  // Подсветка активных часов
-  if (gameActive) {
-    if (game.turn() === 'w') {
-      playerClockEl.classList.add('active');
-      botClockEl.classList.remove('active');
-    } else {
-      botClockEl.classList.add('active');
-      playerClockEl.classList.remove('active');
-    }
-  } else {
-    playerClockEl.classList.remove('active');
-    botClockEl.classList.remove('active');
-  }
-
-  // Красный цвет, если мало времени
-  playerClockEl.classList.toggle('low', whiteTime <= 10 && gameActive);
-  botClockEl.classList.toggle('low', blackTime <= 10 && gameActive);
-}
-
-function startClock() {
-  if (clockInterval) clearInterval(clockInterval);
-  if (timeControlMode === 'unlimited' || !gameActive) return;
-
-  turnStartTime = performance.now();
-  clockInterval = setInterval(() => {
-    if (!gameActive) return;
-    const elapsed = (performance.now() - turnStartTime) / 1000;
-
-    if (game.turn() === 'w') {
-      whiteTime -= elapsed;
-      if (whiteTime <= 0) handleTimeout('w');
-    } else {
-      blackTime -= elapsed;
-      if (blackTime <= 0) handleTimeout('b');
-    }
-    turnStartTime = performance.now(); // сбрасываем таймер
-    updateClocksUI();
-  }, 100);
-}
-
-function stopClock() {
-  if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
-}
-
-function switchTurn() {
-  if (!gameActive || timeControlMode === 'unlimited') return;
-  stopClock();
-  
-  // Добавляем инкремент (если есть)
-  if (game.turn() === 'b') { // Если сейчас был ход белых
-    whiteTime += increment;
-  } else {
-    blackTime += increment;
-  }
-
-  startClock();
-}
-
-function handleTimeout(side) {
-  stopClock();
-  gameActive = false;
-  updateClocksUI();
-  updateStatus(side === 'w' ? "⏰ Время вышло! Победил бот." : "⏰ У бота кончилось время! Ты победил!", "gameover");
-  playSound('end');
-  
-  showGameOverModal('timeout', side === 'b'); // Если время вышло у черных, победа белых (true)
-}
-
-// --- ОБНОВЛЕНИЕ МАТЕРИАЛА ---
-const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
-const initialPieces = { p: 8, n: 2, b: 2, r: 2, q: 1, k: 1 };
-const unicodePieces = { P: '♙', N: '♘', B: '♗', R: '♖', Q: '♕', p: '♟', n: '♞', b: '♝', r: '♜', q: '♛' };
-
-function updateMaterial() {
-  const boardArr = game.board();
-  let whiteScore = 0, blackScore = 0;
-  let whitePieces = { p:0, n:0, b:0, r:0, q:0, k:0 };
-  let blackPieces = { p:0, n:0, b:0, r:0, q:0, k:0 };
-
-  boardArr.forEach(row => {
-    row.forEach(piece => {
-      if (piece) {
-        if (piece.color === 'w') {
-          whiteScore += pieceValues[piece.type];
-          whitePieces[piece.type]++;
-        } else {
-          blackScore += pieceValues[piece.type];
-          blackPieces[piece.type]++;
-        }
-      }
-    });
-  });
-
-  let capturedWhite = [];
-  let capturedBlack = [];
-
-  ['p', 'n', 'b', 'r', 'q'].forEach(type => {
-    const missingWhite = initialPieces[type] - whitePieces[type];
-    for (let i = 0; i < missingWhite; i++) capturedWhite.push(unicodePieces[type]);
-    
-    const missingBlack = initialPieces[type] - blackPieces[type];
-    for (let i = 0; i < missingBlack; i++) capturedBlack.push(unicodePieces[type.toUpperCase()]);
-  });
-
-  const diff = whiteScore - blackScore;
-  
-  document.getElementById('botCaptured').innerHTML = capturedWhite.join('');
-  document.getElementById('playerCaptured').innerHTML = capturedBlack.join('');
-  
-  document.getElementById('botAdv').textContent = diff < 0 ? `+${Math.abs(diff)}` : '';
-  document.getElementById('playerAdv').textContent = diff > 0 ? `+${diff}` : '';
-}
-
-// --- ТОЧКИ И ПРЕМУВЫ ---
-function highlightLegalMoves(game, source) {
-  clearHighlights();
-  if (!game || !source) return;
-  const moves = game.moves({ square: source, verbose: true });
-  moves.forEach(move => {
-    const el = document.querySelector(`.square-${move.to}`);
-    if (el) {
-      const isCapture = move.flags.includes('c') || move.flags.includes('e');
-      el.classList.add(isCapture ? 'capture-hint' : 'move-hint');
-    }
-  });
-}
-
-function clearHighlights() {
-  document.querySelectorAll('.move-hint, .capture-hint').forEach(el => el.classList.remove('move-hint', 'capture-hint'));
-}
-
-function clearPremoveHighlights() {
-  document.querySelectorAll('.premove-from, .premove-to').forEach(el => el.classList.remove('premove-from', 'premove-to'));
-}
-
-function drawPremoveHighlights() {
-  clearPremoveHighlights();
-  premoveQueue.forEach(pm => {
-    const fromEl = document.querySelector(`.square-${pm.from}`);
-    const toEl = document.querySelector(`.square-${pm.to}`);
-    if (fromEl) fromEl.classList.add('premove-from');
-    if (toEl) toEl.classList.add('premove-to');
-  });
-}
-
-function getSimulatedFen(baseFen, queue) {
-  let sim = new Chess(baseFen);
-  if (sim.turn() === 'b') {
-    let p = sim.fen().split(' '); p[1] = 'w'; sim.load(p.join(' '));
-  }
-  for (let pm of queue) {
-    try {
-      sim.move({ from: pm.from, to: pm.to, promotion: 'q' });
-      if (sim.turn() === 'b') {
-        let p = sim.fen().split(' '); p[1] = 'w'; sim.load(p.join(' '));
-      }
-    } catch(e) { break; }
-  }
-  return sim.fen();
-}
-
-function updateBoardVisuals() {
-  if (premoveQueue.length > 0 && !game.game_over()) {
-    board.position(getSimulatedFen(game.fen(), premoveQueue), false);
-    drawPremoveHighlights();
-  } else {
-    board.position(game.fen(), false);
-    clearPremoveHighlights();
-  }
-}
-
-// --- РИСОВАНИЕ ПКМ ---
-function initRightClickDrawing() {
-  const boardEl = document.getElementById('botBoard');
-  const svgEl = document.getElementById('userDraw_botBoard');
-  if (!boardEl || !svgEl) return;
-
-  svgEl.innerHTML = ''; 
-  let isDrawing = false;
-  let startX = -1, startY = -1;
-
-  const getSquareCoords = (e) => {
-    const rect = boardEl.getBoundingClientRect();
-    const size = rect.width / 8;
-    let x = Math.floor((e.clientX - rect.left) / size);
-    let y = Math.floor((e.clientY - rect.top) / size);
-    if (x < 0 || x > 7 || y < 0 || y > 7) return null;
-    return { x, y };
-  };
-
-  boardEl.addEventListener('mousedown', e => {
-    if (e.button !== 2) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const sq = getSquareCoords(e);
-    if (!sq) return;
-
-    isDrawing = true;
-    startX = sq.x; startY = sq.y;
-    svgEl.innerHTML = ''; 
-    
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', startX + 0.5); circle.setAttribute('cy', startY + 0.5);
-    circle.setAttribute('r', '0.4');
-    circle.setAttribute('fill', 'none');
-    circle.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)');
-    circle.setAttribute('stroke-width', '0.15');
-    svgEl.appendChild(circle);
-  }, true);
-
-  boardEl.addEventListener('mousemove', e => {
-    if (!isDrawing) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const sq = getSquareCoords(e);
-    if (!sq) return;
-
-    const currentX = sq.x; const currentY = sq.y;
-    svgEl.innerHTML = '';
-
-    const x1 = startX + 0.5;
-    const y1 = startY + 0.5;
-    const x2 = currentX + 0.5;
-    const y2 = currentY + 0.5;
-
-    if (startX === currentX && startY === currentY) {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', x1); circle.setAttribute('cy', y1);
-      circle.setAttribute('r', '0.4');
-      circle.setAttribute('fill', 'none');
-      circle.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)');
-      circle.setAttribute('stroke-width', '0.15');
-      svgEl.appendChild(circle);
-    } else {
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)');
-      path.setAttribute('stroke-width', '0.15');
-      path.setAttribute('fill', 'none');
-
-      const dx = Math.abs(currentX - startX);
-      const dy = Math.abs(currentY - startY);
-      const isKnightMove = (dx === 1 && dy === 2) || (dx === 2 && dy === 1);
-
-      let endLineX = x2, endLineY = y2;
-
-      if (isKnightMove) {
-        if (dx === 2) {
-          path.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y1} L ${x2} ${y2}`);
-          endLineX = x2; endLineY = y2;
-        } else {
-          path.setAttribute('d', `M ${x1} ${y1} L ${x1} ${y2} L ${x2} ${y2}`);
-          endLineX = x2; endLineY = y2;
-        }
-      } else {
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        endLineX = x2 - 0.2 * Math.cos(angle);
-        endLineY = y2 - 0.2 * Math.sin(angle);
-        path.setAttribute('d', `M ${x1} ${y1} L ${endLineX} ${endLineY}`);
-      }
-      svgEl.appendChild(path);
-
-      let angle = 0;
-      if (isKnightMove) {
-         if (dx === 2) angle = (currentY > startY) ? Math.PI/2 : -Math.PI/2;
-         else angle = (currentX > startX) ? 0 : Math.PI;
-      } else {
-         angle = Math.atan2(y2 - y1, x2 - x1);
-      }
-
-      const len = 0.4;
-      const ang = Math.PI / 6;
-      
-      const ax1 = x2 - len * Math.cos(angle - ang);
-      const ay1 = y2 - len * Math.sin(angle - ang);
-      const ax2 = x2 - len * Math.cos(angle + ang);
-      const ay2 = y2 - len * Math.sin(angle + ang);
-
-      const head = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      head.setAttribute('points', `${x2},${y2} ${ax1},${ay1} ${ax2},${ay2}`);
-      head.setAttribute('fill', 'rgba(255, 69, 0, 0.8)');
-      svgEl.appendChild(head);
-    }
-  }, true);
-
-  document.addEventListener('mouseup', e => {
-    if (e.button === 2 && isDrawing) isDrawing = false;
-  });
-}
-
-function clearUserDrawings() {
-  const svg = document.getElementById('userDraw_botBoard');
-  if (svg) svg.innerHTML = '';
-}
-
-// --- ИГРА ---
-function onDragStart(source, piece) {
-  if (!gameActive || game.game_over() || piece.search(/^b/) !== -1) return false;
-  clearUserDrawings();
-
-  if (game.turn() === 'w' && !isBotThinking) {
-    const moves = game.moves({ square: source });
-    if (moves.length === 0) return false;
-    highlightLegalMoves(game, source);
-  }
-}
-
-function onDrop(source, target) {
-  if (!gameActive || game.game_over()) return 'snapback';
-
-  if (game.turn() !== 'w' || isBotThinking) {
-    let simFen = getSimulatedFen(game.fen(), premoveQueue);
-    let simGame = new Chess(simFen);
-    let dummyMove = null;
-    try { dummyMove = simGame.move({ from: source, to: target, promotion: 'q' }); } catch (e) {}
-
-    if (dummyMove) {
-      premoveQueue.push({ from: source, to: target });
-      updateBoardVisuals();
-      updateStatus("Премув добавлен. Ожидание бота...", "thinking");
-      return 'snapback'; 
-    } else {
-      playSound('error');
-      return 'snapback';
-    }
-  }
-
-  premoveQueue = [];
-  
-  let move = null;
-  try { move = game.move({ from: source, to: target, promotion: 'q' }); } catch (e) {
-    playSound('error'); return 'snapback';
-  }
-  
-  if (!move) { playSound('error'); return 'snapback'; }
-
-  playSound(move.flags.includes('c') || move.flags.includes('e') ? 'capture' : 'move');
-  updateBoardVisuals(); 
-  updateMaterial();
-
-  if (checkGameOver()) return;
-  
-  switchTurn(); // Меняем часы на бота
-  makeBotMove();
-}
-
-function executePremoves() {
-  if (premoveQueue.length === 0 || game.game_over() || !gameActive) return;
-  if (game.turn() !== 'w') return;
-
-  while (premoveQueue.length > 0 && game.turn() === 'w') {
-    let pm = premoveQueue[0];
-    let move = null;
-    try { move = game.move({ from: pm.from, to: pm.to, promotion: 'q' }); } catch (e) {}
-
-    if (move) {
-      premoveQueue.shift();
-      playSound(move.flags.includes('c') || move.flags.includes('e') ? 'capture' : 'move');
-      if (checkGameOver()) {
-        updateBoardVisuals();
-        updateMaterial();
-        return;
-      }
-    } else {
-      premoveQueue = [];
-      break;
-    }
-  }
-
-  updateBoardVisuals();
-  updateMaterial();
-
-  if (game.turn() === 'b' && !isBotThinking) {
-    switchTurn();
-    makeBotMove();
-  }
-}
-
-async function makeBotMove() {
-  if (game.game_over() || !gameActive) return;
-  isBotThinking = true;
-  updateStatus("Бот думает...", "thinking");
-
-  try {
-    const res = await fetch('/api/bot_move', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ 
-        fen: game.fen(), 
-        level: parseInt(botLevelEl.value),
-        mode: timeControlMode === 'unlimited' ? 'unlimited' : (timeControlMode === '1+0' ? 'bullet' : 'blitz')
-      })
-    });
-    const data = await res.json();
-    
-    if (data.move) {
-      try {
-        const applied = game.move({ from: data.move.slice(0, 2), to: data.move.slice(2, 4), promotion: 'q' });
-        if (applied) {
-          playSound(applied.flags.includes('c') || applied.flags.includes('e') ? 'capture' : 'move');
-          updateBoardVisuals(); 
-          updateMaterial();
-        }
-      } catch (e) {}
-    }
-  } catch (e) {
-    const moves = game.moves();
-    if (moves.length > 0) {
-      game.move(moves[0]);
-      updateBoardVisuals();
-      updateMaterial();
-    }
-  } finally {
-    isBotThinking = false;
-    if (!checkGameOver()) {
-      updateStatus("Твой ход.");
-      switchTurn(); // Меняем часы на игрока
-      executePremoves();
-    }
-  }
-}
-
-function showGameOverModal(result, isWin) {
-  const modal = document.getElementById('gameOverModal');
-  const title = document.getElementById('modalResult');
-  
-  if (result === 'checkmate') {
-    if (isWin) {
-      title.textContent = 'Мат! Ты победил!';
-      title.className = 'win';
-    } else {
-      title.textContent = 'Мат! Бот победил';
-      title.className = 'loss';
-    }
-  } else if (result === 'timeout') {
-    if (isWin) {
-      title.textContent = 'Победа по времени!';
-      title.className = 'win';
-    } else {
-      title.textContent = 'Ты проиграл по времени';
-      title.className = 'loss';
-    }
-  } else {
-    title.textContent = 'Ничья';
-    title.className = 'draw';
-  }
-
-  document.getElementById('modalBotName').textContent = `Бот (${botLevelEl.options[botLevelEl.selectedIndex].text.split(' - ')[1]})`;
-  
-  modal.classList.add('active');
-}
-
-function checkGameOver() {
-  if (game.in_checkmate() || game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
-    const isWin = game.in_checkmate() && game.turn() === 'b';
-    updateStatus(game.in_checkmate() ? (isWin ? "Мат! Ты победил!" : "Мат! Победил бот.") : "Ничья!", "gameover");
-    playSound('end');
-    premoveQueue = [];
-    gameActive = false;
-    stopClock();
-    updateBoardVisuals();
-    updateMaterial();
-    
-    setTimeout(() => {
-      showGameOverModal(game.in_checkmate() ? 'checkmate' : 'draw', isWin);
-    }, 300);
-    
-    return true;
-  }
-  if (game.in_check()) updateStatus(game.turn() === 'w' ? "Тебе шах!" : "Боту шах!");
-  return false;
-}
-
-function startNewGame() {
-  game = new Chess();
-  isBotThinking = false;
-  premoveQueue = [];
-  clearUserDrawings();
-  
-  timeControlMode = timeControlEl.value;
-  if (timeControlMode !== 'unlimited') {
-    const parts = timeControlMode.split('+');
-    baseTime = parseInt(parts[0]) * 60;
-    increment = parseInt(parts[1]);
-    whiteTime = baseTime;
-    blackTime = baseTime;
-  } else {
-    whiteTime = Infinity;
-    blackTime = Infinity;
-  }
-
-  gameActive = true;
-  updateBoardVisuals();
-  updateMaterial();
-  updateClocksUI();
-  updateStatus("Твой ход. Выбери фигуру.");
-  document.getElementById('gameOverModal').classList.remove('active');
-
-  // Запускаем часы (белым)
-  startClock();
-}
-
-board = Chessboard('botBoard', {
-  draggable: true,
-  position: 'start',
-  onDragStart: onDragStart,
-  onDrop: onDrop,
-  onSnapEnd: () => { 
-    clearHighlights(); 
-    updateBoardVisuals(); 
-  },
-  pieceTheme: '/img/pieces/{piece}.png'
-});
-
-initRightClickDrawing();
-
-document.getElementById('newGameBtn').onclick = startNewGame;
-document.getElementById('modalRematchBtn').onclick = startNewGame;
-document.getElementById('modalCloseBtn').onclick = () => document.getElementById('gameOverModal').classList.remove('active');
-
-window.addEventListener('resize', () => board.resize());
-
-// Инициализация часов при загрузке
-updateClocksUI();
-</script>
 </body>
 </html>
