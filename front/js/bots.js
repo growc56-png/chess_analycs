@@ -399,14 +399,19 @@ function startNewGame() {
   } else { whiteTime = Infinity; blackTime = Infinity; }
 
   gameActive = true; updateBoardVisuals(); updateMaterial(); updateClocksUI();
-  const evalBar = document.getElementById('evalBarWhite');\n  if (evalBar) evalBar.style.height = '50%';
+  const evalBar = document.getElementById('evalBarWhite');
+  if (evalBar) evalBar.style.height = '50%';
   document.getElementById('gameOverModal').classList.remove('active');
   if (playerColor === 'w') { updateStatus("Твой ход. Выбери фигуру."); startClock(); }
   else { updateStatus("Бот начинает первым...", "thinking"); startClock(); makeBotMove(); }
 }
 
-document.getElementById('newGameBtn')?.addEventListener('click', event => { event.preventDefault(); startNewGame(); });
-document.getElementById('modalRematchBtn')?.addEventListener('click', event => { event.preventDefault(); startNewGame(); });
+['newGameBtn', 'settingsNewGameBtn', 'restartGameBtn', 'modalRematchBtn'].forEach(id => {
+  document.getElementById(id)?.addEventListener('click', event => {
+    event.preventDefault();
+    startNewGame();
+  });
+});
 document.getElementById('modalCloseBtn').onclick = () => document.getElementById('gameOverModal').classList.remove('active');
 document.getElementById('resignBtn').onclick = () => { if (!gameActive) return; gameActive = false; stopClock(); showGameOverModal('resign', false); };
 document.getElementById('drawBtn').onclick = () => { if (!gameActive) return; gameActive = false; stopClock(); showGameOverModal('draw', false); };
