@@ -23,54 +23,119 @@ function initRightClickDrawing(boardId) {
   const boardEl = document.getElementById(boardId);
   if (!boardEl || boardEl.dataset.arrowsReady === '1') return;
   boardEl.dataset.arrowsReady = '1';
-  boardEl.title = 'ПКМ + перетаскивание — стрелка; ПКМ по клетке — кружок';
-  if (getComputedStyle(boardEl).position === 'static') boardEl.style.position = 'relative';
+
+  // Доска перерисовывает собственное содержимое при каждом ходе,
+  // поэтому SVG размещаем в стабильной внешней обёртке, а не внутри #botBoard.
+  const stage = boardEl.closest('.board-stage') || boardEl.parentElement;
+  if (!stage) return;
+  if (getComputedStyle(stage).position === 'static') stage.style.position = 'relative';
+
   const ns = 'http://www.w3.org/2000/svg';
-  let svg = document.getElementById(`userDraw_${boardId}`);
-  if (!svg) { svg = document.createElementNS(ns, 'svg'); svg.id = `userDraw_${boardId}`; boardEl.appendChild(svg); }
-  Object.assign(svg.style, { position:'absolute', inset:'0', width:'100%', height:'100%', zIndex:'30', pointerEvents:'none', overflow:'visible' });
-  svg.setAttribute('viewBox','0 0 8 8'); svg.setAttribute('preserveAspectRatio','none');
+  const svg = document.createElementNS(ns, 'svg');
+  svg.id = `userDraw_${boardId}`;
+  svg.setAttribute('viewBox', '0 0 8 8');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  Object.assign(svg.style, {
+    position: 'absolute', inset: '0', width: '100%', height: '100%',
+    zIndex: '40', pointerEvents: 'none', overflow: 'visible'
+  });
+  stage.appendChild(svg);
+
   let drawing = false, start = null, preview = null;
   const point = event => {
-    const r = boardEl.getBoundingClientRect();
-    if (!r.width || !r.height) return null;
-    const x = (event.clientX-r.left)/r.width*8, y = (event.clientY-r.top)/r.height*8;
-    if (x<0 || x>8 || y<0 || y>8) return null;
-    return {x:Math.min(7.95,Math.max(.05,x)),y:Math.min(7.95,Math.max(.05,y))};
+    const rect = stage.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const x = (event.clientX - rect.left) / rect.width * 8;
+    const y = (event.clientY - rect.top) / rect.height * 8;
+    if (x < 0 || x > 8 || y < 0 || y > 8) return null;
+    return { x: Math.min(7.95, Math.max(.05, x)), y: Math.min(7.95, Math.max(.05, y)) };
   };
-  const key = (a,b) => `${Math.round(a.x*2)}:${Math.round(a.y*2)}>${Math.round(b.x*2)}:${Math.round(b.y*2)}`;
-  const paint = (a,b,g) => {
-    const color='#f97316';
-    if (Math.hypot(a.x-b.x,a.y-b.y)<.14) {
-      const c=document.createElementNS(ns,'circle'); c.setAttribute('cx',a.x); c.setAttribute('cy',a.y); c.setAttribute('r','.34'); c.setAttribute('fill',color); c.setAttribute('fill-opacity','.76'); g.appendChild(c); return;
+  const key = (a, b) => `${Math.round(a.x * 2)}:${Math.round(a.y * 2)}>${Math.round(b.x * 2)}:${Math.round(b.y * 2)}`;
+  const paint = (a, b, group) => {
+    const color = '#f97316';
+    if (Math.hypot(a.x - b.x, a.y - b.y) < .18) {
+      // Chess.com-style mark: outlined circle with a centered dot.
+      const ring = document.createElementNS(ns, 'circle');
+      ring.setAttribute('cx', a.x); ring.setAttribute('cy', a.y);
+      ring.setAttribute('r', '.34'); ring.setAttribute('fill', 'none');
+      ring.setAttribute('stroke', color); ring.setAttribute('stroke-width', '.13');
+      ring.setAttribute('opacity', '.9'); group.appendChild(ring);
+      const dot = document.createElementNS(ns, 'circle');
+      dot.setAttribute('cx', a.x); dot.setAttribute('cy', a.y);
+      dot.setAttribute('r', '.075'); dot.setAttribute('fill', color);
+      group.appendChild(dot);
+      return;
     }
-    const angle=Math.atan2(b.y-a.y,b.x-a.x), line=document.createElementNS(ns,'line');
-    line.setAttribute('x1',a.x); line.setAttribute('y1',a.y); line.setAttribute('x2',b.x-.13*Math.cos(angle)); line.setAttribute('y2',b.y-.13*Math.sin(angle));
-    line.setAttribute('stroke',color); line.setAttribute('stroke-width','.16'); line.setAttribute('stroke-linecap','round'); line.setAttribute('opacity','.8'); g.appendChild(line);
-    const size=.34, spread=.48, head=document.createElementNS(ns,'polygon');
-    head.setAttribute('points',`${b.x},${b.y} ${b.x-size*Math.cos(angle-spread)},${b.y-size*Math.sin(angle-spread)} ${b.x-size*Math.cos(angle+spread)},${b.y-size*Math.sin(angle+spread)}`);
-    head.setAttribute('fill',color); head.setAttribute('opacity','.86'); g.appendChild(head);
+    const angle = Math.atan2(b.y - a.y, b.x - a.x);
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+    line.setAttribute('x2', b.x - .13 * Math.cos(angle));
+    line.setAttribute('y2', b.y - .13 * Math.sin(angle));
+    line.setAttribute('stroke', color); line.setAttribute('stroke-width', '.16');
+    line.setAttribute('stroke-linecap', 'round'); line.setAttribute('opacity', '.85');
+    group.appendChild(line);
+    const size = .34, spread = .48;
+    const head = document.createElementNS(ns, 'polygon');
+    head.setAttribute('points', `${b.x},${b.y} ${b.x-size*Math.cos(angle-spread)},${b.y-size*Math.sin(angle-spread)} ${b.x-size*Math.cos(angle+spread)},${b.y-size*Math.sin(angle+spread)}`);
+    head.setAttribute('fill', color); head.setAttribute('opacity', '.9');
+    group.appendChild(head);
   };
-  const preventMenu = event => { if (boardEl.contains(event.target)) { event.preventDefault(); event.stopPropagation(); } };
-  boardEl.addEventListener('contextmenu',preventMenu,true); document.addEventListener('contextmenu',preventMenu,true);
-  boardEl.addEventListener('mousedown',event=>{
-    if(event.button!==2)return;
-    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
-    start=point(event);drawing=!!start;if(!drawing)return;
-    preview=document.createElementNS(ns,'g');preview.setAttribute('opacity','.56');svg.appendChild(preview);paint(start,start,preview);
-  },true);
-  document.addEventListener('mousemove',event=>{
-    if(!drawing)return;event.preventDefault();event.stopPropagation();
-    const end=point(event);if(!end||!preview)return;preview.innerHTML='';paint(start,end,preview);
-  },true);
-  document.addEventListener('mouseup',event=>{
-    if(!drawing||event.button!==2)return;event.preventDefault();event.stopPropagation();
-    const end=point(event)||start;if(preview){preview.remove();preview=null;}
-    const id=key(start,end),old=[...svg.querySelectorAll('g[data-arrow-key]')].find(g=>g.dataset.arrowKey===id);
-    if(old)old.remove();else{const g=document.createElementNS(ns,'g');g.dataset.arrowKey=id;paint(start,end,g);svg.appendChild(g);}
-    drawing=false;start=null;
-  },true);
-  window.addEventListener('blur',()=>{drawing=false;start=null;if(preview){preview.remove();preview=null;}});
+
+  boardEl.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    event.stopPropagation();
+  }, true);
+
+  boardEl.addEventListener('mousedown', event => {
+    if (event.button !== 2) return;
+    const p = point(event);
+    if (!p) return;
+    event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation();
+    start = p; drawing = true;
+    preview = document.createElementNS(ns, 'g');
+    preview.setAttribute('opacity', '.55');
+    svg.appendChild(preview);
+    paint(start, start, preview);
+  }, true);
+
+  document.addEventListener('mousemove', event => {
+    if (!drawing) return;
+    event.preventDefault();
+    const end = point(event);
+    if (!end || !preview) return;
+    preview.innerHTML = '';
+    paint(start, end, preview);
+  }, true);
+
+  document.addEventListener('mouseup', event => {
+    if (!drawing || event.button !== 2) return;
+    event.preventDefault(); event.stopPropagation();
+    const finish = point(event) || start;
+    if (preview) preview.remove();
+    preview = null;
+    const id = key(start, finish);
+    const old = [...svg.querySelectorAll('g[data-arrow-key]')].find(g => g.dataset.arrowKey === id);
+    if (old) old.remove();
+    else {
+      const group = document.createElementNS(ns, 'g');
+      group.dataset.arrowKey = id;
+      paint(start, finish, group);
+      svg.appendChild(group);
+    }
+    drawing = false; start = null;
+  }, true);
+
+  // ЛКМ убирает пользовательские пометки; обработчик выбора/хода фигуры
+  // продолжает работать в обычном порядке.
+  boardEl.addEventListener('click', event => {
+    if (event.button === 0) clearBoardArrows(boardId);
+  }, true);
+
+  window.addEventListener('blur', () => {
+    drawing = false; start = null;
+    if (preview) preview.remove();
+    preview = null;
+  });
 }
 function clearBoardArrows(boardId) { const svg=document.getElementById(`userDraw_${boardId}`); if(svg)svg.innerHTML=''; }
 function installBotBoardStyles() {
@@ -317,8 +382,10 @@ function checkGameOver() {
 }
 
 function startNewGame() {
+  stopClock();
   game = new Chess(); isBotThinking = false; premoveQueue = []; selectedSquare = null;
   clearBoardArrows('botBoard'); clearHighlights();
+  if (board) board.position('start', false);
   const sideChoice = sideSelectEl.value;
   playerColor = sideChoice === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : sideChoice;
   board.orientation(playerColor === 'w' ? 'white' : 'black');
@@ -332,14 +399,14 @@ function startNewGame() {
   } else { whiteTime = Infinity; blackTime = Infinity; }
 
   gameActive = true; updateBoardVisuals(); updateMaterial(); updateClocksUI();
-  document.getElementById('evalBarWhite').style.height = '50%';
+  const evalBar = document.getElementById('evalBarWhite');\n  if (evalBar) evalBar.style.height = '50%';
   document.getElementById('gameOverModal').classList.remove('active');
   if (playerColor === 'w') { updateStatus("Твой ход. Выбери фигуру."); startClock(); }
   else { updateStatus("Бот начинает первым...", "thinking"); startClock(); makeBotMove(); }
 }
 
-document.getElementById('newGameBtn').onclick = startNewGame;
-document.getElementById('modalRematchBtn').onclick = startNewGame;
+document.getElementById('newGameBtn')?.addEventListener('click', event => { event.preventDefault(); startNewGame(); });
+document.getElementById('modalRematchBtn')?.addEventListener('click', event => { event.preventDefault(); startNewGame(); });
 document.getElementById('modalCloseBtn').onclick = () => document.getElementById('gameOverModal').classList.remove('active');
 document.getElementById('resignBtn').onclick = () => { if (!gameActive) return; gameActive = false; stopClock(); showGameOverModal('resign', false); };
 document.getElementById('drawBtn').onclick = () => { if (!gameActive) return; gameActive = false; stopClock(); showGameOverModal('draw', false); };
