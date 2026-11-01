@@ -347,3 +347,20 @@ canvas#evalGraph { display: block; width: 100%; height: 100px; border-radius: 5p
   .diary-chart-heading { flex-direction: column; }
   .main-footer { flex-direction: column; align-items: center; }
 }
+
+
+/* Запланированные ходы в тренировке эндшпилей — как в практике матов */
+#endgameBoard .premove-from::before,
+#endgameBoard .premove-to::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+#endgameBoard .premove-from::before {
+  background: rgba(239, 68, 68, 0.42);
+}
+#endgameBoard .premove-to::before {
+  background: rgba(239, 68, 68, 0.72);
+}
