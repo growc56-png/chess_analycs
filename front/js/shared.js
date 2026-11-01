@@ -52,12 +52,14 @@ function initRightClickDrawing(boardId) {
 
         if (startX === currentX && startY === currentY) {
             const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-            circle.setAttribute('cx', x1); circle.setAttribute('cy', y1); circle.setAttribute('r', '0.4');
-            circle.setAttribute('fill', 'none'); circle.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)'); circle.setAttribute('stroke-width', '0.15');
+            circle.setAttribute('cx', x1); circle.setAttribute('cy', y1); circle.setAttribute('r', '0.31');
+            circle.setAttribute('fill', 'none'); circle.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)'); circle.setAttribute('stroke-width', '0.085');
             svgEl.appendChild(circle);
         } else {
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)'); path.setAttribute('stroke-width', '0.15'); path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)'); path.setAttribute('stroke-width', '0.085'); path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
 
             const dx = Math.abs(currentX - startX), dy = Math.abs(currentY - startY);
             const isKnightMove = (dx === 1 && dy === 2) || (dx === 2 && dy === 1);
