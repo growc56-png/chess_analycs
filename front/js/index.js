@@ -215,27 +215,58 @@ function initRightClickDrawing(boardId) {
   const render = (preview = null) => {
     svgEl.replaceChildren();
     const arrows = svgEl.__userArrows || [];
-    const draw = (from, to, sameCell, opacity) => {
+    const draw = (from, to, sameCell, opacity, fromCell, toCell) => {
       if (!from || !to) return;
       if (sameCell) {
         const circle = document.createElementNS(ns, 'circle');
         circle.setAttribute('cx', String(from.x));
         circle.setAttribute('cy', String(from.y));
-        circle.setAttribute('r', '34');
+        circle.setAttribute('r', '31');
         circle.setAttribute('fill', 'none');
         circle.setAttribute('stroke', '#f39b37');
-        circle.setAttribute('stroke-width', '17');
+        circle.setAttribute('stroke-width', '9');
         circle.setAttribute('stroke-opacity', String(opacity));
         svgEl.appendChild(circle);
+        return;
+      }
+
+      const fromParts = String(fromCell || '').split(':').map(Number);
+      const toParts = String(toCell || '').split(':').map(Number);
+      const colDelta = Math.abs(toParts[0] - fromParts[0]);
+      const rowDelta = Math.abs(toParts[1] - fromParts[1]);
+      const isKnightMove = (colDelta === 1 && rowDelta === 2) || (colDelta === 2 && rowDelta === 1);
+
+      if (isKnightMove) {
+        const elbow = colDelta > rowDelta
+          ? { x: to.x, y: from.y }
+          : { x: from.x, y: to.y };
+        const path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', `M ${from.x} ${from.y} L ${elbow.x} ${elbow.y}`);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', '#f39b37');
+        path.setAttribute('stroke-width', '20');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        path.setAttribute('stroke-opacity', String(opacity));
+        path.style.filter = 'drop-shadow(0 2px 3px rgba(0,0,0,.45))';
+        svgEl.appendChild(path);
+        const head = makeArrowPolygon(ns, elbow, to, 20, 68, 70, '#f39b37', opacity);
+        if (head) svgEl.appendChild(head);
       } else {
-        const poly = makeArrowPolygon(ns, from, to, 42, 112, 118, '#f39b37', opacity);
+        const poly = makeArrowPolygon(ns, from, to, 22, 70, 78, '#f39b37', opacity);
         if (poly) svgEl.appendChild(poly);
       }
     };
 
-    arrows.forEach(arrow => draw(arrow.from, arrow.to, arrow.fromCell === arrow.toCell, .9));
-    if (preview) draw(preview.from, preview.to, preview.fromCell === preview.toCell, .66);
+    arrows.forEach(arrow => draw(arrow.from, arrow.to, arrow.fromCell === arrow.toCell, .9, arrow.fromCell, arrow.toCell));
+    if (preview) draw(preview.from, preview.to, preview.fromCell === preview.toCell, .66, preview.fromCell, preview.toCell);
   };
+
+  boardEl.addEventListener('click', event => {
+    if (event.button !== 0 || !(svgEl.__userArrows || []).length) return;
+    svgEl.__userArrows = [];
+    render();
+  }, true);
 
   boardEl.addEventListener('contextmenu', event => {
     event.preventDefault();
