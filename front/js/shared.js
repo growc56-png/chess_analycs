@@ -36,8 +36,8 @@ function initRightClickDrawing(boardId) {
         
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.setAttribute('cx', startX + 0.5); circle.setAttribute('cy', startY + 0.5);
-        circle.setAttribute('r', '0.4'); circle.setAttribute('fill', 'none');
-        circle.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)'); circle.setAttribute('stroke-width', '0.15');
+        circle.setAttribute('r', '0.31'); circle.setAttribute('fill', 'none');
+        circle.setAttribute('stroke', 'rgba(255, 69, 0, 0.8)'); circle.setAttribute('stroke-width', '0.085');
         svgEl.appendChild(circle);
     }, true);
 
@@ -68,7 +68,7 @@ function initRightClickDrawing(boardId) {
                 else path.setAttribute('d', `M ${x1} ${y1} L ${x1} ${y2} L ${x2} ${y2}`);
             } else {
                 const angle = Math.atan2(y2 - y1, x2 - x1);
-                endLineX = x2 - 0.2 * Math.cos(angle); endLineY = y2 - 0.2 * Math.sin(angle);
+                endLineX = x2 - 0.16 * Math.cos(angle); endLineY = y2 - 0.16 * Math.sin(angle);
                 path.setAttribute('d', `M ${x1} ${y1} L ${endLineX} ${endLineY}`);
             }
             svgEl.appendChild(path);
@@ -79,7 +79,7 @@ function initRightClickDrawing(boardId) {
                  else angle = (currentX > startX) ? 0 : Math.PI;
             } else angle = Math.atan2(y2 - y1, x2 - x1);
 
-            const len = 0.4, ang = Math.PI / 6;
+            const len = 0.27, ang = Math.PI / 5;
             const ax1 = x2 - len * Math.cos(angle - ang), ay1 = y2 - len * Math.sin(angle - ang);
             const ax2 = x2 - len * Math.cos(angle + ang), ay2 = y2 - len * Math.sin(angle + ang);
 
