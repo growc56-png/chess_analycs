@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Игра с ботом — Chess Trainer</title>
+
+    <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="/css/bots.css">
+
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/chessboard-1.0.0.min.js"></script>
+    <script src="/js/chess.min.js"></script>
+    <script src="/js/shared.js"></script>
+    <script src="/js/bots.js" defer></script>
+</head>
+
+<body>
+<div class="bots-page">
+
+    <header class="page-header">
+        <a class="back-link" href="/">← На главную</a>
+
+        <div class="page-heading">
+            <div class="eyebrow">CHESS TRAINER</div>
+            <h1>Игра с компьютером</h1>
+            <p>Сыграй партию и проверь свои силы</p>
+        </div>
+
+        <button id="newGameBtn" class="new-game-top">
+            <span>＋</span>
+            Новая партия
+        </button>
+    </header>
+
+    <main class="game-layout">
+
+        <!-- Левая часть: шахматная доска -->
+        <section class="board-column">
+
+            <div class="player-card opponent-card">
+                <div class="player-avatar bot-avatar">♟</div>
+
+                <div class="player-info">
+                    <strong id="topName">Компьютер</strong>
+                    <span id="botDescription">Уровень 3</span>
+                </div>
+
+                <div class="captured-info">
+                    <span id="botCaptured" class="captured-pieces"></span>
+                    <strong id="botAdv" class="material-advantage"></strong>
+                </div>
+
+                <div id="botClock" class="player-clock">∞</div>
+            </div>
+
+            <div class="board-status-row">
+                <div id="gameStatus" class="game-status">
+                    Подготовка к партии
+                </div>
+
+                <div id="turnIndicator" class="turn-indicator">
+                    ● Ожидание
+                </div>
+            </div>
+
+            <!-- Никакой тёмной карточки или подложки за доской -->
+            <div class="board-stage">
+                <div id="botBoard"></div>
+            </div>
+
+            <div class="player-card user-card">
+                <div class="player-avatar user-avatar">♙</div>
+
+                <div class="player-info">
+                    <strong id="bottomName">Ты</strong>
+                    <span id="playerDescription">Игрок</span>
+                </div>
+
+                <div class="captured-info">
+                    <span id="playerCaptured" class="captured-pieces"></span>
+                    <strong id="playerAdv" class="material-advantage"></strong>
+                </div>
+
+                <div id="playerClock" class="player-clock">∞</div>
+            </div>
+
+            <div class="board-hint">
+                Можно передвигать фигуры мышкой или нажимать сначала на фигуру,
+                а затем на клетку назначения.
+            </div>
+
+        </section>
+
+
+        <!-- Правая часть: управление -->
+        <aside class="right-sidebar">
+
+            <section class="side-panel settings-panel">
+                <div class="panel-heading">
+                    <div>
+                        <div class="eyebrow">НАСТРОЙКИ</div>
+                        <h2>Параметры партии</h2>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label for="sideSelect">За кого играть</label>
+
+                    <select id="sideSelect">
+                        <option value="w">♔ Белыми</option>
+                        <option value="b">♚ Чёрными</option>
+                        <option value="random">🎲 Случайный цвет</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
+                    <label for="botLevel">Сила компьютера</label>
+
+                    <select id="botLevel">
+                        <option value="1">Уровень 1 — новичок</option>
+                        <option value="2">Уровень 2</option>
+                        <option value="3" selected>Уровень 3 — лёгкий</option>
+                        <option value="4">Уровень 4</option>
+                        <option value="5">Уровень 5 — средний</option>
+                        <option value="6">Уровень 6</option>
+                        <option value="7">Уровень 7</option>
+                        <option value="8">Уровень 8 — сильный</option>
+                        <option value="9">Уровень 9</option>
+                        <option value="10">Уровень 10 — эксперт</option>
+                    </select>
+                </div>
+
+                <div class="setting-group">
+                    <label for="timeControl">Контроль времени</label>
+
+                    <select id="timeControl">
+                        <option value="unlimited" selected>Без времени</option>
+                        <option value="1+0">1 + 0 · Пуля</option>
+                        <option value="3+0">3 + 0 · Блиц</option>
+                        <option value="3+2">3 + 2 · Блиц</option>
+                        <option value="5+0">5 + 0 · Блиц</option>
+                        <option value="10+0">10 + 0 · Рапид</option>
+                        <option value="10+5">10 + 5 · Рапид</option>
+                    </select>
+                </div>
+
+                <button id="settingsNewGameBtn" class="primary-action">
+                    Начать партию
+                </button>
+            </section>
+
+
+            <section class="side-panel actions-panel">
+                <div class="panel-heading">
+                    <div>
+                        <div class="eyebrow">УПРАВЛЕНИЕ</div>
+                        <h2>Действия</h2>
+                    </div>
+                </div>
+
+                <button id="drawBtn" class="game-action draw-action">
+                    <span class="action-icon">½</span>
+                    <span class="action-copy">
+                        <strong>Предложить ничью</strong>
+                        <small>Завершить партию вничью</small>
+                    </span>
+                </button>
+
+                <button id="resignBtn" class="game-action resign-action">
+                    <span class="action-icon">⚑</span>
+                    <span class="action-copy">
+                        <strong>Сдаться</strong>
+                        <small>Признать поражение</small>
+                    </span>
+                </button>
+
+                <button id="downloadPgnBtn" class="secondary-action">
+                    ↓ Скачать партию в PGN
+                </button>
+
+                <button id="restartGameBtn" class="secondary-action">
+                    ↻ Играть снова
+                </button>
+            </section>
+
+
+            <section class="side-panel moves-panel">
+                <div class="panel-heading">
+                    <div>
+                        <div class="eyebrow">ПАРТИЯ</div>
+                        <h2>История ходов</h2>
+                    </div>
+
+                    <span id="movesCount" class="small-counter">0 ходов</span>
+                </div>
+
+                <div class="move-list-header">
+                    <span>№</span>
+                    <span>Белые</span>
+                    <span>Чёрные</span>
+                </div>
+
+                <div id="moveHistory" class="move-history">
+                    <div class="empty-state">
+                        Ходы появятся здесь после начала партии.
+                    </div>
+                </div>
+            </section>
+
+
+            <section class="side-panel saved-games-panel">
+                <div class="panel-heading">
+                    <div>
+                        <div class="eyebrow">ИСТОРИЯ</div>
+                        <h2>Твои партии</h2>
+                    </div>
+
+                    <button id="refreshGamesBtn" class="icon-button" title="Обновить">
+                        ↻
+                    </button>
+                </div>
+
+                <div class="saved-stats">
+                    <div class="stat-box">
+                        <strong id="gamesTotal">0</strong>
+                        <span>Всего</span>
+                    </div>
+
+                    <div class="stat-box">
+                        <strong id="gamesWins">0</strong>
+                        <span>Победы</span>
+                    </div>
+
+                    <div class="stat-box">
+                        <strong id="gamesDraws">0</strong>
+                        <span>Ничьи</span>
+                    </div>
+
+                    <div class="stat-box">
+                        <strong id="gamesLosses">0</strong>
+                        <span>Поражения</span>
+                    </div>
+                </div>
+
+                <div id="savedGamesList" class="saved-games-list">
+                    <div class="empty-state">Загрузка партий...</div>
+                </div>
+
+                <div id="savedGameDetails" class="saved-game-details hidden"></div>
+
+                <div class="games-pagination">
+                    <button id="gamesPrevBtn" class="pagination-button" disabled>←</button>
+                    <span id="gamesPageLabel">Страница 1</span>
+                    <button id="gamesNextBtn" class="pagination-button" disabled>→</button>
+                </div>
+            </section>
+
+        </aside>
+
+    </main>
+</div>
+
+
+<!-- Подтверждение сдачи / ничьей -->
+<div id="actionModal" class="modal">
+    <div class="modal-card action-modal-card">
+
+        <div id="actionModalIcon" class="modal-icon">½</div>
+
+        <h2 id="actionModalTitle">Подтвердить действие?</h2>
+        <p id="actionModalText">Ты действительно хочешь завершить партию?</p>
+
+        <div class="modal-buttons">
+            <button id="confirmActionBtn" class="modal-danger-button">
+                Подтвердить
+            </button>
+
+            <button id="cancelActionBtn" class="modal-cancel-button">
+                Отмена
+            </button>
+        </div>
+
+    </div>
+</div>
+
+
+<!-- Окончание партии -->
+<div id="gameOverModal" class="modal">
+    <div class="modal-card result-modal-card">
+
+        <div class="result-symbol" id="resultSymbol">♟</div>
+
+        <div class="eyebrow">ПАРТИЯ ЗАВЕРШЕНА</div>
+
+        <h2 id="modalResult">Игра окончена</h2>
+
+        <p id="resultDescription">Результат партии</p>
+
+        <div class="modal-buttons">
+            <button id="modalRematchBtn" class="primary-action">
+                ↻ Играть снова
+            </button>
+
+            <button id="modalCloseBtn" class="modal-cancel-button">
+                Закрыть
+            </button>
+        </div>
+
+    </div>
+</div>
+
+
+<!-- Выбор фигуры при превращении пешки -->
+<div id="promotionModal" class="modal">
+    <div class="modal-card promotion-card">
+        <h2>Выбери фигуру</h2>
+        <p>Во что превратить пешку?</p>
+
+        <div class="promotion-options">
+            <button class="promotion-btn" data-piece="q" title="Ферзь">♕</button>
+            <button class="promotion-btn" data-piece="r" title="Ладья">♖</button>
+            <button class="promotion-btn" data-piece="b" title="Слон">♗</button>
+            <button class="promotion-btn" data-piece="n" title="Конь">♘</button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

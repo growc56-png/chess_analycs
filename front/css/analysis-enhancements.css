@@ -1,0 +1,1024 @@
+/* Улучшения панели анализа. Базовую компоновку страницы не меняем. */
+
+.analysis-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.analysis-navigation .action-btn {
+  min-height: 44px;
+  min-width: 46px;
+  padding: 10px 15px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform .16s ease, filter .16s ease, background .16s ease;
+}
+
+.analysis-navigation .action-btn:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.analysis-navigation .action-btn:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+}
+
+.analysis-navigation .analysis-play-btn {
+  min-width: 50px;
+  background: #4b83e6;
+  color: #fff;
+  font-size: 17px;
+}
+
+.analysis-navigation .analysis-play-btn.is-playing {
+  background: #b58a36;
+}
+
+/* Панель прогресса, точности и категорий ходов в прежней правой колонке. */
+.analysis-insights {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  margin: 10px 0 12px;
+  color: #f3f4f6;
+}
+
+.analysis-progress-card,
+.analysis-accuracy-card,
+.analysis-categories-card {
+  min-width: 0;
+  padding: 12px 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.045);
+  border-radius: 11px;
+  background: #292c32;
+  box-shadow: 0 3px 10px rgba(0,0,0,.12);
+}
+
+.analysis-progress-heading,
+.analysis-progress-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.analysis-progress-heading {
+  margin-bottom: 9px;
+  color: #f1f2f4;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.analysis-progress-heading strong {
+  color: #a8d45d;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-progress-track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #17191d;
+}
+
+.analysis-progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6d9e3d, #a9d65d);
+  transition: width .3s ease;
+}
+
+.analysis-progress-fill.is-indeterminate {
+  width: 36% !important;
+  background: linear-gradient(90deg, #477dd8, #79aaff, #477dd8);
+  animation: analysisProgressSweep 1.25s ease-in-out infinite;
+}
+
+.analysis-progress-foot {
+  margin-top: 8px;
+  color: #aeb3bb;
+  font-size: 11px;
+}
+
+.analysis-progress-foot strong {
+  color: #e1e5ea;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.analysis-insights-title {
+  margin: 0 0 10px;
+  color: #f4f5f6;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.analysis-accuracy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #1e2024;
+}
+
+.analysis-accuracy-side {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 10px 12px;
+}
+
+.analysis-accuracy-side.white {
+  border-right: 1px solid rgba(0,0,0,.16);
+  background: #e9eaec;
+  color: #22252a;
+}
+
+.analysis-accuracy-side.black {
+  background: #151619;
+  color: #f4f5f6;
+}
+
+.analysis-accuracy-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-accuracy-side strong {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-accuracy-track {
+  grid-column: 1 / -1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0,0,0,.15);
+}
+
+.analysis-accuracy-track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #85b84b;
+  transition: width .45s ease;
+}
+
+.analysis-accuracy-side.black .analysis-accuracy-track i {
+  background: #76a8ed;
+}
+
+.analysis-category-header,
+.analysis-category-row {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 42px 34px 42px;
+  align-items: center;
+  gap: 6px;
+}
+
+.analysis-category-header {
+  padding: 0 2px 7px;
+  color: #aeb4bd;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.analysis-category-header span:first-child {
+  text-align: left;
+}
+
+.analysis-category-rows {
+  display: grid;
+  gap: 3px;
+}
+
+.analysis-category-row {
+  min-height: 25px;
+  padding: 2px 2px;
+  border-radius: 6px;
+  transition: background .15s ease;
+}
+
+.analysis-category-row:hover {
+  background: rgba(255,255,255,.045);
+}
+
+.analysis-category-name {
+  overflow: hidden;
+  color: #c6cbd2;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analysis-count {
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.analysis-count.white-count { color: #9fc84c; }
+.analysis-count.black-count { color: #79a9e6; }
+
+.analysis-category-icon {
+  display: inline-flex;
+  width: 23px;
+  height: 23px;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,.28);
+}
+
+.icon-brilliant { background: #19b8d0; }
+.icon-critical { background: #367fc2; }
+.icon-great { background: #3f83d8; }
+.icon-best { background: #79ac3d; font-size: 15px; }
+.icon-excellent { background: #75a943; font-size: 12px; }
+.icon-good { background: #718d51; }
+.icon-inaccuracy { background: #e0ae27; color: #202126; }
+.icon-mistake, .icon-miss { background: #f19636; }
+.icon-blunder { background: #e94b46; }
+.icon-book { background: #b98a67; }
+.icon-forced { background: #777d86; }
+
+.analysis-stats-empty {
+  padding: 12px 4px;
+  color: #9ba1aa;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Круглые значки рядом с нотацией ходов. */
+.move-class-badge {
+  display: inline-flex !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  vertical-align: middle;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+
+.cls-brilliant { background: #19b8d0 !important; }
+.cls-critical { background: #367fc2 !important; }
+.cls-great { background: #3f83d8 !important; }
+.cls-best { background: #78a83d !important; }
+.cls-excellent { background: #72a744 !important; }
+.cls-good { background: #718d51 !important; }
+.cls-inaccuracy { background: #dfae2d !important; color: #242424 !important; }
+.cls-mistake, .cls-miss { background: #f19636 !important; }
+.cls-blunder { background: #e94b46 !important; }
+.cls-book { background: #b98a67 !important; }
+.cls-forced { background: #777d86 !important; }
+
+/* Эффекты на клетке хода: бирюзово-золотой, синий и красный. */
+.board-area {
+  position: relative;
+}
+
+.analysis-move-effect {
+  position: absolute;
+  z-index: 45;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.analysis-move-effect.active {
+  opacity: 1;
+}
+
+.analysis-move-effect::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  opacity: 0;
+}
+
+.analysis-move-effect.active::before {
+  animation: analysisBoardFlash 1.05s ease-out both;
+}
+
+.analysis-move-effect #analysisMoveEffectPulse,
+#analysisMoveEffectPulse {
+  position: absolute;
+  display: block;
+  width: clamp(34px, 12.5%, 78px);
+  aspect-ratio: 1;
+  border: 3px solid currentColor;
+  border-radius: 13px;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.65);
+  box-shadow: 0 0 0 4px rgba(255,255,255,.12), 0 0 22px currentColor;
+}
+
+.analysis-move-effect.active #analysisMoveEffectPulse {
+  animation: analysisSquarePulse 1.15s cubic-bezier(.16,.8,.28,1) both;
+}
+
+.analysis-move-effect.effect-brilliant { color: #35d6c0; }
+.analysis-move-effect.effect-brilliant::before {
+  background: radial-gradient(circle at center, rgba(255,211,83,.24), rgba(32,196,174,.12) 24%, transparent 72%);
+}
+.analysis-move-effect.effect-brilliant #analysisMoveEffectPulse {
+  border-color: #45e0c8;
+  box-shadow: 0 0 0 4px rgba(255,206,79,.25), 0 0 27px #37d9c2, inset 0 0 18px rgba(255,213,99,.32);
+}
+
+.analysis-move-effect.effect-great { color: #4c9fff; }
+.analysis-move-effect.effect-great::before {
+  background: radial-gradient(circle at center, rgba(46,132,255,.24), transparent 68%);
+}
+.analysis-move-effect.effect-great #analysisMoveEffectPulse {
+  border-color: #5aa8ff;
+  box-shadow: 0 0 0 4px rgba(67,145,255,.2), 0 0 25px #348cff;
+}
+
+.analysis-move-effect.effect-blunder { color: #ff4949; }
+.analysis-move-effect.effect-blunder::before {
+  background: radial-gradient(circle at center, rgba(255,44,44,.28), rgba(180,24,24,.12) 28%, transparent 72%);
+  animation-name: analysisRedFlash !important;
+}
+.analysis-move-effect.effect-blunder #analysisMoveEffectPulse {
+  border-color: #ff4b4b;
+  box-shadow: 0 0 0 5px rgba(255,57,57,.2), 0 0 28px #ff3333;
+  animation-name: analysisBlunderPulse !important;
+}
+
+.analysis-move-effect.effect-mistake { color: #f39a3d; }
+.analysis-move-effect.effect-mistake::before {
+  background: radial-gradient(circle at center, rgba(243,154,61,.2), transparent 70%);
+}
+.analysis-move-effect.effect-mistake #analysisMoveEffectPulse {
+  border-color: #f3a044;
+  box-shadow: 0 0 0 4px rgba(243,154,61,.18), 0 0 20px #f3a044;
+}
+
+@keyframes analysisProgressSweep {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(310%); }
+}
+
+@keyframes analysisBoardFlash {
+  0% { opacity: 0; }
+  22% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes analysisRedFlash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  42% { opacity: .45; }
+  100% { opacity: 0; }
+}
+
+@keyframes analysisSquarePulse {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.55); }
+  22% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.65); }
+}
+
+@keyframes analysisBlunderPulse {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.65); }
+  20%, 55% { opacity: 1; transform: translate(calc(-50% - 2px), -50%) scale(1.05); }
+  38%, 72% { opacity: .7; transform: translate(calc(-50% + 2px), -50%) scale(1.12); }
+}
+
+@media (max-width: 850px) {
+  .analysis-navigation .action-btn {
+    min-height: 42px;
+    min-width: 42px;
+    padding: 9px 12px;
+  }
+  .analysis-category-header,
+  .analysis-category-row {
+    grid-template-columns: minmax(0,1fr) 36px 30px 36px;
+    gap: 4px;
+  }
+  .analysis-accuracy-side { padding: 9px 8px; }
+  .analysis-accuracy-side strong { font-size: 19px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analysis-move-effect,
+  .analysis-move-effect::before,
+  #analysisMoveEffectPulse,
+  .analysis-progress-fill,
+  .analysis-navigation .action-btn {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* --- Надёжное размещение стрелок непосредственно поверх доски --- */
+#tab-analysis,
+#tab-analysis .analysis-container,
+#tab-analysis .left-panel,
+#tab-analysis .right-panel,
+#tab-analysis .analysis-board-column {
+  min-width: 0;
+  box-sizing: border-box;
+}
+#tab-analysis .analysis-container {
+  align-items: start;
+  width: 100%;
+  max-width: 100%;
+}
+#tab-analysis .analysis-board-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+#tab-analysis .board-area {
+  position: relative !important;
+  isolation: isolate;
+  width: min(100%, 620px) !important;
+  max-width: 620px;
+  aspect-ratio: 1 / 1;
+  margin-inline: auto;
+  flex: 0 0 auto;
+}
+#tab-analysis #analysisBoard {
+  position: relative;
+  z-index: 1;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100%;
+}
+#tab-analysis #analysisBoard .board-b72b1,
+#tab-analysis #analysisBoard .board {
+  width: 100% !important;
+}
+#tab-analysis .board-area > .user-draw-overlay,
+#tab-analysis .board-area > #arrowOverlay,
+#tab-analysis .board-area > .analysis-arrow-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  pointer-events: none !important;
+}
+#tab-analysis .board-area > .user-draw-overlay { z-index: 20; }
+#tab-analysis .board-area > #arrowOverlay,
+#tab-analysis .board-area > .analysis-arrow-overlay { z-index: 30; overflow: visible; }
+#tab-analysis .analysis-move-effect { z-index: 45; }
+
+/* Кнопки продолжений — настоящие кнопки, а не декоративные строки. */
+#tab-analysis .top-lines { min-width: 0; }
+#tab-analysis #topLinesList { display: grid; gap: 7px; min-width: 0; }
+#tab-analysis .top-line-button {
+  display: grid;
+  grid-template-columns: minmax(62px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px;
+  background: #252a31;
+  color: #f4f6f8;
+  text-align: left;
+  cursor: pointer;
+}
+#tab-analysis .top-line-button:hover,
+#tab-analysis .top-line-button:focus-visible {
+  border-color: #6f9dca;
+  background: #303945;
+  outline: none;
+}
+#tab-analysis .top-line-button .top-line-move { font-weight: 800; color: #a6d76b; white-space: nowrap; }
+#tab-analysis .top-line-button .top-line-pv { min-width: 0; overflow: hidden; color: #c5cbd2; text-overflow: ellipsis; white-space: nowrap; }
+#tab-analysis .top-line-button .top-line-eval { font-variant-numeric: tabular-nums; font-weight: 800; white-space: nowrap; }
+
+/* Список ходов скроллится внутри своей панели, а не прокручивает всю страницу. */
+#tab-analysis .move-list-container {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: clamp(300px, 62vh, 680px);
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior-y: auto; overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #808992 #252a31;
+  border-radius: 9px;
+  isolation: isolate;
+}
+#tab-analysis .move-list-container::-webkit-scrollbar { width: 13px; height: 10px; }
+#tab-analysis .move-list-container::-webkit-scrollbar-track { background: #252a31; border-radius: 9px; }
+#tab-analysis .move-list-container::-webkit-scrollbar-thumb { background: #858e98; border: 3px solid #252a31; border-radius: 9px; }
+#tab-analysis .move-list-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: #202a31;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+#tab-analysis .move-list-toolbar strong { color: #e9edf1; font-size: 13px; }
+#tab-analysis .move-list-toolbar-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+#tab-analysis .move-jump-btn { min-height: 34px; padding: 6px 10px; font-size: 12px; }
+#tab-analysis .move-headers {
+  position: sticky;
+  top: 46px;
+  z-index: 7;
+  min-width: 100%;
+}
+#tab-analysis .move-table { width: 100%; min-width: 300px; border-collapse: separate; border-spacing: 0; }
+#tab-analysis .move-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 64px;
+  min-height: 32px;
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+#tab-analysis .move-cell:hover,
+#tab-analysis .move-cell:focus-visible { border-color: #7da4d0; background: rgba(89,143,207,.16); outline: none; }
+#tab-analysis .move-cell.active { border-color: #9bc85b; background: rgba(129,182,76,.2); color: #fff; font-weight: 900; }
+#tab-analysis .analysis-navigation { position: relative; z-index: 5; width: 100%; }
+#tab-analysis .analysis-navigation .action-btn { pointer-events: auto !important; min-height: 48px; min-width: 52px; padding: 10px 15px; font-size: 18px; }
+#tab-analysis .analysis-navigation .analysis-play-btn { min-width: 58px; font-size: 20px; }
+#tab-analysis button:focus-visible { outline: 2px solid #7eb3f4; outline-offset: 2px; }
+
+/* На узких экранах ставим доску и панель последовательно: не оставляем узкую колонку слева. */
+@media (max-width: 1100px) {
+  #tab-analysis .analysis-container {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 18px;
+  }
+  #tab-analysis .left-panel {
+    display: grid;
+    grid-template-columns: 26px minmax(0, min(620px, calc(100% - 36px)));
+    justify-content: center;
+    align-items: start;
+    width: 100%;
+    min-width: 0;
+  }
+  #tab-analysis .right-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 760px;
+    margin-inline: auto;
+  }
+  #tab-analysis .move-list-container { max-height: min(62vh, 560px); }
+}
+@media (max-width: 600px) {
+  #tab-analysis .left-panel { grid-template-columns: 20px minmax(0, calc(100% - 27px)); gap: 7px; }
+  #tab-analysis .analysis-navigation { gap: 5px; }
+  #tab-analysis .analysis-navigation .action-btn { flex: 1 1 42px; min-width: 0; min-height: 44px; padding: 8px; font-size: 16px; }
+  #tab-analysis .analysis-navigation #flipBoardBtn { flex: 1 1 100%; }
+  #tab-analysis .move-list-toolbar { align-items: flex-start; flex-direction: column; }
+  #tab-analysis .move-headers { top: 82px; }
+  #tab-analysis .analysis-accuracy-grid { grid-template-columns: 1fr 1fr; }
+  #tab-analysis .analysis-category-header,
+  #tab-analysis .analysis-category-row { grid-template-columns: minmax(0,1fr) 34px 28px 34px; }
+}
+
+
+/* --- Загрузка партий: раскрывающаяся компактная панель --- */
+#tab-analysis .analysis-source-dropdown {
+  width: 100%;
+  margin: 10px 0 14px;
+  border: 1px solid rgba(126,163,194,.26);
+  border-radius: 12px;
+  background: #202a31;
+  color: #eef3f8;
+  overflow: clip;
+}
+#tab-analysis .analysis-source-dropdown > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 48px;
+  padding: 10px 15px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 800;
+  user-select: none;
+}
+#tab-analysis .analysis-source-dropdown > summary::-webkit-details-marker { display: none; }
+#tab-analysis .analysis-source-dropdown > summary::after {
+  content: '▾';
+  margin-left: auto;
+  color: #9cb2c4;
+  font-size: 16px;
+  transition: transform .18s ease;
+}
+#tab-analysis .analysis-source-dropdown[open] > summary::after { transform: rotate(180deg); }
+#tab-analysis .analysis-source-summary-title { color: #f2f5f8; }
+#tab-analysis .analysis-source-summary-value {
+  padding: 5px 10px;
+  border: 1px solid rgba(126,163,194,.28);
+  border-radius: 7px;
+  background: #303c46;
+  color: #dceaf4;
+  font-size: 12px;
+  font-weight: 700;
+}
+#tab-analysis .analysis-source-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+#tab-analysis .analysis-source-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  color: #bac7d2;
+  font-size: 12px;
+  font-weight: 700;
+}
+#tab-analysis .analysis-source-picker select {
+  min-width: 170px;
+  max-width: 220px;
+  height: 38px;
+  padding: 0 34px 0 12px;
+  border: 1px solid rgba(139,165,187,.32);
+  border-radius: 8px;
+  background: #303942;
+  color: #f4f7fa;
+  font: inherit;
+  cursor: pointer;
+}
+#tab-analysis .analysis-source-panel[hidden] { display: none !important; }
+#tab-analysis .analysis-source-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#tab-analysis .analysis-source-controls input {
+  flex: 0 1 210px;
+  width: 210px;
+  max-width: 100%;
+  min-width: 150px;
+  height: 40px;
+  padding: 8px 11px;
+  border: 1px solid rgba(139,165,187,.32);
+  border-radius: 8px;
+  background: #eaf3fa;
+  color: #17212a;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+#tab-analysis .analysis-source-controls input:focus,
+#tab-analysis #analysisPgnText:focus {
+  border-color: #6fa9ed;
+  box-shadow: 0 0 0 3px rgba(73,143,225,.17);
+}
+#tab-analysis .analysis-source-controls .action-btn {
+  min-height: 40px;
+  padding: 8px 13px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+#tab-analysis .analysis-latest-btn { background: #33465c; }
+#tab-analysis .analysis-pgn-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #aebdca;
+  font-size: 12px;
+}
+#tab-analysis .analysis-file-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(126,163,194,.3);
+  border-radius: 8px;
+  background: #303c46;
+  color: #f2f6f9;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+#tab-analysis .analysis-file-label input { display: none; }
+#tab-analysis #analysisPgnText {
+  display: block;
+  width: 100%;
+  min-height: 105px;
+  padding: 11px 12px;
+  resize: vertical;
+  border: 1px solid rgba(139,165,187,.32);
+  border-radius: 8px;
+  background: #131a20;
+  color: #eaf0f5;
+  font: 12px/1.45 Consolas, monospace;
+}
+#tab-analysis .analysis-pgn-submit {
+  justify-self: start;
+  min-height: 40px;
+  padding: 8px 14px;
+}
+#tab-analysis .analysis-imported-game {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+#tab-analysis .analysis-imported-game.selected { border-left-color: #81b64c; }
+#tab-analysis .analysis-imported-game-info { display: grid; gap: 4px; min-width: 0; }
+#tab-analysis .analysis-imported-game-info strong { overflow: hidden; color: #eef3f7; text-overflow: ellipsis; white-space: nowrap; }
+#tab-analysis .analysis-imported-game-info small { color: #aab7c3; font-size: 11px; }
+#tab-analysis .analysis-imported-game-number { flex: 0 0 auto; color: #98c46a; font-size: 12px; font-weight: 800; }
+
+/* Значок оценки закреплён в правом верхнем углу клетки, куда пришла фигура. */
+#tab-analysis #analysisBoard .custom-overlay { z-index: 100 !important; overflow: visible; }
+#tab-analysis #analysisBoard .board-badge {
+  position: absolute !important;
+  z-index: 110 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 23px;
+  min-height: 21px;
+  padding: 1px 5px;
+  border: 1px solid rgba(255,255,255,.82);
+  border-radius: 6px;
+  font-size: clamp(10px, 1.1vw, 14px);
+  line-height: 1;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
+  box-shadow: 0 2px 7px rgba(0,0,0,.42);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Линии движка остаются выше статистики, сразу под графиком. */
+#tab-analysis .right-panel > .top-lines { order: 1; margin: 10px 0 12px; }
+#tab-analysis .right-panel > .analysis-insights { order: 2; margin-top: 0; }
+#tab-analysis .right-panel > .move-list-container { order: 3; }
+#tab-analysis .right-panel > .graph-container { order: 0; }
+
+@media (max-width: 640px) {
+  #tab-analysis .analysis-source-dropdown > summary { min-height: 44px; padding: 9px 11px; }
+  #tab-analysis .analysis-source-picker { align-items: flex-start; flex-direction: column; gap: 6px; }
+  #tab-analysis .analysis-source-picker select { width: 100%; max-width: none; }
+  #tab-analysis .analysis-source-controls { align-items: stretch; }
+  #tab-analysis .analysis-source-controls input { flex: 1 1 100%; width: 100%; }
+  #tab-analysis .analysis-source-controls .action-btn { flex: 1 1 auto; }
+}
+
+
+/* Stockfish top-3: always visible, readable and ranked by line strength. */
+#tab-analysis .top-lines {
+  display: block !important;
+  min-width: 0;
+  width: 100%;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+#tab-analysis #topLinesList {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-height: 42px;
+  width: 100%;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+#tab-analysis #topLinesList.has-engine-lines { min-height: 0; }
+#tab-analysis .top-line-button {
+  display: grid !important;
+  grid-template-columns: 26px minmax(72px, auto) minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 3px 9px;
+  min-height: 56px;
+  padding: 8px 11px;
+  overflow: visible;
+  color: #f2f6fa !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+#tab-analysis .top-line-rank {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #35414b;
+  color: #e4edf5;
+  font-size: 12px;
+  font-weight: 900;
+}
+#tab-analysis .top-line-1 .top-line-rank { background: #6c9f3d; }
+#tab-analysis .top-line-2 .top-line-rank { background: #347fc5; }
+#tab-analysis .top-line-3 .top-line-rank { background: #7d68b2; }
+#tab-analysis .top-line-button .top-line-move {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  color: #b9df85;
+  font-size: 14px;
+  font-weight: 900;
+}
+#tab-analysis .top-line-button .top-line-pv {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  color: #c9d2dc;
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#tab-analysis .top-line-button .top-line-eval {
+  grid-column: 4;
+  grid-row: 1 / 3;
+  align-self: center;
+  color: #edf4fa;
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+#tab-analysis .top-line-1 { border-left: 4px solid #80b94b; }
+#tab-analysis .top-line-2 { border-left: 3px solid #3d92e4; }
+#tab-analysis .top-line-3 { border-left: 2px solid #987fc8; }
+#tab-analysis .engine-lines-state {
+  display: block;
+  min-height: 38px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px;
+  background: #252a31;
+  color: #b6c1cb;
+  font-size: 12px;
+  line-height: 1.45;
+}
+#tab-analysis .engine-lines-state.is-loading { color: #a9cb7a; }
+#tab-analysis .engine-lines-state.is-error { color: #ff9999; border-color: rgba(239,83,80,.35); }
+@media (max-width: 650px) {
+  #tab-analysis .top-line-button { grid-template-columns: 24px minmax(52px, auto) minmax(0, 1fr) auto; gap: 4px 6px; padding: 8px; }
+  #tab-analysis .top-line-button .top-line-move { font-size: 12px; }
+  #tab-analysis .top-line-button .top-line-pv { font-size: 11px; }
+  #tab-analysis .top-line-button .top-line-eval { font-size: 12px; }
+}
+
+/* FIX v5: правая панель — вертикальный поток, чтобы блок MultiPV не схлопывался. */
+#tab-analysis .right-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  gap: 12px !important;
+  overflow: visible !important;
+}
+#tab-analysis .right-panel > .graph-container { order: 0 !important; flex: 0 0 auto !important; }
+#tab-analysis .right-panel > .top-lines {
+  order: 1 !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  min-height: 125px !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 10px !important;
+  border: 1px solid rgba(116,151,179,.34) !important;
+  border-radius: 11px !important;
+  background: #1d2a33 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+}
+#tab-analysis .top-lines-heading {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 9px !important;
+}
+#tab-analysis .top-lines-heading .panel-mini-title { margin: 0 !important; }
+#tab-analysis .refresh-engine-lines {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 4px 9px;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 7px;
+  background: #2c3942;
+  color: #dce6ee;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+#tab-analysis .refresh-engine-lines:hover { background: #3a4b57; border-color: #79a8d5; }
+#tab-analysis .refresh-engine-lines:disabled { opacity: .5; cursor: wait; }
+#tab-analysis #topLinesList {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 7px !important;
+  min-height: 42px !important;
+  height: auto !important;
+  width: 100% !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+#tab-analysis #topLinesList .top-line-button {
+  display: grid !important;
+  width: 100% !important;
+  min-height: 48px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+#tab-analysis .right-panel > .analysis-insights { order: 2 !important; flex: 0 0 auto !important; margin: 0 !important; }
+#tab-analysis .right-panel > .move-list-container { order: 3 !important; flex: 0 1 auto !important; }
+
+/* Overlay пользовательских стрелок всегда лежит прямо над клетками и не
+   перехватывает мышь. Координаты берутся из прямоугольников реальных клеток,
+   поэтому переворот Chessboard.js не инвертирует направление. */
+#tab-analysis .board-area > .user-draw-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 40 !important;
+  pointer-events: none !important;
+  overflow: visible !important;
+}
+#tab-analysis .board-area > #arrowOverlay { z-index: 30 !important; }
+@media (max-width: 1100px) {
+  #tab-analysis .right-panel { display: flex !important; flex-direction: column !important; }
+}

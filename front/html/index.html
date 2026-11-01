@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Trainer — Шахматный тренажёр</title>
+<link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
+<link rel="stylesheet" href="/css/index.css">
+<link rel="stylesheet" href="/css/index-layout.css">
+<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261101-arrow-visual-mate-v7">
+<script src="/js/jquery.min.js"></script>
+<script src="/js/chessboard-1.0.0.min.js"></script>
+<script src="/js/chess.min.js"></script>
+<script src="/js/index.js?v=20261101-arrow-visual-mate-v7" defer></script>
+<script src="/js/diary-ui.js" defer></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a href="/" class="brand">
+      <span class="brand-mark">♞</span>
+      <span class="brand-text"><strong>CHESS TRAINER</strong><small>Твой шахматный прогресс</small></span>
+    </a>
+
+    <div class="sidebar-section-label">ИГРА</div>
+    <nav class="sidebar-nav">
+      <a href="/bots" class="side-link"><span class="side-icon">♟</span><span>Игра с ботом</span><span class="side-arrow">↗</span></a>
+      <a href="/mates" class="side-link"><span class="side-icon">♔</span><span>Практика матов</span><span class="side-arrow">↗</span></a>
+    </nav>
+
+    <div class="sidebar-section-label">ТРЕНИРОВКА</div>
+    <nav class="sidebar-nav">
+      <button class="side-link tab-btn active" data-tab="plan"><span class="side-icon">▦</span><span>План тренировок</span></button>
+      <!-- Раздел задач скрыт из меню и интерфейса. Служебные элементы ниже оставлены для совместимости со старым index.js. -->
+      <button class="side-link tab-btn" data-tab="endgames"><span class="side-icon">♜</span><span>Эндшпили</span></button>
+      <a href="/openings" class="side-link"><span class="side-icon">♘</span><span>Дебюты</span><span class="side-arrow">↗</span></a>
+      <button class="side-link tab-btn" data-tab="analysis"><span class="side-icon">⌕</span><span>Анализ партий</span></button>
+      <button class="side-link tab-btn" data-tab="blindfold"><span class="side-icon">◉</span><span>Слепая игра</span></button>
+    </nav>
+
+    <div class="sidebar-section-label">МОЙ ПРОГРЕСС</div>
+    <nav class="sidebar-nav">
+      <button class="side-link tab-btn" data-tab="diary"><span class="side-icon">▤</span><span>Дневник</span></button>
+      <button class="side-link tab-btn" data-tab="streak"><span class="side-icon">🔥</span><span>Винстрик</span></button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="target-card"><span class="target-icon">♛</span><span><strong>Твоя цель</strong><small>800 → 1300 ELO</small></span></div>
+      <div class="sidebar-version">CHESS TRAINER · 1.0</div>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <header class="main-topbar">
+      <div class="topbar-title">
+        <div class="topbar-kicker">ТВОЁ ШАХМАТНОЕ ПРОСТРАНСТВО</div>
+        <h1>Шахматный тренажёр</h1>
+        <p>Тренируйся, анализируй и становись сильнее</p>
+      </div>
+      <div class="today-banner" id="today-date"><span class="today-label">СЕГОДНЯ</span><strong>Загрузка даты...</strong></div>
+    </header>
+
+    <main class="main-content">
+      <div id="error-banner"></div>
+
+      <section id="tab-plan" class="tab-content active">
+        <div class="section-heading"><div><div class="section-kicker">ТВОЙ МАРШРУТ</div><h2>План тренировок</h2><p>Постепенно двигайся от 800 к 1300 рейтинга</p></div><div class="section-badge">16 недель</div></div>
+        <div id="recommendations-banner"><h3>💡 Персональные рекомендации:</h3><ul id="recommendations-list"></ul></div>
+        <div class="progress-card"><div class="progress-heading"><strong>Общий прогресс</strong><span id="progressText"></span></div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div></div>
+        <div class="layout">
+          <aside class="plan-sidebar"><div id="phases"></div><div class="week-list" id="weeks"></div></aside>
+          <main class="plan-main">
+            <div class="nav-buttons"><button class="nav-btn" id="prevBtn">← Предыдущий</button><button class="nav-btn" id="nextBtn">Следующий →</button><button class="nav-btn" id="todayBtn">К сегодняшнему дню</button></div>
+            <div id="dayView"></div>
+          </main>
+        </div>
+      </section>
+
+      <!-- Скрытый технический контейнер нужен старому index.js, но пользователю раздел задач не показывается. -->
+      <section id="tab-puzzles" class="tab-content legacy-hidden" aria-hidden="true">
+        <div class="split"><div class="list-box" id="puzzleList">Загрузка...</div><div class="board-wrap"><div id="puzzleBoard"></div><svg id="userDraw_puzzleBoard" class="user-draw-overlay"></svg><div id="puzzleFeedback" class="feedback"></div><div id="puzzleHint" class="hint"></div><div class="btn-row"><button class="action-btn" id="puzzleResetBtn">Сбросить</button><button class="action-btn" id="puzzleHintBtn">Подсказка</button><button class="action-btn" id="puzzleSolutionBtn">Показать решение</button></div></div></div>
+      </section>
+
+      <section id="tab-endgames" class="tab-content">
+        <div class="section-heading"><div><div class="section-kicker">ТЕХНИКА И ТОЧНОСТЬ</div><h2>Эндшпили</h2><p>Учись уверенно реализовывать преимущество</p></div></div>
+        <div class="split training-split"><div class="list-box" id="endgameList">Загрузка...</div><div class="training-board-column"><div class="board-wrap" oncontextmenu="return false;"><div id="endgameBoard"></div><svg id="userDraw_endgameBoard" class="user-draw-overlay"></svg><div id="endgameFeedback" class="feedback"></div><div class="btn-row"><button class="action-btn" id="endgameResetBtn">↺ Новая позиция</button></div></div></div></div>
+      </section>
+
+      <section id="tab-openings" class="tab-content">
+        <div class="section-heading"><div><div class="section-kicker">ДЕБЮТНАЯ ПОДГОТОВКА</div><h2>Изучение дебютов с ботом</h2><p>Сначала разбери теорию, затем повтори линию самостоятельно и продолжи партию против Stockfish</p></div><div class="section-badge">Теория → Практика → Игра</div></div>
+
+        <div class="opening-trainer">
+          <div class="opening-trainer-setup">
+            <div class="opening-trainer-field"><label for="openingTrainerSelect">Выбери дебют</label><select id="openingTrainerSelect"><option>Загрузка дебютов…</option></select></div>
+            <div class="opening-trainer-field"><span class="opening-trainer-label">За кого играешь</span><div class="opening-trainer-side"><button type="button" class="active" data-opening-side="white">♔ Белыми</button><button type="button" data-opening-side="black">♚ Чёрными</button></div></div>
+            <div class="opening-trainer-field"><label for="openingTrainerLevel">Сила бота после дебюта</label><select id="openingTrainerLevel"><option value="easy">Лёгкий</option><option value="medium" selected>Средний</option><option value="strong">Сильный</option></select></div>
+            <button type="button" class="opening-trainer-primary" id="openingStudyStartBtn">Изучить теорию</button>
+          </div>
+
+          <div class="opening-trainer-intro">
+            <article class="opening-trainer-card">
+              <div class="opening-trainer-label">ВЫБРАННОЕ НАЧАЛО</div>
+              <h3 id="openingTrainerTitle">Загрузка дебютов…</h3>
+              <p id="openingTrainerDescription">Выбери дебют из списка, чтобы увидеть его идеи.</p>
+            </article>
+            <article class="opening-trainer-card opening-trainer-plans">
+              <div class="opening-plan"><strong>План белых</strong><span id="openingPlanWhite">—</span></div>
+              <div class="opening-plan"><strong>План чёрных</strong><span id="openingPlanBlack">—</span></div>
+            </article>
+          </div>
+
+          <div class="opening-trainer-idle" id="openingTrainerIdle">
+            <div class="opening-trainer-idle-icon">♟</div>
+            <h3>Начни с теории</h3>
+            <p>Доска будет показывать каждый ход выбранной линии. После просмотра бот сыграет за соперника, а тебе нужно будет вспомнить свои ходы без подсказок.</p>
+          </div>
+
+          <div class="opening-trainer-layout">
+            <article class="opening-trainer-board-card" id="openingTrainerBoardPanel" hidden>
+              <div class="opening-trainer-board-meta"><strong id="openingTrainerModeLabel">ИЗУЧЕНИЕ ТЕОРИИ</strong><span id="openingTrainerProgressText">0 ходов</span></div>
+              <div class="opening-trainer-board-shell" oncontextmenu="return false;"><div id="openingTrainerBoard"></div></div>
+              <div class="opening-trainer-progress"><div class="opening-trainer-progress-track"><div class="opening-trainer-progress-fill" id="openingTrainerProgressFill"></div></div><span class="opening-trainer-progress-text" id="openingTrainerProgressTextBottom">0%</span></div>
+              <div class="opening-trainer-message" id="openingTrainerMessage" role="status">Загружаю дебюты…</div>
+            </article>
+
+            <article class="opening-trainer-theory-card" id="openingTrainerMovesPanel" hidden>
+              <div class="opening-trainer-stage"><span class="opening-trainer-stage-badge">ПОРЯДОК ХОДОВ</span><span class="opening-trainer-stage-line"></span></div>
+              <h3>Линия дебюта</h3>
+              <div class="opening-trainer-moves" id="openingTrainerMoves"></div>
+              <div id="openingTrainerStudy" hidden>
+                <p class="opening-trainer-step" id="openingStudyStep">Позиция перед первым ходом</p>
+                <div class="opening-trainer-controls"><button type="button" class="opening-trainer-secondary" id="openingStudyPrev" disabled>← Назад</button><button type="button" class="opening-trainer-primary" id="openingStudyNext">Следующий ход →</button><button type="button" class="opening-trainer-primary" id="openingStartPractice" hidden>Начать повторение</button></div>
+                <p class="opening-trainer-hint">Изучи расположение фигур, очередность ходов и стратегические планы обеих сторон.</p>
+              </div>
+              <div id="openingTrainerPlay" hidden>
+                <p class="opening-trainer-step" id="openingPracticeStatus">Твой ход. Вспомни продолжение из теории.</p>
+                <div class="opening-trainer-controls"><button type="button" class="opening-trainer-secondary" id="openingPracticeRestart">Начать заново</button><button type="button" class="opening-trainer-secondary" id="openingTrainerReset">К выбору дебюта</button></div>
+                <p class="opening-trainer-hint">Во время повторения подсказки не показываются. После завершения линии бот продолжит игру на Stockfish.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <!-- Скрытый старый просмотрщик сохранён для совместимости с index.js. -->
+        <div class="opening-legacy" aria-hidden="true">
+          <div class="side-toggle"><button class="side-btn active" data-side="white">♔ За белых</button><button class="side-btn" data-side="black">♚ За чёрных</button></div>
+          <div class="split training-split"><div class="list-box" id="openingList">Загрузка...</div><div class="training-board-column"><div class="board-wrap opening-board-wrap" oncontextmenu="return false;"><div class="opening-board-shell"><div id="openingBoard"></div><svg id="userDraw_openingBoard" class="user-draw-overlay"></svg></div><div class="btn-row" id="openingNav"><button class="action-btn" id="openingStart">⏮ В начало</button><button class="action-btn" id="openingPrev">← Назад</button><button class="action-btn" id="openingNext">Вперёд →</button><button class="action-btn" id="openingEnd">В конец ⏭</button></div><div class="opening-desc" id="openingDesc"></div></div></div></div>
+        </div>
+      </section>
+
+      <section id="tab-analysis" class="tab-content">
+        <div class="section-heading"><div><div class="section-kicker">РАЗБОР ИГРЫ</div><h2>Анализ партий</h2><p>Загружай партии с Chess.com, Lichess или PGN и разбирай каждый ход</p></div></div>
+        <details class="analysis-source-dropdown" id="analysisSourceDetails">
+          <summary><span class="analysis-source-summary-title">Загрузить партию</span><span class="analysis-source-summary-value" id="analysisSourceSummaryValue">Chess.com</span></summary>
+          <div class="analysis-source-body">
+            <label class="analysis-source-picker"><span>Источник партии</span><select id="analysisSourceSelect"><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option><option value="pgn">PGN-файл или текст</option></select></label>
+            <div class="analysis-source-panel" id="analysisSourceChesscom">
+              <div class="analysis-source-controls"><input type="text" id="chesscomUsername" placeholder="Ник на Chess.com" autocomplete="off" spellcheck="false"><button class="action-btn" id="loadGamesBtn">📂 Посмотреть игры</button><button class="action-btn analysis-latest-btn" id="analyzeLatestBtn">⚡ Последняя</button></div>
+              <div id="chesscomGamesList" class="chesscom-games-list"></div>
+            </div>
+            <div class="analysis-source-panel" id="analysisSourceLichess" hidden>
+              <div class="analysis-source-controls"><input type="text" id="lichessUsername" placeholder="Ник на Lichess" autocomplete="off" spellcheck="false"><button class="action-btn" id="loadLichessGamesBtn">📂 Посмотреть игры</button><button class="action-btn analysis-latest-btn" id="analyzeLichessLatestBtn">⚡ Последняя</button></div>
+              <div id="lichessGamesList" class="chesscom-games-list"></div>
+            </div>
+            <div class="analysis-source-panel" id="analysisSourcePgn" hidden>
+              <div class="analysis-pgn-controls"><label class="analysis-file-label">Выбрать PGN-файл<input type="file" id="analysisPgnFile" accept=".pgn,.txt,text/plain,application/x-chess-pgn"></label><span id="analysisPgnFileName">Файл не выбран</span></div>
+              <textarea id="analysisPgnText" rows="5" placeholder="Или вставь сюда текст партии в формате PGN…" spellcheck="false"></textarea>
+              <button class="action-btn analysis-pgn-submit" id="analyzePgnBtn">⚡ Загрузить партии PGN</button>
+              <div id="analysisPgnGamesList" class="chesscom-games-list"></div>
+            </div>
+          </div>
+        </details>
+        <div class="analysis-container">
+          <div class="left-panel"><div class="eval-bar-wrapper"><div class="eval-text" id="evalText">0.0</div><div class="eval-bar-vertical"><div class="eval-bar-white" id="evalBarWhite" style="height:50%"></div></div></div><div class="analysis-board-column"><div id="topPlayer" class="player-name"><span>Black Player</span><span class="player-clock" id="topClock">10:00</span></div><div class="board-area" oncontextmenu="return false;"><div id="analysisBoard"></div><svg id="userDraw_analysisBoard" class="user-draw-overlay"></svg><svg id="arrowOverlay" class="analysis-arrow-overlay" aria-hidden="true"></svg><div id="analysisMoveEffect" class="analysis-move-effect" aria-hidden="true"><span id="analysisMoveEffectPulse"></span></div></div><div id="bottomPlayer" class="player-name"><span>White Player</span><span class="player-clock" id="bottomClock">10:00</span></div><div class="btn-row analysis-navigation"><button class="action-btn" id="analysisStart">⏮</button><button class="action-btn" id="analysisPrev" title="Предыдущий ход" aria-label="Предыдущий ход">⏴</button><button class="action-btn analysis-play-btn" id="analysisPlay" title="Воспроизвести партию" aria-label="Воспроизвести партию">▶</button><button class="action-btn" id="analysisNext" title="Следующий ход" aria-label="Следующий ход">⏵</button><button class="action-btn" id="analysisEnd">⏭</button><button class="action-btn" id="flipBoardBtn">🔄 Перевернуть</button></div></div></div>
+          <div class="right-panel"><div class="graph-container"><canvas id="evalGraph" width="420" height="100"></canvas></div><div class="top-lines"><div class="top-lines-heading"><div class="panel-mini-title">Топ-3 продолжения</div><button type="button" class="refresh-engine-lines" id="refreshEngineLinesBtn" title="Повторить анализ этой позиции">↻ Обновить</button></div><div id="topLinesList">Выберите игру...</div></div><section class="analysis-insights" aria-label="Статистика анализа"><div class="analysis-accuracy-card"><div class="analysis-insights-title">Точность по оценке Stockfish</div><div class="analysis-accuracy-grid"><div class="analysis-accuracy-side white"><span class="analysis-accuracy-name" id="analysisWhiteName">Белые</span><strong id="analysisWhiteAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisWhiteAccuracyFill"></i></div></div><div class="analysis-accuracy-side black"><span class="analysis-accuracy-name" id="analysisBlackName">Чёрные</span><strong id="analysisBlackAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisBlackAccuracyFill"></i></div></div></div></div><div class="analysis-categories-card"><div class="analysis-insights-title">Качество ходов</div><div class="analysis-category-header"><span>Категория</span><span>Белые</span><span></span><span>Чёрные</span></div><div id="analysisCategoryRows" class="analysis-category-rows"><div class="analysis-stats-empty">Пока нет данных</div></div></div></section><div class="move-list-container"><div class="move-list-toolbar"><strong>Ходы партии</strong><div class="move-list-toolbar-actions"><button type="button" id="analysisMoveTop" class="action-btn move-jump-btn" title="К первому ходу">⏮ В начало</button><button type="button" id="analysisMoveBottom" class="action-btn move-jump-btn" title="К последнему ходу">В конец ⏭</button></div></div><div class="move-headers"><div class="header-num">№</div><div class="header-white" id="headerWhite">Белые</div><div class="header-black" id="headerBlack">Чёрные</div></div><table class="move-table" id="moveTable"><tbody id="moveTableBody"></tbody></table></div></div>
+        </div>
+      </section>
+
+      <section id="tab-blindfold" class="tab-content">
+        <div class="section-heading"><div><div class="section-kicker">ТРЕНИРОВКА ПАМЯТИ</div><h2>Слепая игра</h2><p>Представляй позицию и называй ходы без доски</p></div></div>
+        <div class="blindfold-card"><div class="board-wrap blindfold-board-wrap" oncontextmenu="return false;"><div class="blindfold-board-shell"><div id="blindfoldBoard"></div><svg id="userDraw_blindfoldBoard" class="user-draw-overlay"></svg></div><input type="text" id="blindfoldInput" class="blindfold-input" placeholder="Введи ход (например, e4 или Nf3)" autocomplete="off"><div class="feedback" id="blindfoldFeedback"></div><div class="blindfold-history" id="blindfoldHistory"></div><div class="btn-row"><button class="action-btn" id="blindfoldToggleBtn">👁️ Показать доску</button><button class="action-btn" id="blindfoldResetBtn">↺ Новая игра</button></div></div></div>
+      </section>
+
+      <section id="tab-diary" class="tab-content">
+        <div class="section-heading"><div><div class="section-kicker">РЕГУЛЯРНОСТЬ</div><h2>Дневник активности</h2><p>Отмечай каждый день, когда заходишь тренироваться</p></div></div>
+        <div class="diary-dashboard">
+          <div class="diary-stats">
+            <article class="diary-stat"><span class="diary-stat-label">Активных дней</span><strong id="diaryDaysTotal">0</strong><small>За всё время</small></article>
+            <article class="diary-stat"><span class="diary-stat-label">В этом месяце</span><strong id="diaryMonthTotal">0</strong><small>Дней с активностью</small></article>
+            <article class="diary-stat"><span class="diary-stat-label">Последняя тренировка</span><strong id="diaryLastDate">—</strong><small>Последняя отмеченная дата</small></article>
+          </div>
+          <div class="diary-chart-card"><div class="diary-chart-heading"><div><h3>Календарь активности</h3><p>Каждая клетка — один день</p></div><div class="diary-legend"><span>Меньше</span><i class="level-0"></i><i class="level-1"></i><span>Больше</span></div></div><div class="diary-canvas-wrap"><canvas id="diaryCanvas" width="1100" height="190"></canvas></div><div class="diary-empty" id="diaryEmpty" hidden>Пока нет отмеченных дней. Заходи на сайт каждый день — активность появится здесь.</div></div>
+        </div>
+      </section>
+
+      <section id="tab-streak" class="tab-content">
+        <div class="section-heading"><div><div class="section-kicker">ТВОИ РЕЗУЛЬТАТЫ</div><h2>Статистика и винстрик</h2><p>Отслеживай результаты за сегодня</p></div></div>
+        <div class="diary-container"><div class="chesscom-input-group streak-input"><input type="text" id="streakUsername" placeholder="Ник на Chess.com"><button class="action-btn" id="analyzeTodayBtn">⚡ Авто-анализ за сегодня</button></div>
+          <div class="streak-grid"><div class="streak-card"><div class="streak-val" id="streak-total">0</div><div class="streak-lbl">Всего игр</div></div><div class="streak-card win"><div class="streak-val" id="streak-wins">0</div><div class="streak-lbl">Побед</div></div><div class="streak-card draw"><div class="streak-val" id="streak-draws">0</div><div class="streak-lbl">Ничьих</div></div><div class="streak-card loss"><div class="streak-val" id="streak-losses">0</div><div class="streak-lbl">Поражений</div></div></div>
+          <div class="streak-grid streak-second-row"><div class="streak-card current"><div class="streak-val" id="streak-current">0</div><div class="streak-lbl">Текущий винстрик</div></div><div class="streak-card max"><div class="streak-val" id="streak-max">0</div><div class="streak-lbl">Рекорд за день</div></div><div class="streak-card"><div class="streak-val" id="streak-winrate">0%</div><div class="streak-lbl">% Побед</div></div></div>
+          <div class="btn-row streak-actions"><button class="action-btn" onclick="addStreakResult('win')">+ Победа</button><button class="action-btn" onclick="addStreakResult('draw')">+ Ничья</button><button class="action-btn" onclick="addStreakResult('loss')">+ Поражение</button></div>
+        </div>
+      </section>
+    </main>
+    <footer class="main-footer"><span>CHESS TRAINER</span><span>Тренируйся каждый день ♟</span></footer>
+  </div>
+</div>
+
+<div id="promotionModal"><div class="promotion-content"><div class="promotion-btn" data-piece="q" title="Ферзь">♕</div><div class="promotion-btn" data-piece="r" title="Ладья">♖</div><div class="promotion-btn" data-piece="b" title="Слон">♗</div><div class="promotion-btn" data-piece="n" title="Конь">♘</div></div></div>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a1420">
+  <title>Изучение дебютов — Chess Trainer</title>
+  <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
+  <link rel="stylesheet" href="/css/index.css">
+  <link rel="stylesheet" href="/css/openings-page.css">
+  <script src="/js/jquery.min.js"></script>
+  <script src="/js/chessboard-1.0.0.min.js"></script>
+  <script src="/js/chess.min.js"></script>
+  <script src="/js/openings-data.js?v=20261101-2" defer></script>
+  <script src="/js/openings-training.js?v=20261101-2" defer></script>
+</head>
+<body class="openings-page-body">
+  <div class="openings-app">
+    <header class="openings-header">
+      <a class="openings-back" href="/" aria-label="Вернуться на главную">← <span>На главную</span></a>
+      <a class="openings-brand" href="/">
+        <span class="openings-brand-mark">♞</span>
+        <span><strong>CHESS TRAINER</strong><small>Тренируй дебютную игру</small></span>
+      </a>
+      <div class="openings-header-tag"><span class="online-dot"></span> ДЕБЮТНАЯ ЛАБОРАТОРИЯ</div>
+    </header>
+
+    <main class="openings-content">
+      <div class="openings-page-heading">
+        <div>
+          <div class="opening-page-kicker">ТЕОРИЯ · ЗАПОМИНАНИЕ · ПРАКТИКА</div>
+          <h1>Изучение дебютов с ботом</h1>
+          <p>Разбери дебют на доске, повтори линию без подсказок и продолжи партию против Stockfish.</p>
+        </div>
+        <div class="opening-stage-legend"><span>01</span> Теория <i>→</i> <span>02</span> Самостоятельно <i>→</i> <span>03</span> Игра</div>
+      </div>
+
+      <div class="opening-workspace">
+        <section class="opening-center-column" aria-label="Шахматная доска и теория дебюта">
+          <article class="opening-board-card" id="openingTrainerBoardPanel">
+            <div class="opening-board-topline">
+              <div>
+                <span class="opening-board-eyebrow" id="openingTrainerModeLabel">ВЫБЕРИ ДЕБЮТ</span>
+                <h2 id="openingTrainerTitle">Загрузка каталога…</h2>
+              </div>
+              <span class="opening-board-side-tag" id="openingTrainerProgressText">0 ходов</span>
+            </div>
+
+            <div class="opening-board-center">
+              <div class="opening-board-shell" oncontextmenu="return false;">
+                <div id="openingTrainerBoard"></div>
+              </div>
+            </div>
+            <div class="opening-board-help">ПКМ + перетаскивание — стрелка · ПКМ по клетке — кружок</div>
+
+            <div class="opening-progress-row">
+              <div class="opening-progress-track"><div id="openingTrainerProgressFill"></div></div>
+              <span id="openingTrainerProgressTextBottom">0%</span>
+            </div>
+            <div class="opening-trainer-message" id="openingTrainerMessage" role="status" aria-live="polite">Загружаю дебюты…</div>
+          </article>
+
+          <article class="opening-description-card">
+            <div class="opening-description-main">
+              <span class="opening-card-eyebrow">ИДЕЯ ДЕБЮТА</span>
+              <p id="openingTrainerDescription">Выбери дебют справа, чтобы увидеть его основные идеи.</p>
+            </div>
+            <div class="opening-plans-grid">
+              <div class="opening-plan-item"><span>♔ План белых</span><p id="openingPlanWhite">—</p></div>
+              <div class="opening-plan-item"><span>♚ План чёрных</span><p id="openingPlanBlack">—</p></div>
+            </div>
+          </article>
+        </section>
+
+        <aside class="opening-right-panel" aria-label="Выбор дебюта и настройки тренировки">
+          <section class="opening-panel-section opening-catalog-section">
+            <div class="opening-panel-heading">
+              <div><span class="opening-card-eyebrow">РЕПЕРТУАР</span><h2>Выбери дебют</h2></div>
+              <span class="opening-panel-icon">♟</span>
+            </div>
+            <div class="opening-category-switch" role="group" aria-label="Дебюты по цвету">
+              <button type="button" class="active" data-opening-category="white" aria-pressed="true">♔ За белых</button>
+              <button type="button" data-opening-category="black" aria-pressed="false">♚ За чёрных</button>
+            </div>
+            <div id="openingCatalogList" class="opening-catalog-list">
+              <div class="opening-catalog-empty">Каталог загружается…</div>
+            </div>
+            <select id="openingTrainerSelect" class="opening-hidden-select" aria-hidden="true" tabindex="-1"></select>
+          </section>
+
+          <section class="opening-panel-section opening-player-section">
+            <div class="opening-panel-heading compact"><div><span class="opening-card-eyebrow">ТВОЯ СТОРОНА</span><h2>За кого играть?</h2></div></div>
+            <div class="opening-player-switch" role="group" aria-label="Выбор цвета фигур">
+              <button type="button" class="active" data-opening-side="white" aria-pressed="true"><span>♔</span> Белыми</button>
+              <button type="button" data-opening-side="black" aria-pressed="false"><span>♚</span> Чёрными</button>
+            </div>
+            <label class="opening-level-label" for="openingTrainerLevel">Сложность Stockfish</label>
+            <select id="openingTrainerLevel" class="opening-level-select">
+              <option value="easy">Лёгкая</option>
+              <option value="medium" selected>Средняя</option>
+              <option value="strong">Сильная</option>
+            </select>
+          </section>
+
+          <section class="opening-panel-section opening-lesson-section" id="openingTrainerMovesPanel">
+            <div class="opening-panel-heading compact"><div><span class="opening-card-eyebrow">ПОСЛЕДОВАТЕЛЬНОСТЬ</span><h2>Ходы дебюта</h2></div><span class="opening-stage-count" id="openingStageCount">2 этапа</span></div>
+            <div id="openingTrainerMoves" class="opening-moves-list"></div>
+
+            <div id="openingTrainerStudy" class="opening-mode-controls" hidden>
+              <p id="openingStudyStep" class="opening-step-description">Позиция перед первым ходом</p>
+              <div class="opening-button-grid three">
+                <button type="button" class="opening-btn secondary" id="openingStudyPrev" disabled>← Назад</button>
+                <button type="button" class="opening-btn primary" id="openingStudyNext">Далее →</button>
+                <button type="button" class="opening-btn accent" id="openingStartPractice" hidden>Повторить</button>
+              </div>
+            </div>
+
+            <div id="openingTrainerPlay" class="opening-mode-controls" hidden>
+              <p id="openingPracticeStatus" class="opening-step-description">Твой ход. Вспомни продолжение из теории.</p>
+              <div class="opening-button-grid">
+                <button type="button" class="opening-btn secondary" id="openingPracticeRestart">Начать заново</button>
+                <button type="button" class="opening-btn secondary" id="openingTrainerReset">Сбросить этап</button>
+              </div>
+            </div>
+
+            <div id="openingTrainerIdle" hidden></div>
+            <div class="opening-start-block" id="openingStartBlock">
+              <button type="button" class="opening-btn primary full" id="openingStudyStartBtn">▶ Начать изучение теории</button>
+              <p>Сначала смотри каждый ход, затем повтори свою часть линии самостоятельно.</p>
+            </div>
+          </section>
+
+          <div class="opening-mini-note"><span>ⓘ</span><p>Во втором этапе бот автоматически играет ответные ходы дебютной линии. После успешного повторения можно продолжить обычную партию.</p></div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
