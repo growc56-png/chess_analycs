@@ -3,7 +3,9 @@ const monthsMap = ['января', 'февраля', 'марта', 'апреля
 
 let PLAN = [], currentDay = 1, totalDays = 0;
 let puzzleBoard = null, puzzleGame = null, currentPuzzle = null, puzzleSolved = false;
-let endgameBoard = null, endgameGame = null, currentEndgame = null;
+let endgameBoard = null, endgameGame = null, endgameVirtualGame = null, currentEndgame = null;
+let endgamePremoveQueue = [], endgameBotRequestActive = false, endgamePositionVersion = 0;
+let endgamePlayerColor = 'w';
 let openingBoard = null, currentOpening = null, currentMoveIndex = 0;
 let openingGame = new Chess();
 let isOpponentMoving = false;
@@ -530,12 +532,95 @@ function renderEndgamesList() {
   list.querySelectorAll('.list-item').forEach(el => { el.onclick = () => selectEndgame(endgamesData.find(e => e.id == el.dataset.id)); });
   if (endgamesData.length) selectEndgame(endgamesData[0]);
 }
+
+function forceEndgamePlayerTurn(chessGame) {
+  const fields = chessGame.fen().split(' ');
+  if (fields[1] !== endgamePlayerColor) {
+    fields[1] = endgamePlayerColor;
+    // Соперник пропускается в виртуальной позиции, поэтому право на взятие en passant сгорает.
+    fields[3] = '-';
+  }
+  return new Chess(fields.join(' '));
+}
+
+// Собирает виртуальную позицию: реальная партия + все запланированные ходы игрока.
+function rebuildEndgameVirtualBoard() {
+  endgameVirtualGame = new Chess(endgameGame.fen());
+
+  if (endgameVirtualGame.turn() !== endgamePlayerColor) {
+    endgameVirtualGame = forceEndgamePlayerTurn(endgameVirtualGame);
+  }
+
+  const validQueue = [];
+  for (let i = 0; i < endgamePremoveQueue.length; i++) {
+    if (endgameVirtualGame.turn() !== endgamePlayerColor) {
+      endgameVirtualGame = forceEndgamePlayerTurn(endgameVirtualGame);
+    }
+
+    const planned = endgamePremoveQueue[i];
+    let move = null;
+    try {
+      move = endgameVirtualGame.move({
+        from: planned.from,
+        to: planned.to,
+        promotion: planned.promotion || 'q'
+      });
+    } catch (error) {
+      move = null;
+    }
+
+    if (!move) break;
+    validQueue.push(planned);
+    endgameVirtualGame = forceEndgamePlayerTurn(endgameVirtualGame);
+  }
+
+  const removedCount = endgamePremoveQueue.length - validQueue.length;
+  endgamePremoveQueue = validQueue;
+  return removedCount;
+}
+
+function updateEndgamePremoveHighlights() {
+  document.querySelectorAll('#endgameBoard .premove-from, #endgameBoard .premove-to')
+    .forEach(el => el.classList.remove('premove-from', 'premove-to'));
+
+  endgamePremoveQueue.forEach(move => {
+    const fromSquare = document.querySelector('#endgameBoard .square-' + move.from);
+    const toSquare = document.querySelector('#endgameBoard .square-' + move.to);
+    if (fromSquare) fromSquare.classList.add('premove-from');
+    if (toSquare) toSquare.classList.add('premove-to');
+  });
+}
+
+function renderEndgameBoard() {
+  if (!endgameBoard || !endgameGame) return;
+  const removedCount = rebuildEndgameVirtualBoard();
+  endgameBoard.position(endgameVirtualGame.fen(), false);
+  updateEndgamePremoveHighlights();
+
+  if (removedCount > 0) {
+    setEndgameFeedback('Премув отменён: после хода соперника он стал невозможен.', 'err');
+  }
+}
+
+function setEndgameFeedback(message, type) {
+  const feedback = document.getElementById('endgameFeedback');
+  if (!feedback) return;
+  feedback.textContent = message;
+  feedback.className = 'feedback ' + (type || 'info');
+}
+
 function selectEndgame(eg) {
+  if (!eg) return;
   currentEndgame = eg;
+  endgamePremoveQueue = [];
+  endgameBotRequestActive = false;
+  endgamePositionVersion++;
+
   document.querySelectorAll('#endgameList .list-item').forEach(i => i.classList.remove('active'));
-  const el = document.querySelector(`#endgameList .list-item[data-id="${eg.id}"]`);
+  const el = document.querySelector('#endgameList .list-item[data-id="' + eg.id + '"]');
   if (el) el.classList.add('active');
   clearUserDrawings('endgameBoard');
+  clearHighlights();
 
   let fenToUse = eg.fen;
   let hintToUse = eg.hint;
@@ -547,56 +632,265 @@ function selectEndgame(eg) {
       { fen: "8/8/8/8/8/8/4P3/4K2k w - - 0 1", hint: "Ход белых. Проведи пешку в ферзи, прикрывая её королем." },
       { fen: "8/8/8/8/8/8/3P4/3K2k1 w - - 0 1", hint: "Ход белых. Пешка на d2. Проведи её в ферзи." }
     ];
-    const v = variations[Math.floor(Math.random() * variations.length)];
-    fenToUse = v.fen;
-    hintToUse = v.hint;
+    const variation = variations[Math.floor(Math.random() * variations.length)];
+    fenToUse = variation.fen;
+    hintToUse = variation.hint;
   }
 
   endgameGame = new Chess(fenToUse);
+  endgamePlayerColor = endgameGame.turn();
+  endgameVirtualGame = new Chess(endgameGame.fen());
+
   if (!endgameBoard) {
     endgameBoard = Chessboard('endgameBoard', {
-      position: fenToUse, draggable: true,
-      onDragStart: (source, piece) => {
-        clearUserDrawings('endgameBoard');
-        if (endgameGame.turn() === 'w' && piece.search(/^b/) !== -1) return false;
-        if (endgameGame.turn() === 'b' && piece.search(/^w/) !== -1) return false;
-        highlightMoves(endgameGame, source);
+      position: fenToUse,
+      draggable: true,
+      onDragStart: onEndgameDragStart,
+      onDrop: handleEndgameDrop,
+      onSnapEnd: () => {
+        clearHighlights();
+        renderEndgameBoard();
       },
-      onDrop: handleEndgameDrop, onSnapEnd: () => clearHighlights(), pieceTheme: PIECE_THEME
+      pieceTheme: PIECE_THEME
     });
-  } else {
-    endgameBoard.position(fenToUse);
-    endgameBoard.resize();
+    initRightClickDrawing('endgameBoard');
   }
-  document.getElementById('endgameFeedback').textContent = hintToUse;
-  document.getElementById('endgameFeedback').className = 'feedback info';
+
+  if (endgameBoard.orientation) {
+    endgameBoard.orientation(endgamePlayerColor === 'w' ? 'white' : 'black');
+  }
+  renderEndgameBoard();
+  endgameBoard.resize();
+
+  const colorLabel = endgamePlayerColor === 'w' ? 'Ты играешь белыми. ' : 'Ты играешь чёрными. ';
+  setEndgameFeedback(colorLabel + hintToUse, 'info');
 }
+
+function onEndgameDragStart(source, piece) {
+  if (!currentEndgame || !piece || piece.charAt(0) !== endgamePlayerColor) {
+    return false;
+  }
+
+  const planningMode =
+    endgameGame.turn() !== endgamePlayerColor ||
+    endgameBotRequestActive ||
+    endgamePremoveQueue.length > 0;
+
+  const activeGame = planningMode ? endgameVirtualGame : endgameGame;
+  if (!activeGame || activeGame.moves({ square: source }).length === 0) {
+    return false;
+  }
+
+  clearUserDrawings('endgameBoard');
+  highlightMoves(activeGame, source);
+  return true;
+}
+
 function handleEndgameDrop(source, target) {
-  if (!currentEndgame) return 'snapback';
+  clearHighlights();
+  if (!currentEndgame || !endgameGame || source === target || endgameGame.game_over()) {
+    return 'snapback';
+  }
+
+  const planningMode =
+    endgameGame.turn() !== endgamePlayerColor ||
+    endgameBotRequestActive ||
+    endgamePremoveQueue.length > 0;
+
+  // Если сейчас ход соперника (или уже есть очередь), добавляем ход в виртуальную позицию.
+  if (planningMode) {
+    if (!endgameVirtualGame) rebuildEndgameVirtualBoard();
+    if (endgameVirtualGame.turn() !== endgamePlayerColor) {
+      endgameVirtualGame = forceEndgamePlayerTurn(endgameVirtualGame);
+    }
+
+    let plannedMove = null;
+    try {
+      plannedMove = endgameVirtualGame.move({
+        from: source,
+        to: target,
+        promotion: 'q'
+      });
+    } catch (error) {
+      plannedMove = null;
+    }
+
+    if (!plannedMove) return 'snapback';
+
+    endgamePremoveQueue.push({
+      from: source,
+      to: target,
+      promotion: 'q'
+    });
+
+    renderEndgameBoard();
+    setEndgameFeedback(
+      'Премув ' + source + ' → ' + target + ' поставлен. Он выполнится после ответа соперника, если останется легальным.',
+      'info'
+    );
+    return;
+  }
+
+  // Обычный ход игрока в реальной партии.
   let move = null;
-  try { move = endgameGame.move({ from: source, to: target, promotion: 'q' }); } catch(e) {}
+  try {
+    move = endgameGame.move({ from: source, to: target, promotion: 'q' });
+  } catch (error) {
+    move = null;
+  }
   if (!move) return 'snapback';
-  
-  document.getElementById('endgameFeedback').textContent = '';
-  
-  if (!endgameGame.game_over() && endgameGame.turn() === 'b') {
-    setTimeout(async () => {
+
+  renderEndgameBoard();
+  playMoveSound();
+
+  if (checkEndgameGameOver()) return;
+
+  setEndgameFeedback('Соперник думает… Можешь заранее запланировать следующий ход.', 'info');
+  setTimeout(makeEndgameBotMove, 180);
+}
+
+async function makeEndgameBotMove() {
+  if (
+    !currentEndgame ||
+    !endgameGame ||
+    endgameGame.game_over() ||
+    endgameGame.turn() === endgamePlayerColor ||
+    endgameBotRequestActive
+  ) {
+    return;
+  }
+
+  endgameBotRequestActive = true;
+  const requestVersion = endgamePositionVersion;
+  const requestFen = endgameGame.fen();
+
+  try {
+    const response = await fetch('/api/bot_move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fen: requestFen, level: 6 })
+    });
+    if (!response.ok) throw new Error('Ошибка ответа бота: ' + response.status);
+    const data = await response.json();
+
+    if (requestVersion !== endgamePositionVersion || !currentEndgame) return;
+
+    let applied = null;
+    if (data.move) {
       try {
-        const res = await fetch('/api/bot_move', {
-          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fen: endgameGame.fen(), level: 6 })
+        applied = endgameGame.move({
+          from: data.move.slice(0, 2),
+          to: data.move.slice(2, 4),
+          promotion: data.move[4] || 'q'
         });
-        const data = await res.json();
-        if (data.move) {
-          endgameGame.move({ from: data.move.slice(0,2), to: data.move.slice(2,4), promotion: 'q' });
-          endgameBoard.position(endgameGame.fen());
-        }
-      } catch(e) {}
-    }, 500);
-  } else if (endgameGame.game_over()) {
-    document.getElementById('endgameFeedback').textContent = endgameGame.in_checkmate() ? '✅ Мат! Отлично!' : 'Ничья.';
+      } catch (error) {
+        applied = null;
+      }
+    }
+    if (!applied) throw new Error('Бот не вернул допустимый ход');
+
+    playMoveSound();
+  } catch (error) {
+    if (requestVersion === endgamePositionVersion && currentEndgame && !endgameGame.game_over()) {
+      const legalMoves = endgameGame.moves({ verbose: true });
+      if (legalMoves.length) {
+        const fallback = legalMoves[0];
+        endgameGame.move({
+          from: fallback.from,
+          to: fallback.to,
+          promotion: fallback.promotion || 'q'
+        });
+        playMoveSound();
+      }
+    }
+  } finally {
+    if (requestVersion !== endgamePositionVersion) return;
+
+    endgameBotRequestActive = false;
+    renderEndgameBoard();
+
+    if (checkEndgameGameOver()) return;
+
+    if (endgamePremoveQueue.length > 0) {
+      executeEndgamePremove();
+    } else {
+      setEndgameFeedback('Твой ход. Во время ответа соперника можно заранее поставить премув.', 'info');
+    }
   }
 }
-document.getElementById('endgameResetBtn').onclick = () => { if (currentEndgame) selectEndgame(currentEndgame); };
+
+function executeEndgamePremove() {
+  if (
+    endgamePremoveQueue.length === 0 ||
+    !currentEndgame ||
+    !endgameGame ||
+    endgameGame.game_over() ||
+    endgameGame.turn() !== endgamePlayerColor
+  ) {
+    renderEndgameBoard();
+    return;
+  }
+
+  const plannedMove = endgamePremoveQueue.shift();
+  let move = null;
+  try {
+    move = endgameGame.move({
+      from: plannedMove.from,
+      to: plannedMove.to,
+      promotion: plannedMove.promotion || 'q'
+    });
+  } catch (error) {
+    move = null;
+  }
+
+  if (!move) {
+    endgamePremoveQueue = [];
+    renderEndgameBoard();
+    setEndgameFeedback('Премув отменён: после ответа соперника ход больше невозможен.', 'err');
+    return;
+  }
+
+  renderEndgameBoard();
+  playMoveSound();
+
+  if (checkEndgameGameOver()) return;
+
+  setEndgameFeedback('Премув выполнен. Соперник отвечает…', 'info');
+  setTimeout(makeEndgameBotMove, 140);
+}
+
+function checkEndgameGameOver() {
+  if (!endgameGame) return false;
+
+  if (endgameGame.in_checkmate()) {
+    const playerWon = endgameGame.turn() !== endgamePlayerColor;
+    endgamePremoveQueue = [];
+    setEndgameFeedback(
+      playerWon ? '✅ Мат! Отлично, ты победил!' : '❌ Мат. Соперник победил.',
+      playerWon ? 'ok' : 'err'
+    );
+    renderEndgameBoard();
+    return true;
+  }
+
+  if (
+    endgameGame.in_draw() ||
+    endgameGame.in_stalemate() ||
+    endgameGame.in_threefold_repetition() ||
+    endgameGame.insufficient_material()
+  ) {
+    endgamePremoveQueue = [];
+    setEndgameFeedback('Ничья. Попробуй ещё раз.', 'info');
+    renderEndgameBoard();
+    return true;
+  }
+
+  return false;
+}
+
+document.getElementById('endgameResetBtn').onclick = () => {
+  if (currentEndgame) selectEndgame(currentEndgame);
+};
 
 function initBlindfold() {
   blindfoldBoard = Chessboard('blindfoldBoard', {
