@@ -7,12 +7,12 @@ BASE_DIR = BACKEND_DIR.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-# Весь фронтенд хранится внутри front, разделённый по типам файлов.
+# HTML, CSS и JavaScript хранятся в front, изображения фигур — в корневой img.
 FRONT_DIR = BASE_DIR / "front"
 HTML_DIR = FRONT_DIR / "html"
 CSS_DIR = FRONT_DIR / "css"
 JS_DIR = FRONT_DIR / "js"
-IMG_DIR = FRONT_DIR / "img"
+IMG_DIR = BASE_DIR / "img"
 
 STOCKFISH_PATH = BASE_DIR / "stockfish-windows-x86-64-universal.exe"
 
