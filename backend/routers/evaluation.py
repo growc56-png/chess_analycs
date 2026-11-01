@@ -343,17 +343,23 @@ def evaluate_position(body: EvaluateBody):
             except Exception:
                 pass
 
-            top_moves = get_multipv_lines_robust(
-                engine,
-                board,
-                depth=EVALUATE_DEPTH,
-            )
+            # Сначала получаем основную оценку позиции. Даже если движок
+            # не сможет построить MultiPV-линии, численная оценка останется доступна.
             score_info = engine.analyse(
                 board,
                 get_engine_limit(depth=EVALUATE_DEPTH, time_limit=EVALUATE_TIME),
             )
             score_obj = score_info.get("score") if isinstance(score_info, dict) else None
             score_dict = parse_score(_white_score(score_obj))
+
+            try:
+                top_moves = get_multipv_lines_robust(
+                    engine,
+                    board,
+                    depth=EVALUATE_DEPTH,
+                )
+            except Exception:
+                top_moves = []
             return {
                 **score_dict,
                 "top_moves": top_moves,
