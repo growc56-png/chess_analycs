@@ -168,7 +168,7 @@ function makeArrowPolygon(ns, start, end, shaftWidth, headWidth, headLength, col
   polygon.setAttribute('fill', color);
   polygon.setAttribute('fill-opacity', String(opacity));
   polygon.setAttribute('stroke', 'rgba(15,20,24,.7)');
-  polygon.setAttribute('stroke-width', '9');
+  polygon.setAttribute('stroke-width', '2.5');
   polygon.setAttribute('stroke-linejoin', 'round');
   polygon.style.filter = 'drop-shadow(0 2px 3px rgba(0,0,0,.45))';
   return polygon;
@@ -223,10 +223,10 @@ function initRightClickDrawing(boardId) {
         const circle = document.createElementNS(ns, 'circle');
         circle.setAttribute('cx', String(from.x));
         circle.setAttribute('cy', String(from.y));
-        circle.setAttribute('r', '31');
+        circle.setAttribute('r', '24');
         circle.setAttribute('fill', 'none');
         circle.setAttribute('stroke', '#f39b37');
-        circle.setAttribute('stroke-width', '9');
+        circle.setAttribute('stroke-width', '5');
         circle.setAttribute('stroke-opacity', String(opacity));
         svgEl.appendChild(circle);
         return;
@@ -242,20 +242,21 @@ function initRightClickDrawing(boardId) {
         const elbow = colDelta > rowDelta
           ? { x: to.x, y: from.y }
           : { x: from.x, y: to.y };
+      // Ход конём рисуется буквой «Г»: два перпендикулярных отрезка.
         const path = document.createElementNS(ns, 'path');
         path.setAttribute('d', `M ${from.x} ${from.y} L ${elbow.x} ${elbow.y}`);
         path.setAttribute('fill', 'none');
         path.setAttribute('stroke', '#f39b37');
-        path.setAttribute('stroke-width', '20');
+        path.setAttribute('stroke-width', '10');
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('stroke-linejoin', 'round');
         path.setAttribute('stroke-opacity', String(opacity));
         path.style.filter = 'drop-shadow(0 2px 3px rgba(0,0,0,.45))';
         svgEl.appendChild(path);
-        const head = makeArrowPolygon(ns, elbow, to, 20, 68, 70, '#f39b37', opacity);
+        const head = makeArrowPolygon(ns, elbow, to, 10, 34, 40, '#f39b37', opacity);
         if (head) svgEl.appendChild(head);
       } else {
-        const poly = makeArrowPolygon(ns, from, to, 22, 70, 78, '#f39b37', opacity);
+        const poly = makeArrowPolygon(ns, from, to, 11, 38, 44, '#f39b37', opacity);
         if (poly) svgEl.appendChild(poly);
       }
     };
