@@ -554,40 +554,16 @@ function forceEndgamePlayerTurn(chessGame) {
   return new Chess(fields.join(' '));
 }
 
-// Собирает виртуальную позицию: реальная партия + все запланированные ходы игрока.
+// Для premove моделируем только текущий ответ игрока.
+// Нельзя строить цепочку из нескольких ходов без реальных ответов соперника:
+// такая виртуальная позиция ломает проверку шахов, матов и легальности короля.
 function rebuildEndgameVirtualBoard() {
-  endgameVirtualGame = new Chess(endgameGame.fen());
-
-  if (endgameVirtualGame.turn() !== endgamePlayerColor) {
-    endgameVirtualGame = forceEndgamePlayerTurn(endgameVirtualGame);
+  if (!endgameGame) {
+    endgameVirtualGame = null;
+    return 0;
   }
-
-  const validQueue = [];
-  for (let i = 0; i < endgamePremoveQueue.length; i++) {
-    if (endgameVirtualGame.turn() !== endgamePlayerColor) {
-      endgameVirtualGame = forceEndgamePlayerTurn(endgameVirtualGame);
-    }
-
-    const planned = endgamePremoveQueue[i];
-    let move = null;
-    try {
-      move = endgameVirtualGame.move({
-        from: planned.from,
-        to: planned.to,
-        promotion: planned.promotion || 'q'
-      });
-    } catch (error) {
-      move = null;
-    }
-
-    if (!move) break;
-    validQueue.push(planned);
-    endgameVirtualGame = forceEndgamePlayerTurn(endgameVirtualGame);
-  }
-
-  const removedCount = endgamePremoveQueue.length - validQueue.length;
-  endgamePremoveQueue = validQueue;
-  return removedCount;
+  endgameVirtualGame = forceEndgamePlayerTurn(new Chess(endgameGame.fen()));
+  return 0;
 }
 
 function updateEndgamePremoveHighlights() {
@@ -604,13 +580,11 @@ function updateEndgamePremoveHighlights() {
 
 function renderEndgameBoard() {
   if (!endgameBoard || !endgameGame) return;
-  const removedCount = rebuildEndgameVirtualBoard();
-  endgameBoard.position(endgameVirtualGame.fen(), false);
+  rebuildEndgameVirtualBoard();
+  // На доске всегда остаётся настоящая позиция. Запланированный ход
+  // показываем подсветкой, а фигура перемещается только после ответа соперника.
+  endgameBoard.position(endgameGame.fen(), false);
   updateEndgamePremoveHighlights();
-
-  if (removedCount > 0) {
-    setEndgameFeedback('Премув отменён: после хода соперника он стал невозможен.', 'err');
-  }
 }
 
 function setEndgameFeedback(message, type) {
@@ -675,9 +649,8 @@ function selectEndgame(eg) {
       'endgameBoard',
       () => (
         endgameGame.turn() !== endgamePlayerColor ||
-        endgameBotRequestActive ||
-        endgamePremoveQueue.length > 0
-      ) ? endgameVirtualGame : endgameGame,
+        endgameBotRequestActive
+      ) ? forceEndgamePlayerTurn(new Chess(endgameGame.fen())) : endgameGame,
       handleEndgameDrop,
       { canSelect: piece => Boolean(piece && piece.color === endgamePlayerColor) }
     );
@@ -696,8 +669,7 @@ function onEndgameDragStart(source, piece) {
 
   const planningMode =
     endgameGame.turn() !== endgamePlayerColor ||
-    endgameBotRequestActive ||
-    endgamePremoveQueue.length > 0;
+    endgameBotRequestActive;
 
   const activeGame = planningMode ? endgameVirtualGame : endgameGame;
   if (!activeGame || activeGame.moves({ square: source }).length === 0) {
@@ -720,16 +692,13 @@ function handleEndgameDrop(source, target) {
     endgameBotRequestActive ||
     endgamePremoveQueue.length > 0;
 
-  // Если сейчас ход соперника (или уже есть очередь), добавляем ход в виртуальную позицию.
+  // На один ход соперника можно поставить только один premove.
+  // Если пользователь выбирает другой ход, он заменяет предыдущий.
   if (planningMode) {
-    if (!endgameVirtualGame) rebuildEndgameVirtualBoard();
-    if (endgameVirtualGame.turn() !== endgamePlayerColor) {
-      endgameVirtualGame = forceEndgamePlayerTurn(endgameVirtualGame);
-    }
-
+    const premovePosition = forceEndgamePlayerTurn(new Chess(endgameGame.fen()));
     let plannedMove = null;
     try {
-      plannedMove = endgameVirtualGame.move({
+      plannedMove = premovePosition.move({
         from: source,
         to: target,
         promotion: 'q'
@@ -740,11 +709,11 @@ function handleEndgameDrop(source, target) {
 
     if (!plannedMove) return 'snapback';
 
-    endgamePremoveQueue.push({
+    endgamePremoveQueue = [{
       from: source,
       to: target,
       promotion: 'q'
-    });
+    }];
 
     renderEndgameBoard();
     setEndgameFeedback(
