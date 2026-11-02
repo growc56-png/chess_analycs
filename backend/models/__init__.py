@@ -18,3 +18,11 @@ __all__ = [
     "MateRecord",
     "BotGame",
 ]
+from .user import User, AuthSession
+from .user_data import (
+    UserCompleted,
+    UserNote,
+    UserActivity,
+    UserStreakResult,
+    UserMateRecord,
+)
