@@ -12,12 +12,16 @@
   const MOTIFS = {
     fork: { label: 'Вилка', filter: 'fork' },
     pin: { label: 'Связка', filter: 'pin' },
-    check: { label: 'Шах', filter: 'check' },
+    discovered_check: { label: 'Вскрытый шах', filter: 'discovered_check' },
     mate: { label: 'Мат', filter: 'mate' },
-    mate_in_2: { label: 'Мат в 2', filter: 'mate' },
-    discovered_check: { label: 'Вскрытый шах', filter: 'check' },
-    capture: { label: 'Взятие', filter: 'capture' }
+    mate_in_2: { label: 'Мат в 2', filter: 'mate' }
   };
+  const TACTICAL_MOTIFS = new Set(['fork', 'pin', 'discovered_check', 'mate', 'mate_in_2']);
+
+  function hasTacticalMotif(item) {
+    return Boolean(item && Array.isArray(item.bestMoveMotifs)
+      && item.bestMoveMotifs.some(motif => TACTICAL_MOTIFS.has(motif)));
+  }
 
   let sourceGames = [];
   let opportunities = [];
@@ -32,7 +36,12 @@
     try {
       const raw = localStorage.getItem(SAVED_ANALYSIS_DRILLS_KEY);
       const items = raw ? JSON.parse(raw) : [];
-      return Array.isArray(items) ? items : [];
+      if (!Array.isArray(items)) return [];
+      const tacticalItems = items.filter(hasTacticalMotif);
+      if (tacticalItems.length !== items.length) {
+        localStorage.setItem(SAVED_ANALYSIS_DRILLS_KEY, JSON.stringify(tacticalItems));
+      }
+      return tacticalItems;
     } catch (error) {
       console.warn('Не удалось прочитать сохранённые тактические задания:', error);
       return [];
@@ -189,22 +198,25 @@
 
   function motifList(move) {
     const raw = Array.isArray(move.best_move_motifs) ? move.best_move_motifs : [];
-    const motifs = raw.filter(key => MOTIFS[key]);
+    const motifs = raw.filter(key => TACTICAL_MOTIFS.has(key));
     if (!motifs.length && move.best_move_uci) {
       const alternatives = Array.isArray(move.acceptable_moves) ? move.acceptable_moves : [];
       const best = alternatives.find(item => item.uci === move.best_move_uci);
       if (best && Array.isArray(best.motifs)) best.motifs.forEach(key => {
-        if (MOTIFS[key] && !motifs.includes(key)) motifs.push(key);
+        if (TACTICAL_MOTIFS.has(key) && !motifs.includes(key)) motifs.push(key);
       });
     }
-    return motifs.length ? motifs : ['improvement'];
+    return [...new Set(motifs)];
   }
 
   function normalizeOpportunity(game, move, index, color) {
     const accepted = Array.isArray(move.acceptable_moves_uci) ? move.acceptable_moves_uci : [];
     if (accepted.includes(move.uci)) return null;
     if (!BAD_CLASSES.has(String(move.classification || ''))) return null;
+    if (move.missed_tactic !== true) return null;
     if (!move.before_fen || !move.best_move_uci) return null;
+    const bestMoveMotifs = motifList(move);
+    if (!bestMoveMotifs.length) return null;
 
     const alternatives = Array.isArray(move.acceptable_moves) ? move.acceptable_moves : [];
     const bestCandidate = alternatives.find(item => item.uci === move.best_move_uci);
@@ -225,7 +237,7 @@
       bestMoveUci: move.best_move_uci,
       bestMoveSan: move.best_move_san || move.best_move_uci,
       bestLineSan: bestLine.slice(0, 4),
-      bestMoveMotifs: motifList(move),
+      bestMoveMotifs,
       acceptableMovesUci: accepted.length ? accepted : [move.best_move_uci],
       acceptableMovesSan: alternatives.map(item => item.san).filter(Boolean),
       solved: false,
@@ -240,7 +252,7 @@
     const saved = readSavedAnalysisDrills();
     const savedIds = new Set(saved.map(item => item && item.id).filter(Boolean));
     const added = incoming
-      .filter(item => item && item.id && !savedIds.has(item.id))
+      .filter(item => item && item.id && hasTacticalMotif(item) && !savedIds.has(item.id))
       .map(item => ({ ...item, source: 'analysis', solved: Boolean(item.solved), revealed: Boolean(item.revealed) }));
     const mergedSaved = [...saved, ...added].slice(-120);
     try {
@@ -251,7 +263,7 @@
     const byId = new Map();
     opportunities.forEach(item => { if (item && item.id) byId.set(item.id, item); });
     mergedSaved.forEach(item => { if (item && item.id) byId.set(item.id, item); });
-    opportunities = Array.from(byId.values());
+    opportunities = Array.from(byId.values()).filter(hasTacticalMotif);
     const severity = { blunder: 4, mistake: 3, miss: 2, inaccuracy: 1 };
     opportunities.sort((a, b) =>
       (severity[b.classification] - severity[a.classification]) || (Number(b.cpLoss || 0) - Number(a.cpLoss || 0))
@@ -330,7 +342,7 @@
 
   function buildSummary(completed, ownMoves) {
     if (!opportunities.length) {
-      return 'В разобранных партиях не найдено ходов, которые Stockfish классифицировал как серьёзные ошибки. Это хороший знак. Продолжай играть и возвращайся к анализу после новых партий.';
+      return 'В этих партиях не найдено пропущенных вилок, связок, вскрытых шахов или матовых идей. Обычные неточности и взятия без тактического мотива здесь не показываются.';
     }
     const counts = {};
     opportunities.forEach(item => {
@@ -343,8 +355,8 @@
     const blunders = opportunities.filter(item => item.classification === 'blunder').length;
     const mistakes = opportunities.filter(item => item.classification === 'mistake').length;
     return 'В ' + completed.length + ' партиях проверено ' + ownMoves + ' твоих ходов. Найдено ' + opportunities.length +
-      ' моментов для улучшения: ' + blunders + ' зевков и ' + mistakes + ' ошибок. Чаще всего Stockfish находил тему «' +
-      top + '». В списке справа выбери позицию и попробуй найти лучший ход самостоятельно.';
+      ' пропущенных тактических возможностей (' + blunders + ' зевков и ' + mistakes + ' ошибок с тактической идеей). ' +
+      'Чаще всего Stockfish находил тему «' + top + '». Обычные неточности и взятия без комбинации в этот список не попадают.';
   }
 
   function filteredOpportunities() {
@@ -361,25 +373,27 @@
       all: opportunities.length,
       fork: 0,
       pin: 0,
-      check: 0,
-      mate: 0,
-      capture: 0
+      discovered_check: 0,
+      mate: 0
     };
-    opportunities.forEach(item => item.bestMoveMotifs.forEach(motif => {
-      const info = MOTIFS[motif];
-      if (info && Object.prototype.hasOwnProperty.call(counts, info.filter)) counts[info.filter] += 1;
-    }));
+    opportunities.forEach(item => {
+      const filtersForItem = new Set(item.bestMoveMotifs
+        .map(motif => MOTIFS[motif] && MOTIFS[motif].filter)
+        .filter(Boolean));
+      filtersForItem.forEach(filter => {
+        if (Object.prototype.hasOwnProperty.call(counts, filter)) counts[filter] += 1;
+      });
+    });
 
     container.querySelectorAll('button[data-motif]').forEach(button => {
       const key = button.dataset.motif;
       button.classList.toggle('active', key === currentFilter);
       const labels = {
-        all: 'Все',
+        all: 'Все тактики',
         fork: 'Вилки',
         pin: 'Связки',
-        check: 'Шахи',
-        mate: 'Маты',
-        capture: 'Взятия'
+        discovered_check: 'Вскрытые шахи',
+        mate: 'Матовые идеи'
       };
       const baseText = labels[key] || 'Тема';
       const count = counts[key] || 0;
@@ -394,8 +408,8 @@
     $('errorsListCount').textContent = String(shown.length);
     if (!shown.length) {
       list.innerHTML = opportunities.length
-        ? '<div class="coach-empty">В этой теме ошибок не найдено. Выбери «Все» или проанализируй другие партии.</div>'
-        : '<div class="coach-empty">После анализа здесь появятся ошибки и лучшие продолжения Stockfish.</div>';
+        ? '<div class="coach-empty">В этой теме тактических идей не найдено. Выбери «Все тактики» или проанализируй другие партии.</div>'
+        : '<div class="coach-empty">После анализа здесь появятся пропущенные вилки, связки, вскрытые шахи и матовые идеи.</div>';
       return;
     }
 
