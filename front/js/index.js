@@ -742,8 +742,7 @@ function selectMyEndgame(item) {
       window.initBoardClickToMove(
         'myEndgamesBoard',
         () => myEndgamePracticeActive
-          ? (myEndgamePracticeGame.turn() === myEndgamePracticeColor || myEndgamePracticeBotActive || myEndgamePracticeQueue.length
-              ? myEndgamePracticeVirtualGame : myEndgamePracticeGame)
+          ? (myEndgamePracticeVirtualGame || myEndgamePracticeGame)
           : myEndgamesGame,
         handleMyEndgamePracticeDrop,
         { canSelect: piece => Boolean(
@@ -1150,7 +1149,7 @@ function startMyEndgamePractice() {
   if (myEndgamesBoard && myEndgamesBoard.orientation) {
     myEndgamesBoard.orientation(myEndgamePracticeColor === 'w' ? 'white' : 'black');
   }
-  if (myEndgamesBoard) myEndgamesBoard.position(myEndgamePracticeGame.fen(), false);
+  renderMyEndgamePracticeBoard();
   setMyEndgamePracticeClock();
   updateMyEndgamePracticeControls();
 
