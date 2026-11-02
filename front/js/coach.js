@@ -255,6 +255,7 @@
       setProgress(overall, 'Анализ партии ' + (gameIndex + 1) + ' из ' + gameTotal + ' · ' + Math.round(inner) + '%');
       if (status.status === 'completed') {
         if (!status.result || !Array.isArray(status.result.moves)) throw new Error('Сервер вернул неполный результат анализа.');
+        if (typeof window.saveMyEndgameFromPgn === 'function') window.saveMyEndgameFromPgn(pgn);
         return status.result;
       }
       if (status.status === 'failed') throw new Error(status.error || 'Анализ завершился с ошибкой.');
