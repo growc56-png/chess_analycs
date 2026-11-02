@@ -319,7 +319,7 @@
         pin: 'Связки',
         check: 'Шахи',
         mate: 'Маты',
-        capture: 'Выигрыш материала'
+        capture: 'Взятия'
       };
       const baseText = labels[key] || 'Тема';
       const count = counts[key] || 0;
