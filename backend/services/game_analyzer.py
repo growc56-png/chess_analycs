@@ -24,7 +24,7 @@ from services.stockfish import (
 
 from services.move_classifier import (
     classify_move,
-    is_true_sacrifice,
+    get_sacrifice_details,
 )
 
 
@@ -329,7 +329,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     else False
                 )
 
-                is_sacrifice = is_true_sacrifice(board, move)
+                sacrifice_details = get_sacrifice_details(board, move)
+                is_sacrifice = sacrifice_details is not None
 
                 second_best_gap = get_second_best_gap(
                     before_infos,
@@ -493,6 +494,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         2
                     ),
                     "classification": classification,
+                    "is_sacrifice": is_sacrifice,
+                    "sacrifice_details": sacrifice_details,
                     "fen": board.fen(),
                     "next_top_moves": next_top_moves,
                     "clock_after": clock_after,
