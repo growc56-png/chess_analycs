@@ -340,8 +340,8 @@ def build_personal_plan(
     warning = None
     if target_elo > current_elo and goal_days < expected_days * 0.55:
         warning = (
-            f"Цель очень амбициозная: ориентир для пути {current_elo} → {target_elo} Elo — "
-            f"около {expected_days} дней регулярной работы. За {goal_days} дней рейтинг нельзя гарантировать. "
+            f"Цель очень амбициозная: внутренняя шкала учебной нагрузки для пути {current_elo} → {target_elo} Elo "
+            f"даёт ориентир около {expected_days} дней. Это не статистический прогноз. За {goal_days} дней рейтинг нельзя гарантировать. "
             "Даже интенсивные занятия не заменяют опыт и качество разбора партий."
         )
     elif target_elo > current_elo and daily_minutes < recommended_minutes:
@@ -418,6 +418,7 @@ def build_personal_plan(
             "daily_minutes": daily_minutes,
             "recommended_minutes": recommended_minutes,
             "estimated_days": expected_days,
+            "estimate_basis": "Внутренняя эвристика планирования нагрузки, не статистический прогноз и не гарантия роста рейтинга.",
             "warning": warning,
             "start_date": start_date.isoformat(),
             "end_date": (start_date + timedelta(days=goal_days - 1)).isoformat(),
