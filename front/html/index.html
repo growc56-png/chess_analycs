@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
 <link rel="stylesheet" href="/css/index.css?v=20261102-analysis-v1">
 <link rel="stylesheet" href="/css/index-layout.css?v=20261102-analysis-v3">
-<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261102-deep-review-v9">
+<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261102-analysis-layout-v10">
 <link rel="stylesheet" href="/css/coach.css?v=20261102-errors-v3">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
 <script src="/js/board-interactions.js?v=20261102-clickmove-v2" defer></script>
@@ -15,10 +15,10 @@
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
 <script src="/js/chess.min.js"></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261102-deep-review-v10" defer></script>
+<script src="/js/index.js?v=20261102-analysis-layout-v11" defer></script>
 <script src="/js/diary-ui.js" defer></script>
-<script src="/js/coach.js?v=20261102-auth-v3" defer></script>
-<script src="/js/errors.js?v=20261102-errors-v5" defer></script>
+<script src="/js/coach.js?v=20261102-accuracy-v4" defer></script>
+<script src="/js/errors.js?v=20261102-tactics-v6" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -345,7 +345,7 @@
         </details>
         <div class="analysis-container">
           <div class="left-panel"><div class="eval-bar-wrapper"><div class="eval-text" id="evalText">0.0</div><div class="eval-bar-vertical"><div class="eval-bar-white" id="evalBarWhite" style="height:50%"></div></div></div><div class="analysis-board-column"><div id="topPlayer" class="player-name"><span>Black Player</span><span class="player-clock" id="topClock">10:00</span></div><div class="board-area" oncontextmenu="return false;"><div id="analysisBoard"></div><svg id="userDraw_analysisBoard" class="user-draw-overlay"></svg><svg id="arrowOverlay" class="analysis-arrow-overlay" aria-hidden="true"></svg><div id="analysisMoveEffect" class="analysis-move-effect" aria-hidden="true"><span id="analysisMoveEffectPulse"></span></div></div><div id="bottomPlayer" class="player-name"><span>White Player</span><span class="player-clock" id="bottomClock">10:00</span></div><div class="btn-row analysis-navigation"><button class="action-btn" id="analysisStart">⏮</button><button class="action-btn" id="analysisPrev" title="Предыдущий ход" aria-label="Предыдущий ход">⏴</button><button class="action-btn analysis-play-btn" id="analysisPlay" title="Воспроизвести партию" aria-label="Воспроизвести партию">▶</button><button class="action-btn" id="analysisNext" title="Следующий ход" aria-label="Следующий ход">⏵</button><button class="action-btn" id="analysisEnd">⏭</button><button class="action-btn" id="flipBoardBtn" aria-label="Перевернуть доску" title="Перевернуть доску">⤾</button></div></div></div>
-          <div class="right-panel"><div class="graph-container"><canvas id="evalGraph" width="420" height="100"></canvas>
+          <div class="right-panel"><div class="move-list-container"><div class="move-list-toolbar"><strong>Ходы партии</strong><div class="move-list-toolbar-actions"><button type="button" id="analysisSendToDrillsBtn" class="action-btn move-jump-btn" title="Сохранить ошибки этой партии как тактические задания" disabled>⚡ В тактику</button><button type="button" id="analysisMoveTop" class="action-btn move-jump-btn" title="К первому ходу">⏮ В начало</button><button type="button" id="analysisMoveBottom" class="action-btn move-jump-btn" title="К последнему ходу">В конец ⏭</button></div></div><div class="move-headers"><div class="header-num">№</div><div class="header-white" id="headerWhite">Белые</div><div class="header-black" id="headerBlack">Чёрные</div></div><table class="move-table" id="moveTable"><tbody id="moveTableBody"></tbody></table></div><div class="graph-container"><canvas id="evalGraph" width="420" height="100"></canvas>
               <div class="eval-advantage-legend" aria-label="Цвета качества ходов">
                 <span><i class="eval-advantage-swatch brilliant"></i>Бриллиант</span>
                 <span><i class="eval-advantage-swatch great"></i>Замечательный</span>
@@ -370,7 +370,7 @@
               <div id="analysisMoveInsightMeta" class="analysis-move-insight-meta"></div>
               <button type="button" id="analysisRetryMistakeBtn" class="analysis-retry-btn" hidden>Попробовать найти лучший ход</button>
             </section>
-            <section class="analysis-insights" aria-label="Статистика анализа"><div class="analysis-accuracy-card"><div class="analysis-insights-title">Точность ходов (Expected Points)</div><div class="analysis-accuracy-note">Собственная оценка по изменению ожидаемого результата; это не точная копия CAPS2 Chess.com.</div><div class="analysis-accuracy-grid"><div class="analysis-accuracy-side white"><span class="analysis-accuracy-name" id="analysisWhiteName">Белые</span><strong id="analysisWhiteAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisWhiteAccuracyFill"></i></div></div><div class="analysis-accuracy-side black"><span class="analysis-accuracy-name" id="analysisBlackName">Чёрные</span><strong id="analysisBlackAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisBlackAccuracyFill"></i></div></div></div></div>
+            <section class="analysis-insights" aria-label="Статистика анализа"><div class="analysis-accuracy-card"><div class="analysis-insights-title">Точность ходов (CPL)</div><div class="analysis-accuracy-note">Оценка по потере в сантипешках. Это приближение, не точная формула CAPS2 Chess.com.</div><div class="analysis-accuracy-grid"><div class="analysis-accuracy-side white"><span class="analysis-accuracy-name" id="analysisWhiteName">Белые</span><strong id="analysisWhiteAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisWhiteAccuracyFill"></i></div></div><div class="analysis-accuracy-side black"><span class="analysis-accuracy-name" id="analysisBlackName">Чёрные</span><strong id="analysisBlackAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisBlackAccuracyFill"></i></div></div></div></div>
                 <div class="analysis-phase-card">
                   <div class="analysis-insights-title">Точность по этапам</div>
                   <div id="analysisPhaseRows" class="analysis-phase-rows">
@@ -385,7 +385,7 @@
                   </div>
                 </div>
                 <div class="analysis-categories-card"><div class="analysis-insights-title">Качество ходов</div><div class="analysis-category-header"><span>Категория</span><span>Белые</span><span></span><span>Чёрные</span></div><div id="analysisCategoryRows" class="analysis-category-rows"><div class="analysis-stats-empty">Пока нет данных</div></div></div></section></div>
-          <div class="move-list-container"><div class="move-list-toolbar"><strong>Ходы партии</strong><div class="move-list-toolbar-actions"><button type="button" id="analysisMoveTop" class="action-btn move-jump-btn" title="К первому ходу">⏮ В начало</button><button type="button" id="analysisMoveBottom" class="action-btn move-jump-btn" title="К последнему ходу">В конец ⏭</button></div></div><div class="move-headers"><div class="header-num">№</div><div class="header-white" id="headerWhite">Белые</div><div class="header-black" id="headerBlack">Чёрные</div></div><table class="move-table" id="moveTable"><tbody id="moveTableBody"></tbody></table></div>
+          
         </div>
       </section>
 
