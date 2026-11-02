@@ -238,6 +238,7 @@ def repair_mate_classifications(result):
             move_data["cp_loss"] = 0
             move_data["centipawn_loss"] = 0
             move_data["win_percent_loss"] = 0
+            move_data["move_accuracy"] = 100.0
             previous_mating_side = mover
             continue
 
@@ -249,6 +250,7 @@ def repair_mate_classifications(result):
                 move_data["cp_loss"] = 0
                 move_data["centipawn_loss"] = 0
                 move_data["win_percent_loss"] = 0
+                move_data["move_accuracy"] = 100.0
             elif previous_mating_side == mating_side:
                 # Соперник уже имел форсированный мат до этого ответа;
                 # это продолжение проигранной позиции, а не новая зевнутая тактика.
@@ -256,6 +258,7 @@ def repair_mate_classifications(result):
                 move_data["cp_loss"] = 0
                 move_data["centipawn_loss"] = 0
                 move_data["win_percent_loss"] = 0
+                move_data["move_accuracy"] = 100.0
             else:
                 # Именно этот ход впервые допустил форсированный мат соперника.
                 move_data["classification"] = "blunder"
