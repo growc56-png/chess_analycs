@@ -1988,37 +1988,62 @@ function renderEvalAdvantageDots(evals, currentIndex = -1) {
     container.dataset.bound = '1';
   }
 
-  if (!Array.isArray(evals) || !evals.length) {
-    container.innerHTML = '<span class="eval-dots-empty">Маркеры преимущества появятся после анализа</span>';
+  if (!Array.isArray(analysisMoves) || !analysisMoves.length) {
+    container.innerHTML = '<span class="eval-dots-empty">Маркеры качества ходов появятся после анализа</span>';
     return;
   }
 
-  container.innerHTML = evals.map((rawValue, index) => {
-    const value = Number(rawValue) || 0;
-    let sideClass = 'equal';
-    let sideLabel = 'Равная позиция';
-    if (value >= 2) {
-      sideClass = 'white-strong';
-      sideLabel = 'Большое преимущество белых';
-    } else if (value > 0.25) {
-      sideClass = 'white';
-      sideLabel = 'Преимущество белых';
-    } else if (value <= -2) {
-      sideClass = 'black-strong';
-      sideLabel = 'Большое преимущество чёрных';
-    } else if (value < -0.25) {
-      sideClass = 'black';
-      sideLabel = 'Преимущество чёрных';
-    }
+  const qualityLabels = {
+    brilliant: 'Бриллиантовый',
+    great: 'Замечательный',
+    best: 'Лучший',
+    excellent: 'Отличный',
+    good: 'Хороший',
+    inaccuracy: 'Неточность',
+    mistake: 'Ошибка',
+    miss: 'Промах',
+    blunder: 'Зевок',
+    book: 'Теория',
+    forced: 'Вынужденный'
+  };
 
-    const moveNumber = Math.floor(index / 2) + 1;
-    const sideToMove = index % 2 === 0 ? 'белые' : 'чёрные';
-    const scoreText = (value > 0 ? '+' : '') + value.toFixed(1);
+  const qualityClasses = {
+    brilliant: 'quality-brilliant',
+    great: 'quality-great',
+    best: 'quality-best',
+    excellent: 'quality-excellent',
+    good: 'quality-good',
+    inaccuracy: 'quality-inaccuracy',
+    mistake: 'quality-mistake',
+    miss: 'quality-miss',
+    blunder: 'quality-blunder',
+    book: 'quality-book',
+    forced: 'quality-forced'
+  };
+
+  container.innerHTML = analysisMoves.map((move, index) => {
+    const value = Number(Array.isArray(evals) ? evals[index] : NaN);
+    const scoreText = Number.isFinite(value)
+      ? (value > 0 ? '+' : '') + value.toFixed(1)
+      : 'оценка недоступна';
+    const quality = move?.classification || '';
+    const qualityLabel = qualityLabels[quality] || 'Без категории';
+    const qualityClass = qualityClasses[quality] || 'quality-unclassified';
+    const moveNumber = Number(move?.move_num) || (Math.floor(index / 2) + 1);
+    const sideToMove = move?.mover === 'white'
+      ? 'белые'
+      : move?.mover === 'black'
+        ? 'чёрные'
+        : index % 2 === 0 ? 'белые' : 'чёрные';
+    const san = move?.san ? ' · ' + move.san : '';
+    const title = 'Ход ' + moveNumber + ' · ' + sideToMove + san
+      + ' · ' + qualityLabel + ' · оценка позиции: ' + scoreText;
+
     return `<button type="button"
-      class="eval-advantage-dot ${sideClass}${index === currentIndex ? ' current' : ''}"
+      class="eval-advantage-dot ${qualityClass}${index === currentIndex ? ' current' : ''}"
       data-move-index="${index}"
-      aria-label="Ход ${moveNumber}, ${sideToMove}: ${sideLabel}, оценка ${scoreText}"
-      title="Ход ${moveNumber} · ${sideToMove} · ${sideLabel} · ${scoreText}"></button>`;
+      aria-label="${title}"
+      title="${title}"></button>`;
   }).join('');
 }
 
