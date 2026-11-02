@@ -2141,7 +2141,7 @@ async function analyzePGN(pgn, gameUrl) {
   updateAnalysisProgress(-1, 'running');
   stopAnalysisPlayback();
 
-  const ANALYSIS_VERSION = 'v9-quiet-sacrifice-board-badges';
+  const ANALYSIS_VERSION = 'v10-move-quality-markers-and-sacrifice-fix';
   const cacheKey = `analysis_${ANALYSIS_VERSION}_${gameUrl || pgn.slice(0, 50)}`;
   const cachedData = localStorage.getItem(cacheKey);
   if (cachedData) {
