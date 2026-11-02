@@ -314,16 +314,17 @@ def build_personal_plan(
     daily_minutes: int,
     completed_days: set[int] | None = None,
     notes: dict[int, str] | None = None,
+    start_on: date | None = None,
 ) -> dict:
     """Строит ежедневный план под выбранный рейтинг, срок и время."""
     completed_days = completed_days or set()
     notes = notes or {}
-    start_date = __import__("datetime").date.today()
+    start_date = start_on or date.today()
     expected_days = estimate_goal_days(current_elo, target_elo)
     ratio = (expected_days / max(1, goal_days)) if expected_days else 0
     recommended_minutes = 0 if target_elo <= current_elo else min(
         360,
-        max(60, int(round(75 + max(0, ratio - 1) * 11 / 5) * 5)),
+        max(60, int(round((75 + max(0, ratio - 1) * 11) / 5) * 5)),
     )
 
     warning = None
@@ -382,7 +383,7 @@ def build_personal_plan(
                 tasks.append(_make_personal_task(task_type, minutes, topics))
 
         target_checkpoint = min(target_elo, int(round(current_elo + (target_elo - current_elo) * day_num / goal_days)))
-        date_value = start_date + __import__("datetime").timedelta(days=day_num - 1)
+        date_value = start_date + timedelta(days=day_num - 1)
         plan.append({
             "day": day_num,
             "week": (day_num - 1) // 7 + 1,
@@ -409,7 +410,7 @@ def build_personal_plan(
             "estimated_days": expected_days,
             "warning": warning,
             "start_date": start_date.isoformat(),
-            "end_date": (start_date + __import__("datetime").timedelta(days=goal_days - 1)).isoformat(),
+            "end_date": (start_date + timedelta(days=goal_days - 1)).isoformat(),
         },
     }
 
