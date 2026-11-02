@@ -660,6 +660,18 @@ function selectEndgame(eg) {
   if (endgameBoard.orientation) {
     endgameBoard.orientation(endgamePlayerColor === 'w' ? 'white' : 'black');
   }
+  if (window.initBoardClickToMove) {
+    window.initBoardClickToMove(
+      'endgameBoard',
+      () => (
+        endgameGame.turn() !== endgamePlayerColor ||
+        endgameBotRequestActive ||
+        endgamePremoveQueue.length > 0
+      ) ? endgameVirtualGame : endgameGame,
+      handleEndgameDrop,
+      { canSelect: piece => Boolean(piece && piece.color === endgamePlayerColor) }
+    );
+  }
   renderEndgameBoard();
   endgameBoard.resize();
 
@@ -1412,6 +1424,9 @@ function selectPuzzle(puzzle) {
   } else {
     puzzleBoard.position(puzzle.fen); puzzleBoard.resize();
   }
+  if (window.initBoardClickToMove) {
+    window.initBoardClickToMove('puzzleBoard', () => puzzleGame, handlePuzzleDrop);
+  }
   setFeedback('', ''); document.getElementById('puzzleHint').textContent = '';
 }
 function handlePuzzleDrop(source, target) {
@@ -1514,6 +1529,16 @@ function selectOpening(opening) {
   } else {
     openingBoard.position('start');
   }
+  if (window.initBoardClickToMove) {
+    window.initBoardClickToMove('openingBoard', () => openingGame, handleOpeningDrop, {
+      canSelect: piece => Boolean(
+        !isOpponentMoving &&
+        currentOpening &&
+        piece &&
+        piece.color === (currentOpening.side === 'white' ? 'w' : 'b')
+      )
+    });
+  }
   
   // Ждем 100мс, пока вкладка прогрузится, и выравниваем доску
   setTimeout(() => { if (openingBoard) openingBoard.resize(); }, 100);
@@ -1615,6 +1640,9 @@ function initAnalysis() {
     },
     onDrop: handleAnalysisDrop, onSnapEnd: () => clearHighlights(), pieceTheme: PIECE_THEME
   });
+  if (window.initBoardClickToMove) {
+    window.initBoardClickToMove('analysisBoard', () => analysisGame, handleAnalysisDrop);
+  }
   initAnalysisArrowResize();
 
   const refreshLinesButton = document.getElementById('refreshEngineLinesBtn');
