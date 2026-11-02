@@ -163,7 +163,15 @@
             <button class="action-btn coach-primary-btn" type="button" id="coachOpeningStart">Начать повторение</button>
           </div>
           <div class="coach-opening-card" id="coachOpeningCard">
-            <div class="coach-empty">Нажми «Начать повторение», чтобы открыть дебютные карточки.</div>
+            <div class="coach-empty" id="coachOpeningEmpty">Нажми «Начать повторение», чтобы открыть дебютные карточки.</div>
+            <div id="coachOpeningSession" hidden>
+              <div class="coach-opening-title" id="coachOpeningTitle"></div>
+              <div class="coach-opening-meta" id="coachOpeningMeta"></div>
+              <div class="coach-opening-board"><div id="coachOpeningBoard"></div></div>
+              <div class="coach-opening-answer-row"><label class="coach-field"><span>Твой ход (например, Nf3 или e4)</span><input id="coachOpeningMoveInput" type="text" autocomplete="off" spellcheck="false"></label><button type="button" class="action-btn coach-primary-btn" id="coachOpeningCheck">Проверить</button><button type="button" class="action-btn" id="coachOpeningReveal">Показать</button></div>
+              <div class="coach-opening-feedback" id="coachOpeningFeedback"></div>
+              <div class="coach-opening-grades" id="coachOpeningGrades" hidden><button type="button" data-grade="again">Снова · 10 мин</button><button type="button" data-grade="hard">Трудно</button><button type="button" data-grade="good">Знаю</button></div>
+            </div>
           </div>
         </section>
 
