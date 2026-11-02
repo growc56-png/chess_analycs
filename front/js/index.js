@@ -1439,9 +1439,10 @@ function showDay(dayNum) {
     <div class="day-card ${d.completed ? 'done' : ''}">
       <div class="day-header"><div><div class="day-title">День ${d.day} · Неделя ${d.week} · ${d.weekday}</div><div class="day-sub">${d.phase} · целевой рейтинг: ${d.target_elo}</div></div><input type="checkbox" class="checkbox" id="dayCheck" ${d.completed ? 'checked' : ''}></div>
       ${tasksHTML}
-      <textarea class="note-area" id="noteArea" placeholder="Напиши, из-за чего проиграл...">${d.note || ''}</textarea>
+      <textarea class="note-area" id="noteArea" placeholder="Напиши, из-за чего проиграл..."></textarea>
     </div>
   `;
+  document.getElementById('noteArea').value = d.note || '';
   document.getElementById('dayCheck').onchange = async (e) => {
     await fetch('/api/complete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({day: d.day, completed: e.target.checked}) });
     d.completed = e.target.checked; document.querySelector('.day-card').classList.toggle('done', d.completed); updateProgress(); renderPhases();
