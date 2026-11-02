@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.bot_game import BotGame
+from models.user import User
+from services.auth import get_current_user
 
 
 router = APIRouter(
@@ -65,6 +67,7 @@ def serialize_game(game: BotGame, include_pgn: bool = False) -> dict:
 def save_bot_game(
     body: SaveBotGameBody,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """Сохраняет законченную партию против бота."""
 
@@ -85,6 +88,7 @@ def save_bot_game(
         )
 
     record = BotGame(
+        user_id=user.id,
         pgn=body.pgn,
         player_color=body.player_color,
         bot_level=body.bot_level,
@@ -117,18 +121,20 @@ def get_bot_games(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    """Возвращает историю игр с ботом."""
+    """Возвращает историю игр текущего аккаунта."""
 
     games = (
         db.query(BotGame)
+        .filter(BotGame.user_id == user.id)
         .order_by(BotGame.created_at.desc())
         .offset(offset)
         .limit(limit)
         .all()
     )
 
-    total = db.query(BotGame).count()
+    total = db.query(BotGame).filter(BotGame.user_id == user.id).count()
 
     return {
         "games": [
@@ -145,10 +151,14 @@ def get_bot_games(
 def get_bot_game(
     game_id: int,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    """Возвращает полную запись партии и PGN."""
+    """Возвращает полную запись партии и PGN текущего аккаунта."""
 
-    game = db.get(BotGame, game_id)
+    game = db.query(BotGame).filter(
+        BotGame.id == game_id,
+        BotGame.user_id == user.id,
+    ).first()
 
     if game is None:
         raise HTTPException(
@@ -169,10 +179,14 @@ def save_bot_game_analysis(
     game_id: int,
     body: SaveBotGameAnalysisBody,
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
-    """Сохраняет результаты анализа ранее сохранённой партии."""
+    """Сохраняет результаты анализа своей ранее сохранённой партии."""
 
-    game = db.get(BotGame, game_id)
+    game = db.query(BotGame).filter(
+        BotGame.id == game_id,
+        BotGame.user_id == user.id,
+    ).first()
 
     if game is None:
         raise HTTPException(
