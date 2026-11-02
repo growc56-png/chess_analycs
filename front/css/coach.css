@@ -24,3 +24,61 @@
 .coach-history-point i{display:block;width:min(100%,24px);min-height:8px;border-radius:4px 4px 2px 2px;background:linear-gradient(180deg,#83c6a8,#357d68)}
 .coach-history-point small{color:#7e929e;font-size:8px}
 .coach-history-note{align-self:center;margin-left:5px;color:#9fb9ad;font-size:9px;line-height:1.45}
+
+
+/* Typography refinement: slightly larger and easier to read */
+#tab-coach .coach-kicker,
+#tab-coach .coach-label { font-size: 10px; }
+#tab-coach .coach-hero h3 { font-size: clamp(21px, 2.5vw, 29px); }
+#tab-coach .coach-hero p { font-size: 13px; }
+#tab-coach .coach-hero-points { font-size: 11px; }
+#tab-coach .coach-panel-heading h3,
+#tab-coach .coach-section-subheading h3 { font-size: 18px; }
+#tab-coach .coach-panel-heading p { font-size: 12px; }
+#tab-coach .coach-field > span { font-size: 10px; }
+#tab-coach .coach-field input,
+#tab-coach .coach-field select,
+#tab-coach .coach-pgn-panel textarea { font-size: 12px; }
+#tab-coach .coach-file-label { font-size: 11px; }
+#tab-coach .coach-status { font-size: 12px; }
+#tab-coach .coach-game-option strong { font-size: 12px; }
+#tab-coach .coach-game-option small { font-size: 10px; }
+#tab-coach .coach-run-row > span,
+#tab-coach .coach-progress > span { font-size: 11px; }
+#tab-coach .coach-metric span { font-size: 10px; }
+#tab-coach .coach-metric small { font-size: 10px; }
+#tab-coach .coach-weakness-label,
+#tab-coach .coach-weakness-value { font-size: 12px; }
+#tab-coach .coach-insight { font-size: 12px; }
+#tab-coach .coach-plan-copy strong { font-size: 12px; }
+#tab-coach .coach-plan-copy small { font-size: 11px; }
+#tab-coach .coach-plan-item button { font-size: 10px; }
+#tab-coach .coach-board-caption { font-size: 12px; }
+#tab-coach .coach-drill-feedback { font-size: 12px; }
+#tab-coach .coach-drill-option .coach-drill-tag { font-size: 9px; }
+#tab-coach .coach-drill-option strong { font-size: 12px; }
+#tab-coach .coach-drill-option small { font-size: 10px; }
+#tab-coach .coach-opening-title { font-size: 14px; }
+#tab-coach .coach-opening-meta,
+#tab-coach .coach-opening-feedback { font-size: 11px; }
+#tab-coach .coach-opening-grades button { font-size: 11px; }
+#tab-coach .coach-empty { font-size: 12px; }
+#tab-coach .coach-premium h3 { font-size: 20px; }
+#tab-coach .coach-premium-copy p { font-size: 12px; }
+#tab-coach .coach-premium-features { font-size: 10px; }
+#tab-coach .coach-premium-price > span,
+#tab-coach .coach-premium-price > small { font-size: 9px; }
+#tab-coach .coach-muted,
+#tab-coach .coach-history-title { font-size: 10px; }
+#tab-coach .coach-history-trend > span,
+#tab-coach .coach-history-note { font-size: 10px; }
+#tab-coach .coach-history-point strong { font-size: 9px; }
+#tab-coach .coach-history-point small { font-size: 9px; }
+
+@media(max-width:680px) {
+  #tab-coach .coach-hero p { font-size: 12px; }
+  #tab-coach .coach-panel-heading h3,
+  #tab-coach .coach-section-subheading h3 { font-size: 17px; }
+  #tab-coach .coach-metric span,
+  #tab-coach .coach-metric small { font-size: 10px; }
+}
