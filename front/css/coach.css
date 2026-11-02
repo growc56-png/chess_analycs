@@ -96,3 +96,36 @@
 @media(max-width:1050px){.errors-import-row{grid-template-columns:repeat(2,minmax(0,1fr))}.errors-import-row .action-btn{width:100%}.errors-drill-layout{grid-template-columns:minmax(280px,46%) minmax(0,1fr)}}
 @media(max-width:760px){.errors-drill-layout{grid-template-columns:1fr}.errors-drill-board-column{max-width:520px;width:100%;margin:0 auto}.errors-opportunities-list{max-height:320px}.errors-hero-symbol{width:70px;height:70px;flex-basis:70px;font-size:40px}}
 @media(max-width:560px){.errors-hero{padding:18px}.errors-hero-symbol{display:none}.errors-import-row{grid-template-columns:1fr}.errors-metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.errors-opportunity-top{align-items:flex-start}.errors-filters{gap:5px}.errors-filters button{padding:7px 9px;font-size:9px}}
+
+
+/* Compact, disclosure-based trainer and tactics layouts */
+#tab-coach .coach-hero, #tab-errors .errors-hero { display:none!important; }
+#tab-coach .coach-import-panel { margin-bottom:14px; }
+#tab-coach .coach-panel { padding:16px; }
+#tab-coach .coach-import-controls { display:grid; grid-template-columns:minmax(180px,260px) minmax(0,1fr); align-items:end; gap:10px; }
+#tab-coach .coach-extra-settings, #tab-errors .errors-extra-settings, #tab-coach .coach-advanced-details, #tab-errors .errors-details {
+  border:1px solid rgba(115,148,166,.18); border-radius:9px; background:rgba(10,23,33,.28);
+}
+#tab-coach .coach-extra-settings { padding:8px 10px; }
+#tab-coach .coach-extra-settings>summary, #tab-errors .errors-extra-settings>summary,
+#tab-coach .coach-advanced-details>summary, #tab-errors .errors-details>summary {
+  color:#a9c0ca; font-size:11px; font-weight:800; cursor:pointer; list-style-position:inside;
+}
+#tab-coach .coach-extra-fields { display:grid; grid-template-columns:repeat(2,minmax(120px,1fr)); gap:9px; margin-top:10px; }
+#tab-coach .coach-advanced-details, #tab-errors .errors-details { margin:12px 0; padding:11px 13px; }
+#tab-coach .coach-advanced-details[open]>summary, #tab-errors .errors-details[open]>summary { margin-bottom:13px; color:#d4e7dd; }
+#tab-coach .coach-advanced-details .coach-dashboard-grid { margin:0; }
+#tab-coach .coach-opening-details { margin-top:12px; }
+#tab-coach .coach-opening-details .coach-opening-panel { margin:0; padding:0; border:0; background:transparent; }
+#tab-coach .coach-section-subheading { margin:16px 0 9px; }
+#tab-coach .coach-metrics-grid { gap:8px; margin-bottom:12px; }
+#tab-coach .coach-drill-panel { margin-bottom:12px; }
+#tab-errors .errors-import-panel { margin-bottom:12px; }
+#tab-errors .errors-extra-settings { margin:8px 0 4px; padding:8px 10px; }
+#tab-errors .errors-extra-settings .coach-field { max-width:230px; margin-top:9px; }
+#tab-errors .errors-metrics-grid { margin:10px 0 0; }
+#tab-errors .errors-results-panel { margin-top:12px; }
+#tab-errors .errors-summary-panel { margin-top:10px; }
+#tab-errors .errors-summary-inner { margin:0; padding:0; border:0; background:transparent; }
+#tab-errors .errors-summary-panel[open]>summary { margin-bottom:10px; }
+@media(max-width:680px){#tab-coach .coach-import-controls{grid-template-columns:1fr}#tab-coach .coach-extra-fields{grid-template-columns:1fr}}
