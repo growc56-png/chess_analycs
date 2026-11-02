@@ -143,6 +143,14 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 # эти данные нужны персональной тренировке ошибок.
                 before_fen = board.fen()
                 best_move_san = board.san(best_pv[0]) if best_pv and best_pv[0] in board.legal_moves else None
+                best_line_san = []
+                if best_pv:
+                    best_line_board = board.copy(stack=False)
+                    for pv_move in best_pv[:6]:
+                        if pv_move not in best_line_board.legal_moves:
+                            break
+                        best_line_san.append(best_line_board.san(pv_move))
+                        best_line_board.push(pv_move)
                 history_san.append(san_move)
 
                 is_book = (
@@ -278,6 +286,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "before_fen": before_fen,
                     "best_move_uci": best_move_uci,
                     "best_move_san": best_move_san,
+                    "best_line_san": best_line_san,
                     "mover": "white" if mover == chess.WHITE else "black",
                     "is_mate": curr_parsed["is_mate"],
                     "mate_in": curr_parsed["mate_in"],
