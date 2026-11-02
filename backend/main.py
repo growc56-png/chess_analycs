@@ -24,6 +24,7 @@ from routers.analysis import (  # noqa: E402
 
 from routers.chesscom import router as chesscom_router  # noqa: E402
 from routers.users import router as users_router  # noqa: E402
+from routers.auth import router as auth_router  # noqa: E402
 from routers.mates import router as mates_router  # noqa: E402
 from routers.chess import router as chess_router  # noqa: E402
 
@@ -70,6 +71,7 @@ configure_engine_router(is_book_move)
 # API и страницы.
 app.include_router(bots_router)
 app.include_router(chesscom_router)
+app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(chess_router)
 app.include_router(mates_router)
