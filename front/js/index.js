@@ -5,6 +5,7 @@ let PLAN = [], currentDay = 1, totalDays = 0;
 let GOAL_PROFILE = null;
 let puzzleBoard = null, puzzleGame = null, currentPuzzle = null, puzzleSolved = false;
 let endgameBoard = null, endgameGame = null, endgameVirtualGame = null, currentEndgame = null;
+let myEndgamesBoard = null, myEndgamesGame = null, myEndgamesCurrent = null, myEndgameMoveIndex = 0;
 let endgamePremoveQueue = [], endgameBotRequestActive = false, endgamePositionVersion = 0;
 let endgamePlayerColor = 'w';
 let openingBoard = null, currentOpening = null, currentMoveIndex = 0;
@@ -391,110 +392,133 @@ function updateRecommendationsUI(recommendations) {
   }
 }
 
-// --- ВИНСТРИК ---
-async function loadStreak() {
-  try {
-    const res = await fetch('/api/streak');
-    const data = await res.json();
-    updateStreakUI(data);
-  } catch (e) {
-    console.error('Ошибка загрузки винстрика', e);
-  }
+// --- ВИНСТРИК: источник данных — реальные партии Chess.com ---
+const STREAK_USERNAME_KEY = 'chessTrainer.streak.username.v1';
+let streakLoading = false;
+let streakLoadedAt = 0;
+let streakLoadedUsername = '';
+
+function setStreakStatus(message, type) {
+  const el = document.getElementById('streakStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.className = 'streak-status' + (type ? ' ' + type : '');
 }
 
 function updateStreakUI(data) {
-  const total = data.wins + data.losses + data.draws;
-  const winrate = total > 0 ? ((data.wins / total) * 100).toFixed(1) : 0;
-
-  document.getElementById('streak-total').textContent = total;
-  document.getElementById('streak-wins').textContent = data.wins;
-  document.getElementById('streak-losses').textContent = data.losses;
-  document.getElementById('streak-draws').textContent = data.draws;
-  document.getElementById('streak-current').textContent = data.current_streak;
-  document.getElementById('streak-max').textContent = data.max_streak;
+  const wins = Math.max(0, Number(data.wins) || 0);
+  const losses = Math.max(0, Number(data.losses) || 0);
+  const draws = Math.max(0, Number(data.draws) || 0);
+  const total = wins + losses + draws;
+  const winrate = total ? ((wins / total) * 100).toFixed(1) : '0.0';
+  document.getElementById('streak-total').textContent = String(total);
+  document.getElementById('streak-wins').textContent = String(wins);
+  document.getElementById('streak-losses').textContent = String(losses);
+  document.getElementById('streak-draws').textContent = String(draws);
+  document.getElementById('streak-current').textContent = String(Math.max(0, Number(data.current_streak) || 0));
+  document.getElementById('streak-max').textContent = String(Math.max(0, Number(data.max_streak) || 0));
   document.getElementById('streak-winrate').textContent = winrate + '%';
 }
 
-window.addStreakResult = async function(result) {
-  try {
-    await fetch('/api/streak', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ result })
-    });
-    loadStreak();
-  } catch (e) {
-    console.error(e);
-  }
-};
+function classifyChessComResult(game, username) {
+  const wanted = String(username || '').trim().toLowerCase();
+  const white = String(game && game.white && game.white.username || '').trim().toLowerCase();
+  const black = String(game && game.black && game.black.username || '').trim().toLowerCase();
+  let result = '';
+  if (wanted && wanted === white) result = game.white && game.white.result;
+  else if (wanted && wanted === black) result = game.black && game.black.result;
+  else return null;
+  result = String(result || '').toLowerCase();
+  if (result === 'win') return 'win';
+  if (['checkmated', 'resigned', 'timeout', 'abandoned', 'lose', 'loss', 'bughousepartnerlose'].includes(result)) return 'loss';
+  if (['draw', 'stalemate', 'insufficient', '50move', 'repetition', 'timevsinsufficient'].includes(result)) return 'draw';
+  return null;
+}
 
-document.getElementById('analyzeTodayBtn').onclick = async () => {
-  const username = document.getElementById('streakUsername').value.trim();
-  if (!username) return alert('Введи ник на Chess.com');
-  
-  const btn = document.getElementById('analyzeTodayBtn');
-  btn.disabled = true;
-  btn.textContent = 'Загрузка...';
+function calculateTodayStreak(games, username) {
+  const today = new Date();
+  const seen = new Set();
+  const todayGames = (Array.isArray(games) ? games : []).filter(game => {
+    const endTime = Number(game && game.end_time);
+    if (!Number.isFinite(endTime) || endTime <= 0) return false;
+    const date = new Date(endTime * 1000);
+    if (date.getFullYear() !== today.getFullYear()
+      || date.getMonth() !== today.getMonth()
+      || date.getDate() !== today.getDate()) return false;
+    const identity = String(game.url || game.uuid || game.id || [
+      endTime, game.white && game.white.username, game.black && game.black.username, game.time_class || ''
+    ].join('|'));
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  }).sort((a, b) => Number(a.end_time) - Number(b.end_time));
 
-  try {
-    const archivesRes = await fetch(`https://api.chess.com/pub/player/${username}/games/archives`);
-    if (!archivesRes.ok) throw new Error('Игрок не найден.');
-    const archivesData = await archivesRes.json();
-    const archives = archivesData.archives || [];
-    if (archives.length === 0) throw new Error('Нет архивов игр.');
-
-    const latestArchiveUrl = archives[archives.length - 1];
-    const monthRes = await fetch(latestArchiveUrl);
-    const monthData = await monthRes.json();
-    let games = monthData.games || [];
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todayGames = games.filter(g => {
-      const gameDate = new Date(g.end_time * 1000);
-      gameDate.setHours(0, 0, 0, 0);
-      return gameDate.getTime() === today.getTime();
-    });
-
-    if (todayGames.length === 0) {
-      updateStreakUI({ wins:0, losses:0, draws:0, current_streak:0, max_streak:0 });
-      alert('За сегодня игр не найдено.');
-      return;
+  let wins = 0, losses = 0, draws = 0, currentStreak = 0, maxStreak = 0;
+  todayGames.forEach(game => {
+    const result = classifyChessComResult(game, username);
+    if (!result) return;
+    if (result === 'win') {
+      wins++;
+      currentStreak++;
+      maxStreak = Math.max(maxStreak, currentStreak);
+    } else {
+      if (result === 'loss') losses++;
+      else draws++;
+      currentStreak = 0;
     }
+  });
+  return { wins, losses, draws, current_streak: currentStreak, max_streak: maxStreak };
+}
 
-    let wins = 0, losses = 0, draws = 0;
-    let currentStreak = 0, maxStreak = 0;
-    const userLower = username.toLowerCase();
-
-    todayGames.sort((a, b) => a.end_time - b.end_time);
-
-    todayGames.forEach(game => {
-      const isWhite = game.white.username.toLowerCase() === userLower;
-      const result = isWhite ? game.white.result : game.black.result;
-
-      if (result === 'win') {
-        wins++;
-        currentStreak++;
-        if (currentStreak > maxStreak) maxStreak = currentStreak;
-      } else if (['checkmated', 'resigned', 'timeout', 'abandoned'].includes(result)) {
-        losses++;
-        currentStreak = 0;
-      } else {
-        draws++;
-        currentStreak = 0;
-      }
-    });
-
-    updateStreakUI({ wins, losses, draws, current_streak: currentStreak, max_streak: maxStreak });
-    
-  } catch (e) {
-    alert('Ошибка: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '⚡ Авто-анализ за сегодня';
+async function loadStreak(forceRefresh = false) {
+  const input = document.getElementById('streakUsername');
+  let username = input ? input.value.trim() : '';
+  if (!username) {
+    try { username = localStorage.getItem(STREAK_USERNAME_KEY) || ''; } catch (error) { /* storage may be disabled */ }
   }
-};
+  if (input && username) input.value = username;
+  if (!username) {
+    updateStreakUI({ wins: 0, losses: 0, draws: 0, current_streak: 0, max_streak: 0 });
+    setStreakStatus('Введи ник Chess.com, чтобы посчитать реальные партии за сегодня.');
+    return;
+  }
+  if (streakLoading) return;
+  if (!forceRefresh && streakLoadedUsername === username.toLowerCase() && Date.now() - streakLoadedAt < 60000) return;
+
+  const button = document.getElementById('analyzeTodayBtn');
+  const oldText = button ? button.textContent : '';
+  streakLoading = true;
+  if (button) { button.disabled = true; button.textContent = 'Загружаю партии…'; }
+  setStreakStatus('Сверяю завершённые партии с Chess.com…');
+  try {
+    const response = await fetch('/api/chesscom/' + encodeURIComponent(username) + '/games?limit=100', { cache: 'no-store' });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || 'Не удалось загрузить партии Chess.com.');
+    const canonicalUsername = payload.username || username;
+    const stats = calculateTodayStreak(payload.games, canonicalUsername);
+    updateStreakUI(stats);
+    try { localStorage.setItem(STREAK_USERNAME_KEY, canonicalUsername); } catch (error) { /* storage may be disabled */ }
+    if (input) input.value = canonicalUsername;
+    streakLoadedUsername = canonicalUsername.toLowerCase();
+    streakLoadedAt = Date.now();
+    const total = stats.wins + stats.losses + stats.draws;
+    setStreakStatus(total
+      ? 'Учтено партий за сегодня: ' + total + '. Данные взяты из архива Chess.com.'
+      : 'Chess.com пока не показывает завершённых партий за сегодня.', 'success');
+  } catch (error) {
+    setStreakStatus('Не удалось обновить винстрик: ' + error.message, 'error');
+  } finally {
+    streakLoading = false;
+    if (button) { button.disabled = false; button.textContent = oldText || 'Обновить результаты'; }
+  }
+}
+
+const streakButton = document.getElementById('analyzeTodayBtn');
+if (streakButton) streakButton.addEventListener('click', () => loadStreak(true));
+const streakInput = document.getElementById('streakUsername');
+if (streakInput) streakInput.addEventListener('keydown', event => {
+  if (event.key === 'Enter') loadStreak(true);
+});
 
 async function drawDiary() {
   const canvas = document.getElementById('diaryCanvas');
@@ -537,11 +561,226 @@ async function drawDiary() {
   } catch(e) { console.error(e); }
 }
 
+
+function getMyEndgamesStorageKey() {
+  const account = window.getChessTrainerUser ? window.getChessTrainerUser() : null;
+  const scope = account && account.id ? String(account.id) : 'guest';
+  return 'chessTrainer.myEndgames.v1.user.' + scope;
+}
+
+function readMyEndgames() {
+  try {
+    const raw = localStorage.getItem(getMyEndgamesStorageKey());
+    const items = raw ? JSON.parse(raw) : [];
+    return Array.isArray(items) ? items.filter(item => item && item.id && item.fen && Array.isArray(item.moves)) : [];
+  } catch (error) {
+    console.warn('Не удалось загрузить личные эндшпили:', error);
+    return [];
+  }
+}
+
+function isPersonalEndgamePosition(game) {
+  const weights = { n: 1, b: 1, r: 2, q: 4 };
+  let score = 0;
+  game.board().forEach(row => row.forEach(piece => {
+    if (piece) score += weights[piece.type] || 0;
+  }));
+  return score <= 8;
+}
+
+function hashPersonalEndgame(value) {
+  let hash = 2166136261;
+  const source = String(value || '');
+  for (let i = 0; i < source.length; i++) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+function saveMyEndgameFromPgn(pgn, gameUrl) {
+  try {
+    if (!pgn || typeof Chess !== 'function') return false;
+    const parsed = new Chess();
+    parsed.load_pgn(String(pgn));
+    const sanMoves = parsed.history();
+    if (!Array.isArray(sanMoves) || sanMoves.length < 4) return false;
+    const startFen = getPgnHeader(pgn, 'FEN', '');
+    const replay = startFen ? new Chess(startFen) : new Chess();
+    let startIndex = -1;
+
+    for (let index = 0; index < sanMoves.length; index++) {
+      if (sanMoves.length - index >= 4 && isPersonalEndgamePosition(replay)) {
+        startIndex = index;
+        break;
+      }
+      try {
+        if (!replay.move(sanMoves[index])) break;
+      } catch (error) {
+        break;
+      }
+    }
+    if (startIndex < 0) return false;
+
+    const white = getPgnHeader(pgn, 'White', 'Белые');
+    const black = getPgnHeader(pgn, 'Black', 'Чёрные');
+    const playerColor = myUsername && myUsername.toLowerCase() === white.toLowerCase()
+      ? 'w'
+      : (myUsername && myUsername.toLowerCase() === black.toLowerCase() ? 'b' : '');
+    const item = {
+      id: 'my-endgame-' + hashPersonalEndgame(String(gameUrl || '') + '|' + String(pgn)),
+      fen: replay.fen(),
+      moves: sanMoves.slice(startIndex),
+      white,
+      black,
+      result: getPgnHeader(pgn, 'Result', '*'),
+      date: getPgnHeader(pgn, 'Date', 'Дата неизвестна'),
+      event: getPgnHeader(pgn, 'Event', 'Партия'),
+      playerColor,
+      sourceUrl: String(gameUrl || ''),
+      startPly: startIndex
+    };
+
+    const items = readMyEndgames();
+    if (items.some(saved => saved.id === item.id)) return false;
+    items.unshift(item);
+    localStorage.setItem(getMyEndgamesStorageKey(), JSON.stringify(items.slice(0, 80)));
+    renderMyEndgamesList();
+    return true;
+  } catch (error) {
+    console.warn('Не удалось сохранить эндшпиль из партии:', error);
+    return false;
+  }
+}
+window.saveMyEndgameFromPgn = saveMyEndgameFromPgn;
+
+function renderMyEndgamesList() {
+  const list = document.getElementById('myEndgamesList');
+  const count = document.getElementById('myEndgamesCount');
+  if (!list) return;
+  const items = readMyEndgames();
+  if (count) count.textContent = String(items.length);
+  list.replaceChildren();
+  if (!items.length) {
+    const empty = document.createElement('div');
+    empty.className = 'coach-empty';
+    empty.textContent = 'Здесь появятся эндшпили из твоих партий после анализа.';
+    list.appendChild(empty);
+    return;
+  }
+  items.forEach(item => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'list-item my-endgame-item' + (myEndgamesCurrent && myEndgamesCurrent.id === item.id ? ' active' : '');
+    const title = document.createElement('strong');
+    title.textContent = item.playerColor === 'w'
+      ? 'Белые: ты · Чёрные: ' + item.black
+      : (item.playerColor === 'b' ? 'Белые: ' + item.white + ' · Чёрные: ты' : item.white + ' — ' + item.black);
+    const meta = document.createElement('small');
+    meta.textContent = item.date + ' · ' + item.moves.length + ' ходов';
+    button.append(title, meta);
+    button.addEventListener('click', () => selectMyEndgame(item));
+    list.appendChild(button);
+  });
+}
+
+function updateMyEndgameViewer() {
+  if (!myEndgamesGame || !myEndgamesCurrent) return;
+  if (myEndgamesBoard) myEndgamesBoard.position(myEndgamesGame.fen(), false);
+  const total = myEndgamesCurrent.moves.length;
+  const played = myEndgameMoveIndex;
+  const label = document.getElementById('myEndgameMoveLabel');
+  const previous = document.getElementById('myEndgamePrev');
+  const next = document.getElementById('myEndgameNext');
+  if (label) label.textContent = played ? 'Ход ' + played + ' из ' + total : 'Начальная позиция';
+  if (previous) previous.disabled = played <= 0;
+  if (next) {
+    next.disabled = played >= total;
+    next.textContent = played >= total ? 'Партия завершена' : 'Следующий ход →';
+  }
+  renderMyEndgamesList();
+}
+
+function selectMyEndgame(item) {
+  if (!item || typeof Chess !== 'function' || typeof Chessboard !== 'function') return;
+  myEndgamesCurrent = item;
+  myEndgamesGame = new Chess(item.fen);
+  myEndgameMoveIndex = 0;
+  if (!myEndgamesBoard) {
+    myEndgamesBoard = Chessboard('myEndgamesBoard', {
+      position: item.fen,
+      draggable: false,
+      pieceTheme: PIECE_THEME
+    });
+  }
+  if (myEndgamesBoard.orientation) myEndgamesBoard.orientation(item.playerColor === 'b' ? 'black' : 'white');
+  const title = document.getElementById('myEndgameTitle');
+  const meta = document.getElementById('myEndgameMeta');
+  if (title) title.textContent = item.white + ' — ' + item.black;
+  if (meta) meta.textContent = item.date + (item.result && item.result !== '*' ? ' · ' + item.result : '') + ' · позиция из эндшпиля';
+  updateMyEndgameViewer();
+  setTimeout(() => myEndgamesBoard && myEndgamesBoard.resize(), 80);
+}
+
+function moveMyEndgame(direction) {
+  if (!myEndgamesGame || !myEndgamesCurrent) return;
+  if (direction < 0) {
+    if (myEndgameMoveIndex <= 0) return;
+    myEndgamesGame.undo();
+    myEndgameMoveIndex--;
+  } else {
+    if (myEndgameMoveIndex >= myEndgamesCurrent.moves.length) return;
+    try {
+      const move = myEndgamesGame.move(myEndgamesCurrent.moves[myEndgameMoveIndex]);
+      if (!move) return;
+      myEndgameMoveIndex++;
+    } catch (error) {
+      return;
+    }
+  }
+  updateMyEndgameViewer();
+}
+
+function initMyEndgamesUI() {
+  const wrapper = document.getElementById('tab-endgames');
+  if (!wrapper || wrapper.dataset.personalReady === '1') return;
+  wrapper.dataset.personalReady = '1';
+  wrapper.querySelectorAll('[data-endgames-view]').forEach(button => {
+    button.addEventListener('click', () => {
+      const mine = button.dataset.endgamesView === 'mine';
+      const catalog = document.getElementById('endgamesCatalogView');
+      const personalView = document.getElementById('myEndgamesView');
+      wrapper.querySelectorAll('[data-endgames-view]').forEach(tab => tab.classList.toggle('active', tab === button));
+      if (catalog) catalog.hidden = mine;
+      if (personalView) personalView.hidden = !mine;
+      if (mine) {
+        renderMyEndgamesList();
+        const items = readMyEndgames();
+        if (!myEndgamesCurrent && items.length) selectMyEndgame(items[0]);
+        setTimeout(() => myEndgamesBoard && myEndgamesBoard.resize(), 80);
+      }
+    });
+  });
+  const prev = document.getElementById('myEndgamePrev');
+  const next = document.getElementById('myEndgameNext');
+  if (prev) prev.addEventListener('click', () => moveMyEndgame(-1));
+  if (next) next.addEventListener('click', () => moveMyEndgame(1));
+  renderMyEndgamesList();
+  document.querySelector('.tab-btn[data-tab="endgames"]')?.addEventListener('click', () => {
+    setTimeout(() => {
+      if (myEndgamesBoard && !document.getElementById('myEndgamesView')?.hidden) myEndgamesBoard.resize();
+      if (endgameBoard && !document.getElementById('endgamesCatalogView')?.hidden) endgameBoard.resize();
+    }, 100);
+  });
+}
+
 function renderEndgamesList() {
   const list = document.getElementById('endgameList');
   list.innerHTML = endgamesData.map(e => `<div class="list-item" data-id="${e.id}">${e.title}</div>`).join('');
   list.querySelectorAll('.list-item').forEach(el => { el.onclick = () => selectEndgame(endgamesData.find(e => e.id == el.dataset.id)); });
   if (endgamesData.length) selectEndgame(endgamesData[0]);
+  initMyEndgamesUI();
+  renderMyEndgamesList();
 }
 
 function forceEndgamePlayerTurn(chessGame) {
@@ -2117,6 +2356,7 @@ async function analyzePGN(pgn, gameUrl) {
     try {
       const data = JSON.parse(cachedData);
       if (data && Array.isArray(data.moves) && data.moves.every(move => Object.prototype.hasOwnProperty.call(move, 'next_top_moves'))) {
+        saveMyEndgameFromPgn(pgn, gameUrl);
         loadAnalysisData(data);
         isAnalyzing = false;
         return;
@@ -2134,6 +2374,7 @@ async function analyzePGN(pgn, gameUrl) {
     if (!res.ok) throw new Error(data.detail || 'Ошибка анализа');
     if (!data || !Array.isArray(data.moves)) throw new Error('Сервер вернул некорректный результат анализа');
     localStorage.setItem(cacheKey, JSON.stringify(data));
+    saveMyEndgameFromPgn(pgn, gameUrl);
     loadAnalysisData(data);
   } catch (e) {
     alert('Ошибка: ' + e.message);
