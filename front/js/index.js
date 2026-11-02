@@ -2306,9 +2306,9 @@ function renderAnalysisSummary() {
   const deepSummary = document.getElementById('analysisDeepSummary');
   if (deepSummary) {
     const deepCount = analysisMoves.filter(move => move?.deep_analysis).length;
-    deepSummary.textContent = deepCount
-      ? 'Глубоко перепроверено позиций: ' + deepCount
-      : 'Дополнительная глубокая проверка не понадобилась';
+    const timePressureCount = analysisMoves.filter(move => move?.is_time_pressure).length;
+    deepSummary.textContent = 'Глубоко перепроверено позиций: ' + deepCount
+      + ' · ходов в цейтноте: ' + timePressureCount;
   }
 }
 
