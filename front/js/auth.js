@@ -153,6 +153,7 @@
         editingProfile = false;
         hideGate();
         setAccount(currentUser);
+        window.location.reload();
       } else {
         finishAuth(true);
       }
