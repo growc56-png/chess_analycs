@@ -1153,3 +1153,63 @@
   color: #bcd9fa;
 }
 .analysis-retry-btn[hidden] { display: none !important; }
+
+
+.analysis-key-moments-card {
+  min-width: 0;
+  padding: 12px 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 11px;
+  background: #292c32;
+  color: #eef2f5;
+}
+.analysis-key-moments {
+  display: grid;
+  gap: 6px;
+}
+.analysis-key-moment {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 35px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.045);
+  border-radius: 7px;
+  background: #202329;
+  color: #e7edf1;
+  text-align: left;
+  cursor: pointer;
+}
+.analysis-key-moment:hover {
+  border-color: rgba(143,190,96,.35);
+  background: #30363d;
+}
+.analysis-key-moment-label {
+  color: #aab7c0;
+  font-size: 9px;
+  font-weight: 850;
+}
+.analysis-key-moment strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.analysis-key-moment small {
+  color: #8b9ba6;
+  font-size: 9px;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .analysis-key-moment {
+    grid-template-columns: 85px minmax(0, 1fr);
+  }
+  .analysis-key-moment small {
+    grid-column: 2;
+    margin-top: -5px;
+  }
+}
