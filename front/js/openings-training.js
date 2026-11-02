@@ -340,6 +340,7 @@
     describeOpening();
     resetGame();
     setMode('idle');
+    refreshBoardClickToMove();
     renderCatalogList();
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       const active = button.dataset.openingCategory === state.catalogSide;
@@ -359,6 +360,7 @@
       state.opening = detail;
       describeOpening();
       resetGame();
+      refreshBoardClickToMove();
       updateProgress();
       renderCatalogList();
       if (startButton) startButton.disabled = false;
@@ -368,6 +370,24 @@
       if (startButton) startButton.disabled = true;
       setMessage(`Не удалось загрузить этот дебют: ${error.message}`, 'error');
     }
+  }
+
+  function refreshBoardClickToMove() {
+    if (!window.initBoardClickToMove) return;
+    window.initBoardClickToMove(
+      'openingTrainerBoard',
+      () => state.game,
+      handleUserDrop,
+      {
+        canSelect: piece => Boolean(
+          ['practice', 'engine'].includes(state.mode) &&
+          !state.botThinking &&
+          !state.game.game_over() &&
+          piece &&
+          piece.color === userColor()
+        )
+      }
+    );
   }
 
   function initializeBoard() {
@@ -385,22 +405,7 @@
       onSnapEnd: () => updateBoard()
     });
     installRightClickArrows('openingTrainerBoard');
-    if (window.initBoardClickToMove) {
-      window.initBoardClickToMove(
-        'openingTrainerBoard',
-        () => state.game,
-        handleUserDrop,
-        {
-          canSelect: piece => Boolean(
-            ['practice', 'engine'].includes(state.mode) &&
-            !state.botThinking &&
-            !state.game.game_over() &&
-            piece &&
-            piece.color === userColor()
-          )
-        }
-      );
-    }
+    refreshBoardClickToMove();
     const boardElement = byId('openingTrainerBoard');
     if (boardElement) boardElement.dataset.orientation = state.side;
   }
@@ -411,6 +416,7 @@
     state.botThinking = false;
     resetGame();
     setMode('study');
+    refreshBoardClickToMove();
     byId('openingStudyStep').textContent = 'Позиция перед первым ходом';
     byId('openingStudyPrev').disabled = true;
     byId('openingStudyNext').disabled = false;
@@ -459,6 +465,7 @@
     state.botThinking = false;
     resetGame();
     setMode('practice');
+    refreshBoardClickToMove();
     byId('openingPracticeStatus').textContent = 'Повторение: играй свою часть линии без подсказок.';
     setMessage('Повтори изученную последовательность. Если ошибёшься, позиция останется прежней.', 'info');
     updateProgress();
@@ -579,6 +586,7 @@
     state.botThinking = false;
     resetGame();
     setMode('idle');
+    refreshBoardClickToMove();
     setMessage('Тренировка сброшена. Начни с изучения теории.', 'info');
   }
 
