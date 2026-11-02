@@ -25,6 +25,7 @@
   function hideGate() {
     $('authGate').hidden = true;
     document.body.classList.remove('auth-locked');
+    document.querySelector('.app-shell')?.classList.remove('auth-pending');
   }
 
   function setAccount(user) {
@@ -165,6 +166,7 @@
   }
 
   function bindEvents() {
+    document.querySelector('.app-shell')?.classList.add('auth-pending');
     $('authLoginTab').addEventListener('click', () => {
       $('authLoginTab').classList.add('active');
       $('authRegisterTab').classList.remove('active');
