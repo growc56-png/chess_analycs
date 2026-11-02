@@ -355,6 +355,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
                 mover = board.turn
                 before_board = board.copy(stack=True)
+                move_number = before_board.fullmove_number
                 phase = _classify_game_phase(before_board)
 
                 before_infos = prev_infos
@@ -587,7 +588,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     classification = classify_move(
                         win_percent_loss=win_points_loss,
                         is_best=is_best,
-                        is_sacrifice=is_sacrifice,
+                        is_sacrifice=(is_sacrifice and deep_analysis_performed),
                         is_forced=is_forced,
                         prev_eval=(before_cp / 100.0),
                         curr_eval=(after_cp / 100.0),
@@ -608,7 +609,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 )
 
                 moves_data.append({
-                    "move_num": board.fullmove_number,
+                    "move_num": move_number,
                     "san": san_move,
                     "eval": curr_eval,
                     "uci": move.uci(),
