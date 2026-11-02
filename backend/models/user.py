@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -17,7 +17,7 @@ class User(Base):
     target_elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
     goal_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     daily_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    goal_started_on: Mapped[datetime | None] = mapped_column(Date, nullable=True)
+    goal_started_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
