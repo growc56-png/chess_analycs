@@ -431,6 +431,7 @@ canvas#evalGraph { display: block; width: 100%; height: 100px; border-radius: 5p
 .eval-advantage-swatch.good { background: #71b84c; }
 .eval-advantage-swatch.inaccuracy { background: #e0bd52; }
 .eval-advantage-swatch.mistake { background: #e99a42; }
+.eval-advantage-swatch.miss { background: #e77b4e; }
 .eval-advantage-swatch.blunder { background: #e34e55; }
 .eval-advantage-swatch.book { background: #b89a78; }
 .eval-advantage-swatch.forced { background: #8996a0; }
