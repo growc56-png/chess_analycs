@@ -271,7 +271,8 @@
     const raw = Number(move && move.cp_loss);
     if (Number.isFinite(raw)) return Math.max(0, Math.min(100, 100 - Math.max(0, raw) / 10));
     const fallback = { blunder: 45, miss: 30, mistake: 22, inaccuracy: 10, good: 4, excellent: 1.5, best: 0, forced: 0, book: 0 };
-    return 100 - (fallback[move && move.classification] || 8);
+    const classification = move && move.classification;
+    return 100 - (Object.prototype.hasOwnProperty.call(fallback, classification) ? fallback[classification] : 8);
   }
 
   function phaseForMove(move) {
@@ -542,10 +543,9 @@
       }
     };
     if (!drillBoard) drillBoard = Chessboard('coachDrillBoard', config);
-    else {
-      drillBoard.orientation(color === 'w' ? 'white' : 'black');
-      drillBoard.position(drill.beforeFen, false);
-    }
+    else drillBoard.position(drill.beforeFen, false);
+    if (typeof drillBoard.orientation === 'function') drillBoard.orientation(color === 'w' ? 'white' : 'black');
+    drillBoard.resize();
     setDrillFeedback(drill.solved ? 'Эта позиция уже решена. Можешь повторить её ещё раз.' : 'Найди лучший ход в позиции. Ищи решение так, будто это твоя партия.', '');
   }
 
@@ -593,6 +593,7 @@
   function revealDrill() {
     const drill = currentDrills()[activeDrillIndex];
     if (!drill || !drillGame) return;
+    drillGame = new Chess(drill.beforeFen);
     const move = drillGame.move({
       from: drill.bestMoveUci.slice(0, 2),
       to: drill.bestMoveUci.slice(2, 4),
@@ -614,6 +615,7 @@
     const color = side === 'black' ? 'b' : 'w';
     const cards = [];
     openingCatalog.forEach(opening => {
+      if (opening.side && opening.side !== side) return;
       const line = Array.isArray(opening.moves) ? opening.moves : [];
       const game = new Chess();
       for (let index = 0; index < line.length; index++) {
@@ -723,10 +725,9 @@
       }
     };
     if (!openingBoard) openingBoard = Chessboard('coachOpeningBoard', config);
-    else {
-      openingBoard.orientation(card.side === 'w' ? 'white' : 'black');
-      openingBoard.position(card.beforeFen, false);
-    }
+    else openingBoard.position(card.beforeFen, false);
+    if (typeof openingBoard.orientation === 'function') openingBoard.orientation(card.side === 'w' ? 'white' : 'black');
+    openingBoard.resize();
   }
 
   function tryOpeningSan() {
@@ -764,6 +765,7 @@
 
   function revealOpeningAnswer() {
     if (!activeOpeningCard || !openingGame) return;
+    openingGame = new Chess(activeOpeningCard.beforeFen);
     const move = openingGame.move({
       from: activeOpeningCard.expectedUci.slice(0, 2),
       to: activeOpeningCard.expectedUci.slice(2, 4),
