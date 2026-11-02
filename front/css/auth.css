@@ -61,3 +61,5 @@ body.auth-locked{overflow:hidden}
  .goal-summary-divider{display:none}
  .goal-summary-item strong{font-size:19px}
 }
+
+.account-actions[hidden]{display:none!important}
