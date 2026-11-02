@@ -1057,3 +1057,146 @@ button:disabled {
         padding: 21px;
     }
 }
+
+/* Bot game history and move list */
+.move-history {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 4px 2px;
+    scrollbar-width: thin;
+}
+.move-history-row {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: rgba(148, 163, 184, .055);
+}
+.move-history-number {
+    color: var(--muted, #94a3b8);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.move-history-san {
+    display: block;
+    min-width: 0;
+    padding: 5px 7px;
+    border-radius: 6px;
+    color: var(--text, #e5e7eb);
+    font-size: 14px;
+    font-weight: 600;
+}
+.move-history-san.current {
+    background: rgba(59, 130, 246, .18);
+    color: var(--text, #fff);
+}
+.saved-games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+.saved-game-item {
+    padding: 12px;
+    border: 1px solid var(--border, rgba(148, 163, 184, .18));
+    border-radius: 12px;
+    background: rgba(148, 163, 184, .05);
+}
+.saved-game-heading,
+.saved-game-details-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.saved-game-heading > span,
+.saved-game-meta {
+    color: var(--muted, #94a3b8);
+    font-size: 12px;
+}
+.saved-game-result {
+    font-size: 14px;
+    font-weight: 750;
+}
+.saved-game-result.win { color: #22c55e; }
+.saved-game-result.loss { color: #ef4444; }
+.saved-game-result.draw { color: #94a3b8; }
+.saved-game-meta {
+    margin-top: 7px;
+    line-height: 1.5;
+}
+.saved-game-open,
+.saved-game-download {
+    margin-top: 10px;
+    padding: 7px 11px;
+    border: 1px solid var(--border, rgba(148, 163, 184, .25));
+    border-radius: 8px;
+    color: var(--text, #e5e7eb);
+    background: rgba(148, 163, 184, .08);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+}
+.saved-game-open:hover,
+.saved-game-download:hover {
+    background: rgba(59, 130, 246, .16);
+}
+.saved-game-details {
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid var(--border, rgba(148, 163, 184, .22));
+    border-radius: 12px;
+}
+.saved-game-details-heading > button {
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+    font-size: 22px;
+}
+.saved-game-pgn {
+    max-height: 260px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding: 10px;
+    border-radius: 8px;
+    color: var(--text, #e5e7eb);
+    background: rgba(15, 23, 42, .38);
+    font-size: 11px;
+    line-height: 1.5;
+}
+.game-save-notice {
+    min-height: 0;
+    margin-top: 10px;
+    color: var(--muted, #94a3b8);
+    font-size: 12px;
+    line-height: 1.45;
+}
+.game-save-notice:empty { display: none; }
+.game-save-notice.success { color: #22c55e; }
+.game-save-notice.error { color: #ef4444; }
+.game-save-notice.saving { color: #60a5fa; }
+.game-save-notice.error button {
+    margin-left: 6px;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+    text-decoration: underline;
+}
+.error-text { color: #ef4444 !important; }
+@media (max-width: 560px) {
+    .move-history-row {
+        grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr);
+        gap: 4px;
+        padding-inline: 5px;
+    }
+    .move-history-san { padding-inline: 4px; font-size: 13px; }
+}
