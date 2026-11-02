@@ -39,3 +39,50 @@ body{background:radial-gradient(ellipse at 10% 0%,rgba(90,132,105,.10),transpare
 .streak-status.success{color:#a7d29c}.streak-status.error{color:#e69a9a}
 .streak-second-row{margin-top:10px}
 @media(max-width:760px){.my-endgames-layout{grid-template-columns:1fr}.my-endgames-list{max-height:230px}.streak-input-controls{flex-direction:column}.streak-input-controls .action-btn{width:100%}}
+
+
+/* Endgame practice versus Stockfish */
+#myEndgamesBoard { position: relative; }
+#myEndgamesBoard .premove-from::before,
+#myEndgamesBoard .premove-to::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+}
+#myEndgamesBoard .premove-from::before { background: rgba(239,68,68,.42); }
+#myEndgamesBoard .premove-to::before { background: rgba(239,68,68,.72); }
+.my-endgame-practice-settings {
+  width: min(480px,100%); display: grid; gap: 8px; margin-top: 6px;
+}
+.my-endgame-time-field { color: #9eafb9; font-size: 10px; font-weight: 800; }
+.my-endgame-practice-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.my-endgame-practice-row select,
+.my-endgame-practice-row input {
+  min-height: 38px; min-width: 110px; padding: 7px 10px; border: 1px solid #3b515c;
+  border-radius: 8px; background: #14212a; color: #e6eef1; font: inherit; font-size: 11px;
+}
+.my-endgame-practice-row input { width: 104px; }
+.my-endgame-practice-row [hidden] { display: none !important; }
+.my-endgame-practice-start {
+  border-color: rgba(140,189,118,.38) !important; background: rgba(140,189,118,.15) !important;
+  color: #cde9bc !important; font-weight: 850 !important;
+}
+.my-endgame-practice-start:disabled,
+.my-endgame-practice-row button:disabled { opacity: .4; cursor: not-allowed; }
+.my-endgame-practice-clock {
+  color: #f2f6f8; font-size: 26px; font-weight: 900; font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+}
+.my-endgame-practice-clock.low { color: #ef8b80; }
+.my-endgame-practice-feedback {
+  min-height: 35px; padding: 9px 11px; border: 1px solid rgba(115,148,166,.16);
+  border-radius: 8px; background: rgba(10,23,33,.35); color: #a6bac4; font-size: 11px; line-height: 1.5;
+}
+.my-endgame-practice-feedback.success { color: #b4dc9a; border-color: rgba(140,189,118,.3); }
+.my-endgame-practice-feedback.err { color: #e9a09a; border-color: rgba(225,110,100,.28); }
+.my-endgame-practice-feedback.info { color: #a6bac4; }
+.my-endgame-controls[hidden] { display: none !important; }
+@media(max-width:620px) {
+  .my-endgame-practice-row { display: grid; grid-template-columns: 1fr 1fr; }
+  .my-endgame-practice-row select { grid-column: 1/-1; width: 100%; }
+  .my-endgame-practice-row .action-btn { width: 100%; }
+  .my-endgame-practice-clock { text-align: center; }
+}
