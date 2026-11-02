@@ -478,6 +478,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     deep_reason = "mate_position"
 
                 deep_analysis_performed = False
+                analysis_depth_used = int(best_info.get("depth") or ANALYSIS_DEPTH)
                 if (
                     deep_reason
                     and deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES
@@ -573,6 +574,15 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             centipawn_loss = deep_cp_loss
                             before_cp = deep_before_cp
                             after_cp = deep_after_cp
+                            deep_depths = [
+                                int(value)
+                                for value in (
+                                    deep_best_info.get("depth"),
+                                    deep_after_info.get("depth"),
+                                )
+                                if value is not None
+                            ]
+                            analysis_depth_used = min(deep_depths) if deep_depths else DEEP_ANALYSIS_DEPTH
                             deep_analysis_performed = True
                     except Exception:
                         # A deep-pass failure must not discard the valid fast
@@ -674,7 +684,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "phase": phase,
                     "deep_analysis": deep_analysis_performed,
                     "deep_analysis_reason": deep_reason if deep_analysis_performed else None,
-                    "analysis_depth_used": DEEP_ANALYSIS_DEPTH if deep_analysis_performed else ANALYSIS_DEPTH,
+                    "analysis_depth_used": analysis_depth_used,
                     "is_time_pressure": time_pressure,
                     "clock_before": clock_before,
                     "is_sacrifice": is_sacrifice,
