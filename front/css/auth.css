@@ -67,3 +67,7 @@ body.auth-locked{overflow:hidden}
 .account-actions[hidden]{display:none!important}
 
 .app-shell.auth-pending{visibility:hidden}
+
+.auth-cancel{min-height:39px;padding:9px 12px;border:1px solid #40545f;border-radius:8px;background:transparent;color:#9fb2bb;font-size:10px;font-weight:800;cursor:pointer}
+.auth-cancel:hover{border-color:#779c7e;color:#d6e4dc}
+.auth-cancel[hidden]{display:none!important}
