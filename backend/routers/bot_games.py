@@ -5,6 +5,7 @@ from typing import Literal
 import chess.pgn
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -134,7 +135,14 @@ def get_bot_games(
         .all()
     )
 
-    total = db.query(BotGame).filter(BotGame.user_id == user.id).count()
+    user_games = db.query(BotGame).filter(BotGame.user_id == user.id)
+    total = user_games.count()
+    result_counts = dict(
+        db.query(BotGame.result, func.count(BotGame.id))
+        .filter(BotGame.user_id == user.id)
+        .group_by(BotGame.result)
+        .all()
+    )
 
     return {
         "games": [
@@ -142,6 +150,11 @@ def get_bot_games(
             for game in games
         ],
         "total": total,
+        "stats": {
+            "wins": int(result_counts.get("win", 0)),
+            "draws": int(result_counts.get("draw", 0)),
+            "losses": int(result_counts.get("loss", 0)),
+        },
         "limit": limit,
         "offset": offset,
     }
