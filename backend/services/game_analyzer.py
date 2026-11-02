@@ -67,10 +67,12 @@ def get_acceptable_move_candidates(board, infos, mover, expected_points_toleranc
 
             line_board = board.copy(stack=False)
             line_san = []
-            for line_move in pv[:6]:
+            line_uci = []
+            for line_move in pv[:4]:
                 if line_move not in line_board.legal_moves:
                     break
                 line_san.append(line_board.san(line_move))
+                line_uci.append(line_move.uci())
                 line_board.push(line_move)
 
             motifs = get_tactical_motifs(
@@ -82,6 +84,7 @@ def get_acceptable_move_candidates(board, infos, mover, expected_points_toleranc
                 "uci": first_move.uci(),
                 "san": board.san(first_move),
                 "line_san": line_san[:4],
+                "line_uci": line_uci[:4],
                 "motifs": motifs,
                 "expected_points": expected_points,
                 "winning_mate": bool(winning_mate),
@@ -462,6 +465,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "best_move_uci": best_move_uci,
                     "best_move_san": best_move_san,
                     "best_line_san": best_line_san,
+                    "best_line_uci": [item.uci for item in best_pv[:4]],
                     "best_move_motifs": (
                         acceptable_move_by_uci.get(best_move_uci, {}).get("motifs", [])
                         if best_move_uci else []
@@ -471,6 +475,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             "uci": item["uci"],
                             "san": item["san"],
                             "line_san": item["line_san"],
+                            "line_uci": item["line_uci"],
                             "motifs": item["motifs"],
                             "winning_mate": item["winning_mate"],
                             "mate_in": item["mate_in"],
