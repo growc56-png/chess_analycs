@@ -2211,18 +2211,18 @@ function getMoveAccuracy(move) {
   if (!move) return 0;
 
   // Backend now reports per-move expected-points accuracy directly.
-  const storedAccuracy = Number(move.move_accuracy);
+  const storedAccuracy = move.move_accuracy == null ? NaN : Number(move.move_accuracy);
   if (Number.isFinite(storedAccuracy)) {
     return Math.max(0, Math.min(100, storedAccuracy));
   }
 
   // Compatibility for analysis data created before the v11 backend.
-  const expectedPointsLoss = Number(move.win_percent_loss);
+  const expectedPointsLoss = move.win_percent_loss == null ? NaN : Number(move.win_percent_loss);
   if (Number.isFinite(expectedPointsLoss)) {
     return Math.max(0, Math.min(100, 100 - expectedPointsLoss));
   }
 
-  const rawCpLoss = Number(move.cp_loss);
+  const rawCpLoss = move.cp_loss == null ? NaN : Number(move.cp_loss);
   if (Number.isFinite(rawCpLoss)) {
     return Math.max(0, Math.min(100, 100 - Math.max(0, rawCpLoss) / 10));
   }
