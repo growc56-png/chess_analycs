@@ -8,17 +8,18 @@
 <link rel="stylesheet" href="/css/index.css?v=20261102-analysis-v1">
 <link rel="stylesheet" href="/css/index-layout.css?v=20261102-analysis-v3">
 <link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261102-analysis-layout-v10">
-<link rel="stylesheet" href="/css/coach.css?v=20261102-tactics-v4">
+<link rel="stylesheet" href="/css/coach.css?v=20261102-compact-v1">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
+<link rel="stylesheet" href="/css/site-refinement.css?v=20261102-ui-v1">
 <script src="/js/board-interactions.js?v=20261102-clickmove-v2" defer></script>
 <script src="/js/jquery.min.js"></script>
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
 <script src="/js/chess.min.js"></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261102-analysis-layout-v11" defer></script>
+<script src="/js/index.js?v=20261102-personal-endgames-v1" defer></script>
 <script src="/js/diary-ui.js" defer></script>
-<script src="/js/coach.js?v=20261102-accuracy-v4" defer></script>
-<script src="/js/errors.js?v=20261102-tactics-v7" defer></script>
+<script src="/js/coach.js?v=20261102-compact-v1" defer></script>
+<script src="/js/errors.js?v=20261102-compact-v1" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -97,27 +98,26 @@
           <div><div class="section-kicker">ТАКТИЧЕСКАЯ ДИАГНОСТИКА</div><h2>Ошибки и тактика</h2><p>Здесь только пропущенные тактические возможности: вилки, связки, вскрытые шахи и матовые идеи</p></div>
           <div class="section-badge">10 последних партий</div>
         </div>
-        <div class="errors-hero">
-          <div><div class="coach-label">CHESS TRAINER · TACTICS LAB</div><h3>Найди комбинации, которые пропустил за доской</h3><p>Stockfish покажет только позиции с конкретной тактической идеей: вилкой, связкой, вскрытым шахом или матовой атакой. Обычные неточности и взятия без комбинации не включаются.</p></div>
-          <div class="errors-hero-symbol" aria-hidden="true">⚡</div>
-        </div>
         <section class="coach-panel errors-import-panel">
           <div class="coach-panel-heading"><div><div class="coach-label">ИСТОЧНИК ПАРТИЙ</div><h3>Проанализировать последние 10 партий</h3><p>Введи ник на Chess.com или Lichess. Партии будут загружены автоматически.</p></div><span class="coach-panel-icon">⌕</span></div>
           <div class="errors-import-row">
             <label class="coach-field"><span>Платформа</span><select id="errorsSource"><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option></select></label>
             <label class="coach-field errors-username-field"><span>Твой ник</span><input type="text" id="errorsUsername" placeholder="Ник на Chess.com / Lichess" autocomplete="off" spellcheck="false"></label>
-            <label class="coach-field"><span>Моя сторона</span><select id="errorsColor"><option value="auto">Определить автоматически</option><option value="white">Белыми</option><option value="black">Чёрными</option></select></label>
+
             <button class="action-btn coach-primary-btn" type="button" id="errorsAnalyzeBtn">⚡ Анализировать 10 партий</button>
           </div>
+          <details class="errors-extra-settings"><summary>Дополнительные настройки</summary><label class="coach-field"><span>Играть за</span><select id="errorsColor"><option value="auto">Автоматически</option><option value="white">Белыми</option><option value="black">Чёрными</option></select></label></details>
           <div id="errorsStatus" class="coach-status" role="status">Нажми «Анализировать 10 партий», чтобы начать.</div>
           <div class="coach-progress errors-progress" id="errorsProgress" hidden><div class="coach-progress-track"><i id="errorsProgressFill"></i></div><span id="errorsProgressText">0%</span></div>
         </section>
+        <details class="errors-details"><summary>Статистика разбора</summary>
         <div class="errors-metrics-grid">
           <article class="coach-metric"><span>Партий разобрано</span><strong id="errorsMetricGames">—</strong><small>Из последних десяти</small></article>
           <article class="coach-metric"><span>Твои ходы</span><strong id="errorsMetricMoves">—</strong><small>Всего проверено</small></article>
           <article class="coach-metric"><span>Тактические промахи</span><strong id="errorsMetricBlunders">—</strong><small>Ошибки с конкретной тактикой</small></article>
           <article class="coach-metric"><span>Найдено комбинаций</span><strong id="errorsMetricTactics">—</strong><small>Вилки, связки, шахи и маты</small></article>
         </div>
+        </details>
         <section class="coach-panel errors-results-panel">
           <div class="coach-panel-heading"><div><div class="coach-label">ТВОИ УПУЩЕННЫЕ ВОЗМОЖНОСТИ</div><h3>Тактические темы</h3><p>В списке только реальные тактические шансы, которые ты не использовал.</p></div></div>
           <div class="errors-filters" id="errorsFilters">
@@ -140,10 +140,10 @@
             </div>
           </div>
         </section>
-        <section class="coach-panel errors-summary-panel">
+        <details class="errors-details errors-summary-panel"><summary>Краткий отчёт</summary><section class="coach-panel errors-summary-inner">
           <div class="coach-panel-heading"><div><div class="coach-label">ОТЧЁТ</div><h3>Что стоит исправить</h3><p>Краткая сводка по последним десяти партиям.</p></div></div>
           <div class="errors-summary" id="errorsSummary">После анализа появится сводка слабых мест и идей, которые можно было реализовать.</div>
-        </section>
+        </section></details>
       </section>
 
       <section id="tab-coach" class="tab-content">
@@ -152,22 +152,14 @@
           <div class="section-badge coach-sample-badge">Отчёт хранится в этом браузере</div>
         </div>
 
-        <div class="coach-hero">
-          <div class="coach-hero-copy">
-            <div class="coach-kicker">CHESS TRAINER · PERSONAL</div>
-            <h3>Тренируй не всё подряд. Работай над тем, что мешает именно тебе.</h3>
-            <p>Загрузи несколько партий. Stockfish найдёт ошибки, тренер выделит повторяющиеся проблемы и подберёт позиции для повторной практики.</p>
-            <div class="coach-hero-points"><span>✓ Анализ реальных партий</span><span>✓ Упражнения из твоих ошибок</span><span>✓ Повторение дебютов</span></div>
-          </div>
-          <div class="coach-hero-mark" aria-hidden="true">♞</div>
-        </div>
-
         <section class="coach-panel coach-import-panel">
           <div class="coach-panel-heading"><div><div class="coach-label">ШАГ 1</div><h3>Добавь свои партии</h3><p>Выбери источник и проанализируй от одной до пяти партий за запуск.</p></div><span class="coach-panel-icon">↥</span></div>
           <div class="coach-import-controls">
-            <label class="coach-field"><span>Источник</span><select id="coachSource"><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option><option value="pgn">PGN-файл или текст</option></select></label>
-            <label class="coach-field"><span>Твой цвет</span><select id="coachSide"><option value="auto">Определить по нику</option><option value="white">Белыми</option><option value="black">Чёрными</option></select></label>
-            <label class="coach-field"><span>Количество партий</span><select id="coachGameLimit"><option value="1">1 партия</option><option value="3" selected>3 партии</option><option value="5">5 партий</option></select></label>
+            <label class="coach-field"><span>Источник партий</span><select id="coachSource"><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option><option value="pgn">PGN-файл или текст</option></select></label>
+            <details class="coach-extra-settings"><summary>Дополнительные настройки</summary><div class="coach-extra-fields">
+              <label class="coach-field"><span>Твой цвет</span><select id="coachSide"><option value="auto">Определить по нику</option><option value="white">Белыми</option><option value="black">Чёрными</option></select></label>
+              <label class="coach-field"><span>Количество партий</span><select id="coachGameLimit"><option value="1">1 партия</option><option value="3" selected>3 партии</option><option value="5">5 партий</option></select></label>
+            </div></details>
           </div>
           <div class="coach-source-row" id="coachChesscomFields">
             <label class="coach-field coach-grow"><span>Ник на Chess.com</span><input id="coachChesscomUsername" type="text" placeholder="Например, Hikaru" autocomplete="off" spellcheck="false"></label>
@@ -196,6 +188,7 @@
           <article class="coach-metric"><span>Ходы под проверкой</span><strong id="coachMetricMoves">—</strong><small>Твои ходы в разобранных партиях</small></article>
         </div>
 
+        <details class="coach-advanced-details"><summary>Подробная диагностика и план</summary>
         <div class="coach-dashboard-grid">
           <section class="coach-panel">
             <div class="coach-panel-heading"><div><div class="coach-label">ДИАГНОСТИКА</div><h3>Где теряешь очки</h3><p>Распределение ошибок по этапам партии.</p></div></div>
@@ -208,6 +201,8 @@
             <div id="coachPlanList" class="coach-plan-list"><div class="coach-empty">Твой план занятий появится после первой диагностики.</div></div>
           </section>
         </div>
+
+        </details>
 
         <section class="coach-panel coach-drill-panel">
           <div class="coach-panel-heading"><div><div class="coach-label">ШАГ 3</div><h3>Исправь собственные ошибки</h3><p>Вернись в позицию до ошибки и найди лучший ход движка.</p></div><span id="coachDrillCount" class="coach-count-pill">0 упражнений</span></div>
@@ -222,6 +217,7 @@
           </div>
         </section>
 
+        <details class="coach-advanced-details coach-opening-details"><summary>Повторение дебютов</summary>
         <section class="coach-panel coach-opening-panel" id="coachOpeningPanel">
           <div class="coach-panel-heading"><div><div class="coach-label">ИНТЕРВАЛЬНОЕ ПОВТОРЕНИЕ</div><h3>Закрепи дебютный репертуар</h3><p>Отвечай на вопросы по своим линиям и повторяй сложные ходы чаще.</p></div><span class="coach-panel-icon">♘</span></div>
           <div class="coach-opening-toolbar">
@@ -241,11 +237,9 @@
             </div>
           </div>
         </section>
+        </details>
 
-        <section class="coach-premium">
-          <div class="coach-premium-copy"><div class="coach-label">CHESS TRAINER PREMIUM</div><h3>Твоя подготовка — без ограничений</h3><p>Расширенный анализ, персональные тренировочные наборы, история прогресса, полный дебютный репертуар и подробные линии Stockfish.</p><div class="coach-premium-features"><span>✓ Полный отчёт по партиям</span><span>✓ Персональные задания</span><span>✓ Продвинутая статистика</span><span>✓ Подробные варианты движка</span></div></div>
-          <div class="coach-premium-price"><strong>Premium</strong><b>от $4.99 <small>/ месяц</small></b><span>Планируемый ориентир цены</span><button type="button" class="action-btn coach-premium-button" id="coachPremiumButton" disabled>Скоро будет доступно</button><small>Оплата ещё не подключена</small></div>
-        </section>
+
       </section>
 
       <!-- Скрытый технический контейнер нужен старому index.js, но пользователю раздел задач не показывается. -->
@@ -254,11 +248,27 @@
       </section>
 
       <section id="tab-endgames" class="tab-content">
-        <div class="section-heading"><div><div class="section-kicker">ТЕХНИКА И ТОЧНОСТЬ</div><h2>Эндшпили</h2><p>Учись уверенно реализовывать преимущество</p></div></div>
-        <div class="split training-split"><div class="list-box" id="endgameList">Загрузка...</div><div class="training-board-column"><div class="board-wrap" oncontextmenu="return false;"><div id="endgameBoard"></div><svg id="userDraw_endgameBoard" class="user-draw-overlay"></svg><div id="endgameFeedback" class="feedback"></div><div class="btn-row"><button class="action-btn" id="endgameResetBtn">↺ Новая позиция</button></div></div></div></div>
+        <div class="section-heading"><div><div class="section-kicker">ТЕХНИКА И ТОЧНОСТЬ</div><h2>Эндшпили</h2><p>Учебные позиции и эндшпили из твоих партий</p></div></div>
+        <div class="endgames-switch" role="group" aria-label="Выбор набора эндшпилей">
+          <button type="button" class="active" data-endgames-view="catalog">Учебные позиции</button>
+          <button type="button" data-endgames-view="mine">Твои эндшпили <span id="myEndgamesCount">0</span></button>
+        </div>
+        <div id="endgamesCatalogView">
+          <div class="split training-split"><div class="list-box" id="endgameList">Загрузка...</div><div class="training-board-column"><div class="board-wrap" oncontextmenu="return false;"><div id="endgameBoard"></div><svg id="userDraw_endgameBoard" class="user-draw-overlay"></svg><div id="endgameFeedback" class="feedback"></div><div class="btn-row"><button class="action-btn" id="endgameResetBtn">↺ Новая позиция</button></div></div></div></div>
+        </div>
+        <div id="myEndgamesView" class="my-endgames-view" hidden>
+          <div class="my-endgames-layout">
+            <div class="list-box my-endgames-list" id="myEndgamesList"><div class="coach-empty">Здесь появятся эндшпили после анализа партий.</div></div>
+            <div class="board-wrap my-endgame-viewer">
+              <div class="my-endgame-heading"><h3 id="myEndgameTitle">Твои эндшпили</h3><span id="myEndgameMeta">Позиции из твоих партий</span></div>
+              <div id="myEndgamesBoard"></div>
+              <div class="my-endgame-controls"><button type="button" class="action-btn" id="myEndgamePrev" disabled>← Назад</button><span id="myEndgameMoveLabel">Начальная позиция</span><button type="button" class="action-btn" id="myEndgameNext" disabled>Следующий ход →</button></div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      <section id="tab-openings" class="tab-content">
+<section id="tab-openings" class="tab-content">
         <div class="section-heading"><div><div class="section-kicker">ДЕБЮТНАЯ ПОДГОТОВКА</div><h2>Изучение дебютов с ботом</h2><p>Сначала разбери теорию, затем повтори линию самостоятельно и продолжи партию против Stockfish</p></div><div class="section-badge">Теория → Практика → Игра</div></div>
 
         <div class="opening-trainer">
@@ -406,11 +416,23 @@
       </section>
 
       <section id="tab-streak" class="tab-content">
-        <div class="section-heading"><div><div class="section-kicker">ТВОИ РЕЗУЛЬТАТЫ</div><h2>Статистика и винстрик</h2><p>Отслеживай результаты за сегодня</p></div></div>
-        <div class="diary-container"><div class="chesscom-input-group streak-input"><input type="text" id="streakUsername" placeholder="Ник на Chess.com"><button class="action-btn" id="analyzeTodayBtn">⚡ Авто-анализ за сегодня</button></div>
-          <div class="streak-grid"><div class="streak-card"><div class="streak-val" id="streak-total">0</div><div class="streak-lbl">Всего игр</div></div><div class="streak-card win"><div class="streak-val" id="streak-wins">0</div><div class="streak-lbl">Побед</div></div><div class="streak-card draw"><div class="streak-val" id="streak-draws">0</div><div class="streak-lbl">Ничьих</div></div><div class="streak-card loss"><div class="streak-val" id="streak-losses">0</div><div class="streak-lbl">Поражений</div></div></div>
-          <div class="streak-grid streak-second-row"><div class="streak-card current"><div class="streak-val" id="streak-current">0</div><div class="streak-lbl">Текущий винстрик</div></div><div class="streak-card max"><div class="streak-val" id="streak-max">0</div><div class="streak-lbl">Рекорд за день</div></div><div class="streak-card"><div class="streak-val" id="streak-winrate">0%</div><div class="streak-lbl">% Побед</div></div></div>
-          <div class="btn-row streak-actions"><button class="action-btn" onclick="addStreakResult('win')">+ Победа</button><button class="action-btn" onclick="addStreakResult('draw')">+ Ничья</button><button class="action-btn" onclick="addStreakResult('loss')">+ Поражение</button></div>
+        <div class="section-heading"><div><div class="section-kicker">ТВОИ РЕЗУЛЬТАТЫ</div><h2>Винстрик и статистика</h2><p>Завершённые партии за сегодня, сверенные с Chess.com</p></div></div>
+        <div class="diary-container streak-panel">
+          <div class="streak-input-row"><label for="streakUsername">Ник Chess.com</label>
+            <div class="streak-input-controls"><input type="text" id="streakUsername" placeholder="Например, Hikaru" autocomplete="off" spellcheck="false"><button class="action-btn" id="analyzeTodayBtn" type="button">Обновить результаты</button></div>
+          </div>
+          <div id="streakStatus" class="streak-status" role="status">Введи ник Chess.com, чтобы загрузить сегодняшние результаты.</div>
+          <div class="streak-grid">
+            <div class="streak-card"><div class="streak-val" id="streak-total">0</div><div class="streak-lbl">Всего игр</div></div>
+            <div class="streak-card win"><div class="streak-val" id="streak-wins">0</div><div class="streak-lbl">Побед</div></div>
+            <div class="streak-card draw"><div class="streak-val" id="streak-draws">0</div><div class="streak-lbl">Ничьих</div></div>
+            <div class="streak-card loss"><div class="streak-val" id="streak-losses">0</div><div class="streak-lbl">Поражений</div></div>
+          </div>
+          <div class="streak-grid streak-second-row">
+            <div class="streak-card current"><div class="streak-val" id="streak-current">0</div><div class="streak-lbl">Текущая серия побед</div></div>
+            <div class="streak-card max"><div class="streak-val" id="streak-max">0</div><div class="streak-lbl">Лучшая серия сегодня</div></div>
+            <div class="streak-card"><div class="streak-val" id="streak-winrate">0%</div><div class="streak-lbl">Процент побед</div></div>
+          </div>
         </div>
       </section>
     </main>
