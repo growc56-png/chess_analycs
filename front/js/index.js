@@ -2208,42 +2208,53 @@ const ANALYSIS_CLASS_ROWS = [
 ];
 
 function getMoveAccuracy(move) {
-  // Backend cp_loss is expected-points loss * 1000 (see game analyzer).
-  const rawCpLoss = move ? move.cp_loss : null;
-  const cpLoss = rawCpLoss === null || rawCpLoss === undefined ? NaN : Number(rawCpLoss);
-  if (Number.isFinite(cpLoss)) {
-    return Math.max(0, Math.min(100, 100 - Math.max(0, cpLoss) / 10));
+  if (!move) return 0;
+
+  // Backend now reports per-move expected-points accuracy directly.
+  const storedAccuracy = Number(move.move_accuracy);
+  if (Number.isFinite(storedAccuracy)) {
+    return Math.max(0, Math.min(100, storedAccuracy));
   }
-  // Fallback for older cached analyses that did not store cp_loss.
+
+  // Compatibility for analysis data created before the v11 backend.
+  const expectedPointsLoss = Number(move.win_percent_loss);
+  if (Number.isFinite(expectedPointsLoss)) {
+    return Math.max(0, Math.min(100, 100 - expectedPointsLoss));
+  }
+
+  const rawCpLoss = Number(move.cp_loss);
+  if (Number.isFinite(rawCpLoss)) {
+    return Math.max(0, Math.min(100, 100 - Math.max(0, rawCpLoss) / 10));
+  }
+
   const fallbackLoss = {
     brilliant: 0, great: 0.5, best: 0, excellent: 1.5,
     good: 4, inaccuracy: 10, mistake: 22, miss: 30, blunder: 45,
     book: 0, forced: 0
   };
-  return 100 - (fallbackLoss[move?.classification] ?? 8);
+  return 100 - (fallbackLoss[move.classification] ?? 8);
 }
 
 function renderAnalysisSummary() {
   const rowsContainer = document.getElementById('analysisCategoryRows');
   if (!rowsContainer) return;
+
   const whiteMoves = analysisMoves.filter((_, index) => index % 2 === 0);
   const blackMoves = analysisMoves.filter((_, index) => index % 2 === 1);
-  // A small display calibration (-0.5 pp) keeps this estimate closer to Chess.com.
-  // It remains an approximation: Chess.com uses its own proprietary accuracy model.
-  const averageAccuracy = moves => moves.length
-    ? Math.max(0, moves.reduce((sum, move) => sum + getMoveAccuracy(move), 0) / moves.length - 0.5)
-    : null;
-  const whiteAccuracy = averageAccuracy(whiteMoves);
-  const blackAccuracy = averageAccuracy(blackMoves);
+  const averageAccuracy = moves => {
+    const ratedMoves = moves.filter(move => move?.classification !== 'forced');
+    if (!ratedMoves.length) return null;
+    return ratedMoves.reduce((sum, move) => sum + getMoveAccuracy(move), 0) / ratedMoves.length;
+  };
 
   const setAccuracy = (value, valueId, fillId) => {
     const valueEl = document.getElementById(valueId);
     const fillEl = document.getElementById(fillId);
-    if (valueEl) valueEl.textContent = value === null ? '—' : `${value.toFixed(1)}%`;
-    if (fillEl) fillEl.style.width = value === null ? '0%' : `${value}%`;
+    if (valueEl) valueEl.textContent = value === null ? '—' : value.toFixed(1) + '%';
+    if (fillEl) fillEl.style.width = value === null ? '0%' : value + '%';
   };
-  setAccuracy(whiteAccuracy, 'analysisWhiteAccuracy', 'analysisWhiteAccuracyFill');
-  setAccuracy(blackAccuracy, 'analysisBlackAccuracy', 'analysisBlackAccuracyFill');
+  setAccuracy(averageAccuracy(whiteMoves), 'analysisWhiteAccuracy', 'analysisWhiteAccuracyFill');
+  setAccuracy(averageAccuracy(blackMoves), 'analysisBlackAccuracy', 'analysisBlackAccuracyFill');
 
   const whiteNameEl = document.getElementById('analysisWhiteName');
   const blackNameEl = document.getElementById('analysisBlackName');
@@ -2262,13 +2273,43 @@ function renderAnalysisSummary() {
 
   rowsContainer.innerHTML = ANALYSIS_CLASS_ROWS.map(row => {
     const count = counts.get(row.key);
-    return `<div class="analysis-category-row">\
-      <span class="analysis-category-name">${row.label}</span>\
-      <strong class="analysis-count white-count">${count.white}</strong>\
-      <span class="analysis-category-icon icon-${row.className}" title="${row.label}">${row.icon}</span>\
-      <strong class="analysis-count black-count">${count.black}</strong>\
+    return `<div class="analysis-category-row">
+      <span class="analysis-category-name">${row.label}</span>
+      <strong class="analysis-count white-count">${count.white}</strong>
+      <span class="analysis-category-icon icon-${row.className}" title="${row.label}">${row.icon}</span>
+      <strong class="analysis-count black-count">${count.black}</strong>
     </div>`;
   }).join('');
+
+  const phaseContainer = document.getElementById('analysisPhaseRows');
+  if (phaseContainer) {
+    const phaseDefinitions = [
+      { key: 'opening', label: 'Дебют' },
+      { key: 'middlegame', label: 'Миттельшпиль' },
+      { key: 'endgame', label: 'Эндшпиль' }
+    ];
+    phaseContainer.innerHTML = phaseDefinitions.map(phase => {
+      const phaseMoves = analysisMoves.filter(
+        move => move?.phase === phase.key && move?.classification !== 'forced'
+      );
+      const accuracy = averageAccuracy(phaseMoves);
+      const label = accuracy === null ? '—' : accuracy.toFixed(1) + '%';
+      const width = accuracy === null ? 0 : accuracy;
+      return `<div class="analysis-phase-row">
+        <span>${phase.label}</span>
+        <div class="analysis-phase-track"><i style="width:${width}%"></i></div>
+        <strong>${label}</strong>
+      </div>`;
+    }).join('');
+  }
+
+  const deepSummary = document.getElementById('analysisDeepSummary');
+  if (deepSummary) {
+    const deepCount = analysisMoves.filter(move => move?.deep_analysis).length;
+    deepSummary.textContent = deepCount
+      ? 'Глубоко перепроверено позиций: ' + deepCount
+      : 'Дополнительная глубокая проверка не понадобилась';
+  }
 }
 
 function updateAnalysisProgress(index = -1, state = 'ready') {
@@ -2744,6 +2785,104 @@ function renderMoveTable() {
 }
 
 // ДОБАВЛЕНА НЕДОСТАЮЩАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ХОДОВ
+function renderAnalysisMoveInsight(moveData) {
+  const titleEl = document.getElementById('analysisMoveInsightTitle');
+  const textEl = document.getElementById('analysisMoveInsightText');
+  const bestEl = document.getElementById('analysisMoveInsightBest');
+  const detailsEl = document.getElementById('analysisMoveInsightMeta');
+  if (!titleEl || !textEl || !bestEl || !detailsEl) return;
+
+  const labels = {
+    brilliant: 'Бриллиантовый ход',
+    great: 'Замечательный ход',
+    best: 'Лучший ход',
+    excellent: 'Отличный ход',
+    good: 'Хороший ход',
+    inaccuracy: 'Неточность',
+    mistake: 'Ошибка',
+    miss: 'Пропущенная возможность',
+    blunder: 'Зевок',
+    book: 'Теория',
+    forced: 'Вынужденный ход'
+  };
+  const phaseLabels = {
+    opening: 'дебют',
+    middlegame: 'миттельшпиль',
+    endgame: 'эндшпиль'
+  };
+  const motifLabels = {
+    mate: 'мат',
+    mate_in_2: 'матовая атака',
+    fork: 'вилка',
+    pin: 'связка',
+    discovered_check: 'вскрытый шах',
+    check: 'шах',
+    capture: 'взятие'
+  };
+
+  const moveNumber = Number(moveData.move_num) || Math.floor(currentAnalysisIndex / 2) + 1;
+  const mover = moveData.mover === 'black' ? 'чёрные' : 'белые';
+  titleEl.textContent = moveNumber + '. ' + (moveData.san || 'Ход') + ' — '
+    + (labels[moveData.classification] || 'Оценка хода');
+
+  const loss = Number(moveData.win_percent_loss);
+  const accuracy = getMoveAccuracy(moveData);
+  const phase = phaseLabels[moveData.phase] || 'этап не определён';
+  const messages = [];
+
+  if (moveData.classification === 'brilliant' && moveData.sacrifice_details) {
+    const sacrifice = moveData.sacrifice_details;
+    messages.push(
+      'Это тихая жертва: ты предложил сопернику взять ' + sacrifice.piece
+      + '. Возможное взятие: ' + sacrifice.recapture_san
+      + '. Глубокая проверка Stockfish подтвердила, что ход сохраняет оценку.'
+    );
+  } else if (moveData.missed_tactic) {
+    messages.push('Ты пропустил тактическую возможность в этой позиции.');
+  } else if (moveData.classification === 'blunder') {
+    messages.push('Ход резко ухудшил оценку позиции. Проверь угрозы соперника и форсированные ответы перед следующим ходом.');
+  } else if (moveData.classification === 'mistake' || moveData.classification === 'inaccuracy') {
+    messages.push('После этого хода позиция стала заметно хуже. Сравни сыгранный ход с предложением Stockfish.');
+  } else if (moveData.classification === 'forced') {
+    messages.push('Практически не было выбора: это вынужденный ответ.');
+  } else if (moveData.classification === 'book') {
+    messages.push('Ход распознан как дебютная теория.');
+  } else {
+    messages.push('Ход сохранил большую часть оценки позиции. Продолжай искать шахи, взятия и прямые угрозы.');
+  }
+
+  if (moveData.best_move_san && moveData.best_move_san !== moveData.san) {
+    messages.push('Более сильный вариант: ' + moveData.best_move_san + '.');
+  }
+  if (Number.isFinite(loss) && loss > 0) {
+    messages.push('Потеря ожидаемого результата: ' + loss.toFixed(1) + ' п.п.');
+  }
+  const motifs = (moveData.best_move_motifs || [])
+    .map(motif => motifLabels[motif])
+    .filter(Boolean);
+  if (motifs.length) {
+    messages.push('В лучшем продолжении была идея: ' + [...new Set(motifs)].join(', ') + '.');
+  }
+
+  textEl.textContent = messages.join(' ');
+  bestEl.textContent = moveData.best_line_san?.length
+    ? 'Линия Stockfish: ' + moveData.best_line_san.join(' ')
+    : moveData.best_move_san
+      ? 'Лучший ход Stockfish: ' + moveData.best_move_san
+      : 'Для этой позиции нет сохранённой лучшей линии.';
+
+  const meta = [
+    accuracy.toFixed(1) + '% точность хода',
+    phase,
+    moveData.deep_analysis
+      ? 'перепроверено на глубине ' + (moveData.analysis_depth_used || '—')
+      : 'быстрый проход',
+    moveData.is_time_pressure ? 'ход в цейтноте' : null,
+    moveData.time_spent != null ? 'время на ход: ' + Math.round(moveData.time_spent) + ' с' : null
+  ].filter(Boolean);
+  detailsEl.textContent = mover + ' · ' + meta.join(' · ');
+}
+
 window.showAnalysisMove = function(index) {
   const targetIndex = Number(index);
   if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= analysisMoves.length) return;
@@ -2791,6 +2930,7 @@ window.showAnalysisMove = function(index) {
   updatePlayerNamesAndMaterial(analysisGame.fen());
   drawGraph(fullEvals, targetIndex);
   drawBoardBadge(moveData);
+  renderAnalysisMoveInsight(moveData);
 
   const savedEngineLines = normaliseEngineLines(moveData.next_top_moves || []);
   if (savedEngineLines.length === 3) {
