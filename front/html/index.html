@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
 <link rel="stylesheet" href="/css/index.css?v=20261102-analysis-v1">
 <link rel="stylesheet" href="/css/index-layout.css?v=20261102-analysis-v3">
-<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261102-deep-review-v6">
+<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261102-deep-review-v7">
 <link rel="stylesheet" href="/css/coach.css?v=20261102-errors-v3">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
 <script src="/js/board-interactions.js?v=20261102-clickmove-v2" defer></script>
@@ -15,7 +15,7 @@
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
 <script src="/js/chess.min.js"></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261102-deep-review-v6" defer></script>
+<script src="/js/index.js?v=20261102-deep-review-v7" defer></script>
 <script src="/js/diary-ui.js" defer></script>
 <script src="/js/coach.js?v=20261102-auth-v3" defer></script>
 <script src="/js/errors.js?v=20261102-errors-v5" defer></script>
@@ -377,6 +377,12 @@
                     <div class="analysis-stats-empty">Появится после анализа партии</div>
                   </div>
                   <div id="analysisDeepSummary" class="analysis-deep-summary">Глубокая проверка важных позиций</div>
+                </div>
+                <div class="analysis-key-moments-card">
+                  <div class="analysis-insights-title">Ключевые моменты партии</div>
+                  <div id="analysisKeyMoments" class="analysis-key-moments">
+                    <div class="analysis-stats-empty">Появится после анализа партии</div>
+                  </div>
                 </div>
                 <div class="analysis-categories-card"><div class="analysis-insights-title">Качество ходов</div><div class="analysis-category-header"><span>Категория</span><span>Белые</span><span></span><span>Чёрные</span></div><div id="analysisCategoryRows" class="analysis-category-rows"><div class="analysis-stats-empty">Пока нет данных</div></div></div></section></div>
           <div class="move-list-container"><div class="move-list-toolbar"><strong>Ходы партии</strong><div class="move-list-toolbar-actions"><button type="button" id="analysisMoveTop" class="action-btn move-jump-btn" title="К первому ходу">⏮ В начало</button><button type="button" id="analysisMoveBottom" class="action-btn move-jump-btn" title="К последнему ходу">В конец ⏭</button></div></div><div class="move-headers"><div class="header-num">№</div><div class="header-white" id="headerWhite">Белые</div><div class="header-black" id="headerBlack">Чёрные</div></div><table class="move-table" id="moveTable"><tbody id="moveTableBody"></tbody></table></div>
