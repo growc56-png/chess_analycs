@@ -167,7 +167,7 @@ def login(
         raise HTTPException(status_code=401, detail="Неверная почта или пароль.")
 
     token = create_session(db, user)
-    set_session_cookie(response, token, secure=_secure_cookie())
+    set_session_cookie(response, token, secure=_secure_cookie(request))
     return {"ok": True, "user": _user_payload(user)}
 
 
