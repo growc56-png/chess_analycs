@@ -608,6 +608,9 @@
     else drillBoard.position(drill.beforeFen, false);
     if (typeof drillBoard.orientation === 'function') drillBoard.orientation(color === 'w' ? 'white' : 'black');
     drillBoard.resize();
+    if (window.initBoardClickToMove) {
+      window.initBoardClickToMove('coachDrillBoard', () => drillGame, handleDrillDrop);
+    }
     setDrillFeedback(drill.solved ? 'Эта позиция уже решена. Можешь повторить её ещё раз.' : 'Найди лучший ход в позиции. Ищи решение так, будто это твоя партия.', '');
   }
 
@@ -831,26 +834,7 @@
         if (!openingGame || !piece || piece[0] !== openingGame.turn()) return false;
         return openingGame.moves({ square: source }).length > 0;
       },
-      onDrop: (source, target) => {
-        if (!openingGame || !activeOpeningCard) return 'snapback';
-        let move = null;
-        try {
-          move = openingGame.move({ from: source, to: target, promotion: 'q' });
-        } catch (error) {
-          move = null;
-        }
-        if (!move) return 'snapback';
-        const uci = move.from + move.to + (move.promotion || '');
-        if (uci === activeOpeningCard.expectedUci) {
-          openingBoard.position(openingGame.fen());
-          revealOpeningGrade('Верно! ' + activeOpeningCard.expectedSan + ' — правильный ход.', true);
-          return;
-        }
-        openingGame.undo();
-        $('coachOpeningFeedback').textContent = 'Не тот ход. Попробуй ещё раз или открой ответ.';
-        $('coachOpeningFeedback').className = 'coach-opening-feedback';
-        return 'snapback';
-      },
+      onDrop: (source, target) => attemptOpeningMove(source, target),
       onSnapEnd: () => {
         if (openingGame && openingBoard) openingBoard.position(openingGame.fen());
       }
@@ -859,6 +843,32 @@
     else openingBoard.position(card.beforeFen, false);
     if (typeof openingBoard.orientation === 'function') openingBoard.orientation(card.side === 'w' ? 'white' : 'black');
     openingBoard.resize();
+    if (window.initBoardClickToMove) {
+      window.initBoardClickToMove('coachOpeningBoard', () => openingGame, attemptOpeningMove);
+    }
+  }
+
+  function attemptOpeningMove(source, target) {
+    if (!openingGame || !activeOpeningCard) return 'snapback';
+    let move = null;
+    try {
+      move = openingGame.move({ from: source, to: target, promotion: 'q' });
+    } catch (error) {
+      move = null;
+    }
+    if (!move) return 'snapback';
+
+    const uci = move.from + move.to + (move.promotion || '');
+    if (uci === activeOpeningCard.expectedUci) {
+      openingBoard.position(openingGame.fen());
+      revealOpeningGrade('Верно! ' + activeOpeningCard.expectedSan + ' — правильный ход.', true);
+      return;
+    }
+
+    openingGame.undo();
+    $('coachOpeningFeedback').textContent = 'Не тот ход. Попробуй ещё раз или открой ответ.';
+    $('coachOpeningFeedback').className = 'coach-opening-feedback';
+    return 'snapback';
   }
 
   function tryOpeningSan() {
