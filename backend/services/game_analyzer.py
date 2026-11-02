@@ -355,7 +355,10 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 )
 
             node = game
-            previous_clock = initial_clock
+            previous_clocks = {
+                chess.WHITE: initial_clock,
+                chess.BLACK: initial_clock,
+            }
 
             for i, move in enumerate(game.mainline_moves()):
 
@@ -429,7 +432,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 # PGN [%clk] is attached to the node after the move.
                 # Compare it with the previous node's remaining time and add
                 # the increment to avoid treating the same clock as before/after.
-                clock_before = previous_clock
+                clock_before = previous_clocks.get(mover)
                 board.push(move)
                 clock_after = node.clock() if node else None
                 time_spent = None
@@ -439,7 +442,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             0.0,
                             clock_before + time_increment - clock_after,
                         )
-                    previous_clock = clock_after
+                    previous_clocks[mover] = clock_after
 
                 # One MultiPV evaluation after the played move is reused
                 # for its graph score, the top lines and the next loop's
