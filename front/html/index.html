@@ -15,7 +15,7 @@
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
 <script src="/js/chess.min.js"></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261102-analysis-v3" defer></script>
+<script src="/js/index.js?v=20261102-analysis-v4" defer></script>
 <script src="/js/diary-ui.js" defer></script>
 <script src="/js/coach.js?v=20261102-auth-v3" defer></script>
 <script src="/js/errors.js?v=20261102-errors-v5" defer></script>
@@ -349,8 +349,14 @@
               <div class="eval-advantage-legend" aria-label="Цвета качества ходов">
                 <span><i class="eval-advantage-swatch brilliant"></i>Бриллиант</span>
                 <span><i class="eval-advantage-swatch great"></i>Замечательный</span>
+                <span><i class="eval-advantage-swatch best"></i>Лучший</span>
+                <span><i class="eval-advantage-swatch excellent"></i>Отличный</span>
                 <span><i class="eval-advantage-swatch good"></i>Хороший</span>
-                <span><i class="eval-advantage-swatch mistake"></i>Неточность и ошибки</span>
+                <span><i class="eval-advantage-swatch inaccuracy"></i>Неточность</span>
+                <span><i class="eval-advantage-swatch mistake"></i>Ошибка</span>
+                <span><i class="eval-advantage-swatch blunder"></i>Зевок</span>
+                <span><i class="eval-advantage-swatch book"></i>Теория</span>
+                <span><i class="eval-advantage-swatch forced"></i>Вынужденный</span>
               </div>
               <div id="evalAdvantageDots" class="eval-advantage-dots" role="group" aria-label="Качество каждого хода">
                 <span class="eval-dots-empty">Маркеры качества ходов появятся после анализа</span>
