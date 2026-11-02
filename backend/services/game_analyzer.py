@@ -465,7 +465,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "best_move_uci": best_move_uci,
                     "best_move_san": best_move_san,
                     "best_line_san": best_line_san,
-                    "best_line_uci": [item.uci for item in best_pv[:4]],
+                    "best_line_uci": [item.uci() for item in best_pv[:4]],
                     "best_move_motifs": (
                         acceptable_move_by_uci.get(best_move_uci, {}).get("motifs", [])
                         if best_move_uci else []
