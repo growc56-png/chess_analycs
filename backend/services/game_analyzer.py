@@ -22,7 +22,7 @@ from services.stockfish import (
     parse_score,
     score_to_cp,
     expected_points_from_score,
-    get_multipv_lines,
+    format_multipv_infos,
     get_position_analysis,
     get_best_move_info,
     get_second_best_gap,
@@ -441,13 +441,13 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         )
                     previous_clock = clock_after
 
-                after_info = engine.analyse(
-                    board,
-                    get_engine_limit(),
-                    multipv=1,
+                # One MultiPV evaluation after the played move is reused
+                # for its graph score, the top lines and the next loop's
+                # pre-move position. This avoids duplicate searches.
+                after_infos = _normalise_engine_infos(
+                    get_position_analysis(engine, board)
                 )
-                after_info = _normalise_engine_infos(after_info)
-                after_info = after_info[0] if after_info else {}
+                after_info = after_infos[0] if after_infos else {}
                 after_score = after_info.get("score")
                 before_score = best_info.get("score")
 
@@ -624,9 +624,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     initial_clock,
                     time_spent,
                 )
-                next_top_moves = get_multipv_lines(
-                    engine,
-                    board
+                next_top_moves = format_multipv_infos(
+                    board,
+                    after_infos,
                 )
 
                 moves_data.append({
@@ -689,10 +689,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
                 evals.append(graph_eval)
 
-                prev_infos = get_position_analysis(
-                    engine,
-                    board
-                )
+                prev_infos = after_infos
 
                 if progress_callback:
                     progress_callback(
