@@ -136,7 +136,9 @@ class AnalysisMetricTests(unittest.TestCase):
 
     def test_accuracy_uses_centipawn_loss_and_is_monotonic(self):
         self.assertEqual(accuracy_from_centipawn_loss(0), 100.0)
-        self.assertAlmostEqual(accuracy_from_centipawn_loss(50), 81.9, places=1)
+        self.assertAlmostEqual(accuracy_from_centipawn_loss(50), 74.1, places=1)
+        self.assertAlmostEqual(accuracy_from_centipawn_loss(100), 54.9, places=1)
+        self.assertAlmostEqual(accuracy_from_centipawn_loss(200), 30.1, places=1)
         self.assertGreater(accuracy_from_centipawn_loss(50), accuracy_from_centipawn_loss(100))
         self.assertGreater(accuracy_from_centipawn_loss(100), accuracy_from_centipawn_loss(200))
 
