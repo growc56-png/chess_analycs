@@ -354,7 +354,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     break
 
                 mover = board.turn
-                before_board = board.copy(stack=False)
+                before_board = board.copy(stack=True)
                 phase = _classify_game_phase(before_board)
 
                 before_infos = prev_infos
