@@ -1119,3 +1119,10 @@
   }
   .analysis-move-insight { padding: 11px; }
 }
+
+.analysis-accuracy-note {
+  margin: -4px 0 9px;
+  color: #8796a1;
+  font-size: 9px;
+  line-height: 1.45;
+}
