@@ -6,7 +6,7 @@
 <title>Chess Trainer — Шахматный тренажёр</title>
 <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
 <link rel="stylesheet" href="/css/index.css?v=20261102-analysis-v1">
-<link rel="stylesheet" href="/css/index-layout.css?v=20261102-analysis-v1">
+<link rel="stylesheet" href="/css/index-layout.css?v=20261102-analysis-v2">
 <link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261101-arrow-visual-mate-v7">
 <link rel="stylesheet" href="/css/coach.css?v=20261102-errors-v3">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
@@ -15,7 +15,7 @@
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
 <script src="/js/chess.min.js"></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261102-analysis-v2" defer></script>
+<script src="/js/index.js?v=20261102-analysis-v3" defer></script>
 <script src="/js/diary-ui.js" defer></script>
 <script src="/js/coach.js?v=20261102-auth-v3" defer></script>
 <script src="/js/errors.js?v=20261102-errors-v5" defer></script>
@@ -346,13 +346,14 @@
         <div class="analysis-container">
           <div class="left-panel"><div class="eval-bar-wrapper"><div class="eval-text" id="evalText">0.0</div><div class="eval-bar-vertical"><div class="eval-bar-white" id="evalBarWhite" style="height:50%"></div></div></div><div class="analysis-board-column"><div id="topPlayer" class="player-name"><span>Black Player</span><span class="player-clock" id="topClock">10:00</span></div><div class="board-area" oncontextmenu="return false;"><div id="analysisBoard"></div><svg id="userDraw_analysisBoard" class="user-draw-overlay"></svg><svg id="arrowOverlay" class="analysis-arrow-overlay" aria-hidden="true"></svg><div id="analysisMoveEffect" class="analysis-move-effect" aria-hidden="true"><span id="analysisMoveEffectPulse"></span></div></div><div id="bottomPlayer" class="player-name"><span>White Player</span><span class="player-clock" id="bottomClock">10:00</span></div><div class="btn-row analysis-navigation"><button class="action-btn" id="analysisStart">⏮</button><button class="action-btn" id="analysisPrev" title="Предыдущий ход" aria-label="Предыдущий ход">⏴</button><button class="action-btn analysis-play-btn" id="analysisPlay" title="Воспроизвести партию" aria-label="Воспроизвести партию">▶</button><button class="action-btn" id="analysisNext" title="Следующий ход" aria-label="Следующий ход">⏵</button><button class="action-btn" id="analysisEnd">⏭</button><button class="action-btn" id="flipBoardBtn" aria-label="Перевернуть доску" title="Перевернуть доску">⤾</button></div></div></div>
           <div class="right-panel"><div class="graph-container"><canvas id="evalGraph" width="420" height="100"></canvas>
-              <div class="eval-advantage-legend" aria-label="Обозначения преимущества">
-                <span><i class="eval-advantage-swatch white"></i>Белые</span>
-                <span><i class="eval-advantage-swatch equal"></i>Равная позиция</span>
-                <span><i class="eval-advantage-swatch black"></i>Чёрные</span>
+              <div class="eval-advantage-legend" aria-label="Цвета качества ходов">
+                <span><i class="eval-advantage-swatch brilliant"></i>Бриллиант</span>
+                <span><i class="eval-advantage-swatch great"></i>Замечательный</span>
+                <span><i class="eval-advantage-swatch good"></i>Хороший</span>
+                <span><i class="eval-advantage-swatch mistake"></i>Неточность и ошибки</span>
               </div>
-              <div id="evalAdvantageDots" class="eval-advantage-dots" role="group" aria-label="Преимущество по каждому ходу">
-                <span class="eval-dots-empty">Маркеры преимущества появятся после анализа</span>
+              <div id="evalAdvantageDots" class="eval-advantage-dots" role="group" aria-label="Качество каждого хода">
+                <span class="eval-dots-empty">Маркеры качества ходов появятся после анализа</span>
               </div></div><div class="top-lines"><div class="top-lines-heading"><div class="panel-mini-title">Топ-3 продолжения</div><button type="button" class="refresh-engine-lines" id="refreshEngineLinesBtn" title="Повторить анализ этой позиции">↻ Обновить</button></div><div id="topLinesList">Выберите игру...</div></div><section class="analysis-insights" aria-label="Статистика анализа"><div class="analysis-accuracy-card"><div class="analysis-insights-title">Точность по оценке Stockfish</div><div class="analysis-accuracy-grid"><div class="analysis-accuracy-side white"><span class="analysis-accuracy-name" id="analysisWhiteName">Белые</span><strong id="analysisWhiteAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisWhiteAccuracyFill"></i></div></div><div class="analysis-accuracy-side black"><span class="analysis-accuracy-name" id="analysisBlackName">Чёрные</span><strong id="analysisBlackAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisBlackAccuracyFill"></i></div></div></div></div><div class="analysis-categories-card"><div class="analysis-insights-title">Качество ходов</div><div class="analysis-category-header"><span>Категория</span><span>Белые</span><span></span><span>Чёрные</span></div><div id="analysisCategoryRows" class="analysis-category-rows"><div class="analysis-stats-empty">Пока нет данных</div></div></div></section></div>
           <div class="move-list-container"><div class="move-list-toolbar"><strong>Ходы партии</strong><div class="move-list-toolbar-actions"><button type="button" id="analysisMoveTop" class="action-btn move-jump-btn" title="К первому ходу">⏮ В начало</button><button type="button" id="analysisMoveBottom" class="action-btn move-jump-btn" title="К последнему ходу">В конец ⏭</button></div></div><div class="move-headers"><div class="header-num">№</div><div class="header-white" id="headerWhite">Белые</div><div class="header-black" id="headerBlack">Чёрные</div></div><table class="move-table" id="moveTable"><tbody id="moveTableBody"></tbody></table></div>
         </div>
