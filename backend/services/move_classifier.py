@@ -3,56 +3,75 @@ import chess
 from services.stockfish import PIECE_VALUES
 
 
-def is_true_sacrifice(board_before, move):
+def get_sacrifice_details(board_before, move):
     """
-    Проверяет, может ли соперник легально взять переместившуюся фигуру.
-    Обычные взятия и ходы пешками жертвами не считаются.
-    """
+    Описывает реальную немедленную жертву: небесплатный ход фигурой,
+    после которого соперник может легально забрать эту фигуру фигурой
+    меньшей ценности или пешкой.
 
+    Сам факт жертвы ещё не делает ход хорошим. Его качество подтверждается
+    отдельно: Stockfish должен оценить сыгранный ход почти наравне с лучшим.
+    """
     piece = board_before.piece_at(move.from_square)
-
-    if piece is None:
-        return False
-
-    if piece.piece_type in (chess.PAWN, chess.KING):
-        return False
+    if piece is None or piece.piece_type in (chess.PAWN, chess.KING):
+        return None
 
     captured = board_before.piece_at(move.to_square)
-
     captured_value = (
         PIECE_VALUES.get(captured.piece_type, 0)
         if captured else 0
     )
-
     moving_value = PIECE_VALUES.get(piece.piece_type, 0)
 
-    if captured_value >= moving_value:
-        return False
+    # Если взята равноценная или более дорогая фигура, это обычный размен,
+    # а не жертва переместившейся фигуры.
+    if moving_value <= captured_value:
+        return None
 
-    after = board_before.copy()
+    after = board_before.copy(stack=True)
     mover = board_before.turn
 
     try:
         after.push(move)
-    except ValueError:
-        return False
+    except (ValueError, AssertionError):
+        return None
 
     target = move.to_square
     opponent = not mover
 
     if not after.is_attacked_by(opponent, target):
-        return False
+        return None
 
     for reply in after.legal_moves:
         if reply.to_square != target:
             continue
 
-        captured_piece = after.piece_at(target)
+        target_piece = after.piece_at(target)
+        if target_piece is None or target_piece.color != mover:
+            continue
 
-        if captured_piece and captured_piece.color == mover:
-            return True
+        attacker = after.piece_at(reply.from_square)
+        if attacker is None:
+            continue
 
-    return False
+        return {
+            "piece": chess.piece_name(piece.piece_type),
+            "piece_symbol": piece.symbol(),
+            "captured_piece": (
+                chess.piece_name(captured.piece_type) if captured else None
+            ),
+            "captured_symbol": captured.symbol() if captured else None,
+            "recapture_san": after.san(reply),
+            "attacker": chess.piece_name(attacker.piece_type),
+            "material_difference": moving_value - captured_value,
+        }
+
+    return None
+
+
+def is_true_sacrifice(board_before, move):
+    """Совместимый булевый интерфейс проверки жертвы."""
+    return get_sacrifice_details(board_before, move) is not None
 
 
 def classify_move(
@@ -67,10 +86,12 @@ def classify_move(
     mate_won=True
 ):
     """
-    Классификация по потере ожидаемого результата.
-    Пороговые значения сохранены без изменений.
-    """
+    Классифицирует ход по потере ожидаемого результата.
 
+    Бриллиантовый ход — почти лучший ход движка с реальной жертвой фигуры.
+    Условия по разрыву со вторым вариантом и абсолютной оценке позиции
+    намеренно не используются: они необоснованно отсеивали хорошие жертвы.
+    """
     loss = max(0.0, float(win_percent_loss or 0.0))
 
     if is_mate:
@@ -79,13 +100,10 @@ def classify_move(
     if is_forced:
         return "forced"
 
-    if (
-        is_best
-        and is_sacrifice
-        and loss <= 0.005
-        and second_best_gap >= 0.20
-        and -5.0 <= prev_eval <= 5.0
-    ):
+    # is_best означает, что сыгранный ход входит в набор практически
+    # равноценных лучших вариантов Stockfish. Дополнительно ограничиваем
+    # потерю ожидаемого результата одним процентным пунктом.
+    if is_best and is_sacrifice and loss <= 0.01:
         return "brilliant"
 
     if is_best and loss <= 0.005 and second_best_gap >= 0.15:
