@@ -483,16 +483,6 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         for item in acceptable_move_candidates
                     ],
                     "acceptable_moves_uci": acceptable_moves_uci,
-                    "acceptable_moves": [
-                        {
-                            "uci": item["uci"],
-                            "san": item["san"],
-                            "line_san": item["line_san"],
-                            "winning_mate": item["winning_mate"],
-                            "mate_in": item["mate_in"],
-                        }
-                        for item in acceptable_move_candidates
-                    ],
                     "mover": "white" if mover == chess.WHITE else "black",
                     "is_mate": curr_parsed["is_mate"],
                     "mate_in": curr_parsed["mate_in"],
