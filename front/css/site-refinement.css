@@ -42,7 +42,9 @@ body{background:radial-gradient(ellipse at 10% 0%,rgba(90,132,105,.10),transpare
 
 
 /* Endgame practice versus Stockfish */
-#myEndgamesBoard { position: relative; }
+.my-endgame-board-area { position: relative; width: min(480px,100%); max-width: 100%; margin-inline: auto; }
+#myEndgamesBoard { width: 100%; max-width: 100%; }
+.my-endgame-board-area .user-draw-overlay { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; }
 #myEndgamesBoard .premove-from::before,
 #myEndgamesBoard .premove-to::before {
   content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
