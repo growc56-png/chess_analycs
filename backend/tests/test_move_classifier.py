@@ -21,6 +21,7 @@ from services.stockfish import (
     calc_expected_points,
     get_position_analysis,
     format_multipv_infos,
+    accuracy_from_centipawn_loss,
 )
 
 
@@ -132,6 +133,12 @@ class AnalysisMetricTests(unittest.TestCase):
     def test_time_control_missing_or_unusual_is_safe(self):
         self.assertEqual(_parse_time_control(""), (None, 0.0))
         self.assertEqual(_parse_time_control("unknown"), (None, 0.0))
+
+    def test_accuracy_uses_centipawn_loss_and_is_monotonic(self):
+        self.assertEqual(accuracy_from_centipawn_loss(0), 100.0)
+        self.assertAlmostEqual(accuracy_from_centipawn_loss(50), 81.9, places=1)
+        self.assertGreater(accuracy_from_centipawn_loss(50), accuracy_from_centipawn_loss(100))
+        self.assertGreater(accuracy_from_centipawn_loss(100), accuracy_from_centipawn_loss(200))
 
     def test_expected_points_are_monotonic_and_symmetric(self):
         self.assertGreater(calc_expected_points(100), calc_expected_points(0))
