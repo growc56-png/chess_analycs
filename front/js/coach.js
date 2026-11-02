@@ -276,8 +276,15 @@
   }
 
   function moveAccuracy(move) {
+    const stored = Number(move && move.move_accuracy);
+    const version = Number(move && move.move_accuracy_version || 0);
+    if (version >= 3 && Number.isFinite(stored)) {
+      return Math.max(0, Math.min(100, stored));
+    }
     const raw = Number(move && move.cp_loss);
-    if (Number.isFinite(raw)) return Math.max(0, Math.min(100, 100 - Math.max(0, raw) / 10));
+    if (Number.isFinite(raw)) {
+      return Math.max(0, Math.min(100, 100 * Math.exp(-0.006 * Math.max(0, raw))));
+    }
     const fallback = { blunder: 45, miss: 30, mistake: 22, inaccuracy: 10, good: 4, excellent: 1.5, best: 0, forced: 0, book: 0 };
     const classification = move && move.classification;
     return 100 - (Object.prototype.hasOwnProperty.call(fallback, classification) ? fallback[classification] : 8);
@@ -302,7 +309,7 @@
         ? move.acceptable_moves_uci
         : [];
       const playedMoveAccepted = acceptedMoves.includes(move.uci);
-      accuracyTotal += playedMoveAccepted ? 100 : moveAccuracy(move);
+      accuracyTotal += moveAccuracy(move);
       const classification = playedMoveAccepted ? 'best' : String(move.classification || '');
       if (BAD_CLASSES.has(classification) && !playedMoveAccepted) {
         counts[classification] = (counts[classification] || 0) + 1;
