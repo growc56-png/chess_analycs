@@ -6,6 +6,19 @@ let GOAL_PROFILE = null;
 let puzzleBoard = null, puzzleGame = null, currentPuzzle = null, puzzleSolved = false;
 let endgameBoard = null, endgameGame = null, endgameVirtualGame = null, currentEndgame = null;
 let myEndgamesBoard = null, myEndgamesGame = null, myEndgamesCurrent = null, myEndgameMoveIndex = 0;
+let myEndgamePracticeGame = null;
+let myEndgamePracticeVirtualGame = null;
+let myEndgamePracticeActive = false;
+let myEndgamePracticeBotActive = false;
+let myEndgamePracticeColor = 'w';
+let myEndgamePracticeQueue = [];
+let myEndgamePracticeVersion = 0;
+let myEndgamePracticeTimeLeft = 300;
+let myEndgamePracticeTimeLimit = 300;
+let myEndgamePracticeTimerId = null;
+let myEndgamePracticeTimerActive = false;
+let myEndgamePracticeLastTick = 0;
+
 let endgamePremoveQueue = [], endgameBotRequestActive = false, endgamePositionVersion = 0;
 let endgamePlayerColor = 'w';
 let openingBoard = null, currentOpening = null, currentMoveIndex = 0;
@@ -703,15 +716,41 @@ function updateMyEndgameViewer() {
 
 function selectMyEndgame(item) {
   if (!item || typeof Chess !== 'function' || typeof Chessboard !== 'function') return;
+  stopMyEndgamePractice();
   myEndgamesCurrent = item;
   myEndgamesGame = new Chess(item.fen);
   myEndgameMoveIndex = 0;
   if (!myEndgamesBoard) {
     myEndgamesBoard = Chessboard('myEndgamesBoard', {
       position: item.fen,
-      draggable: false,
-      pieceTheme: PIECE_THEME
+      draggable: true,
+      pieceTheme: PIECE_THEME,
+      appearSpeed: 0,
+      moveSpeed: 0,
+      snapbackSpeed: 0,
+      snapSpeed: 0,
+      onDragStart: onMyEndgamePracticeDragStart,
+      onDrop: handleMyEndgamePracticeDrop,
+      onSnapEnd: () => {
+        clearHighlights();
+        if (myEndgamePracticeActive) renderMyEndgamePracticeBoard();
+        else if (myEndgamesGame) myEndgamesBoard.position(myEndgamesGame.fen(), false);
+      }
     });
+    initRightClickDrawing('myEndgamesBoard');
+    if (window.initBoardClickToMove) {
+      window.initBoardClickToMove(
+        'myEndgamesBoard',
+        () => myEndgamePracticeActive
+          ? (myEndgamePracticeGame.turn() === myEndgamePracticeColor || myEndgamePracticeBotActive || myEndgamePracticeQueue.length
+              ? myEndgamePracticeVirtualGame : myEndgamePracticeGame)
+          : myEndgamesGame,
+        handleMyEndgamePracticeDrop,
+        { canSelect: piece => Boolean(
+          myEndgamePracticeActive && piece && piece.color === myEndgamePracticeColor
+        ) }
+      );
+    }
   }
   if (myEndgamesBoard.orientation) myEndgamesBoard.orientation(item.playerColor === 'b' ? 'black' : 'white');
   const title = document.getElementById('myEndgameTitle');
@@ -719,11 +758,13 @@ function selectMyEndgame(item) {
   if (title) title.textContent = item.white + ' — ' + item.black;
   if (meta) meta.textContent = item.date + (item.result && item.result !== '*' ? ' · ' + item.result : '') + ' · позиция из эндшпиля';
   updateMyEndgameViewer();
+  updateMyEndgamePracticeControls();
+  setMyEndgamePracticeClock();
   setTimeout(() => myEndgamesBoard && myEndgamesBoard.resize(), 80);
 }
 
 function moveMyEndgame(direction) {
-  if (!myEndgamesGame || !myEndgamesCurrent) return;
+  if (myEndgamePracticeActive || !myEndgamesGame || !myEndgamesCurrent) return;
   if (direction < 0) {
     if (myEndgameMoveIndex <= 0) return;
     myEndgamesGame.undo();
@@ -741,6 +782,406 @@ function moveMyEndgame(direction) {
   updateMyEndgameViewer();
 }
 
+
+function setMyEndgamePracticeFeedback(message, type) {
+  const el = document.getElementById('myEndgamePracticeFeedback');
+  if (!el) return;
+  el.textContent = message;
+  el.className = 'my-endgame-practice-feedback' + (type ? ' ' + type : '');
+}
+
+function setMyEndgamePracticeClock() {
+  const el = document.getElementById('myEndgamePracticeClock');
+  if (!el) return;
+  const seconds = Math.max(0, Math.ceil(myEndgamePracticeTimeLeft));
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  el.textContent = String(minutes).padStart(2, '0') + ':' + String(rest).padStart(2, '0');
+  el.classList.toggle('low', seconds <= 30 && myEndgamePracticeActive);
+}
+
+function getMyEndgamePracticeTime() {
+  const select = document.getElementById('myEndgameTimeControl');
+  const custom = document.getElementById('myEndgameCustomMinutes');
+  if (!select) return 300;
+  if (select.value !== 'custom') return Math.max(60, Number(select.value) || 300);
+  const minutes = Number(custom && custom.value);
+  if (!Number.isFinite(minutes) || minutes < 1 || minutes > 180) {
+    throw new Error('Введи время от 1 до 180 минут.');
+  }
+  return Math.round(minutes) * 60;
+}
+
+function updateMyEndgamePracticeControls() {
+  const active = myEndgamePracticeActive;
+  const timeControl = document.getElementById('myEndgameTimeControl');
+  const custom = document.getElementById('myEndgameCustomMinutes');
+  const start = document.getElementById('myEndgamePracticeStart');
+  const reset = document.getElementById('myEndgamePracticeReset');
+  const review = document.getElementById('myEndgameReviewControls');
+  const hasGame = Boolean(myEndgamesCurrent);
+
+  if (timeControl) timeControl.disabled = active;
+  if (custom) custom.disabled = active;
+  if (start) {
+    start.disabled = !hasGame || active;
+    start.textContent = active ? 'Игра идёт' : '▶ Практика';
+  }
+  if (reset) reset.disabled = !hasGame || (!active && !myEndgamePracticeGame);
+  if (review) review.hidden = active;
+}
+
+function stopMyEndgamePracticeTimer() {
+  myEndgamePracticeTimerActive = false;
+  if (myEndgamePracticeTimerId) {
+    clearInterval(myEndgamePracticeTimerId);
+    myEndgamePracticeTimerId = null;
+  }
+}
+
+function pauseMyEndgamePracticeTimer() {
+  myEndgamePracticeTimerActive = false;
+}
+
+function startMyEndgamePracticeTimer() {
+  if (!myEndgamePracticeActive || myEndgamePracticeTimeLeft <= 0) return;
+  pauseMyEndgamePracticeTimer();
+  myEndgamePracticeTimerActive = true;
+  myEndgamePracticeLastTick = performance.now();
+  if (!myEndgamePracticeTimerId) {
+    myEndgamePracticeTimerId = setInterval(tickMyEndgamePracticeTimer, 100);
+  }
+}
+
+function finishMyEndgamePractice(result, message) {
+  if (!myEndgamePracticeActive) return;
+  stopMyEndgamePracticeTimer();
+  myEndgamePracticeActive = false;
+  myEndgamePracticeQueue = [];
+  myEndgamePracticeVersion++;
+  myEndgamePracticeBotActive = false;
+  setMyEndgamePracticeFeedback(message, result);
+  updateMyEndgamePracticeControls();
+  renderMyEndgamePracticeBoard();
+}
+
+function tickMyEndgamePracticeTimer() {
+  if (!myEndgamePracticeActive || !myEndgamePracticeTimerActive) return;
+  const now = performance.now();
+  myEndgamePracticeTimeLeft = Math.max(
+    0,
+    myEndgamePracticeTimeLeft - (now - myEndgamePracticeLastTick) / 1000
+  );
+  myEndgamePracticeLastTick = now;
+  setMyEndgamePracticeClock();
+
+  if (myEndgamePracticeTimeLeft <= 0) {
+    stopMyEndgamePracticeTimer();
+    finishMyEndgamePractice('err', '⏰ Время вышло. Бот победил. Попробуй ещё раз!');
+  }
+}
+
+function forceMyEndgamePracticeTurn(chessGame) {
+  const fields = chessGame.fen().split(' ');
+  if (fields[1] !== myEndgamePracticeColor) {
+    fields[1] = myEndgamePracticeColor;
+    fields[3] = '-';
+  }
+  return new Chess(fields.join(' '));
+}
+
+function rebuildMyEndgamePracticeVirtualBoard() {
+  if (!myEndgamePracticeGame) {
+    myEndgamePracticeVirtualGame = null;
+    return;
+  }
+  myEndgamePracticeVirtualGame = new Chess(myEndgamePracticeGame.fen());
+  if (myEndgamePracticeVirtualGame.turn() !== myEndgamePracticeColor) {
+    myEndgamePracticeVirtualGame = forceMyEndgamePracticeTurn(myEndgamePracticeVirtualGame);
+  }
+
+  const validQueue = [];
+  for (const planned of myEndgamePracticeQueue) {
+    if (myEndgamePracticeVirtualGame.turn() !== myEndgamePracticeColor) {
+      myEndgamePracticeVirtualGame = forceMyEndgamePracticeTurn(myEndgamePracticeVirtualGame);
+    }
+    let applied = null;
+    try {
+      applied = myEndgamePracticeVirtualGame.move({
+        from: planned.from,
+        to: planned.to,
+        promotion: planned.promotion || 'q'
+      });
+    } catch (error) {
+      applied = null;
+    }
+    if (!applied) break;
+    validQueue.push(planned);
+    myEndgamePracticeVirtualGame = forceMyEndgamePracticeTurn(myEndgamePracticeVirtualGame);
+  }
+  myEndgamePracticeQueue = validQueue;
+}
+
+function updateMyEndgamePracticePremoveHighlights() {
+  document.querySelectorAll('#myEndgamesBoard .premove-from, #myEndgamesBoard .premove-to')
+    .forEach(el => el.classList.remove('premove-from', 'premove-to'));
+  myEndgamePracticeQueue.forEach(move => {
+    const from = document.querySelector('#myEndgamesBoard .square-' + move.from);
+    const to = document.querySelector('#myEndgamesBoard .square-' + move.to);
+    if (from) from.classList.add('premove-from');
+    if (to) to.classList.add('premove-to');
+  });
+}
+
+function renderMyEndgamePracticeBoard() {
+  if (!myEndgamesBoard || !myEndgamePracticeGame) return;
+  rebuildMyEndgamePracticeVirtualBoard();
+  const visible = myEndgamePracticeVirtualGame || myEndgamePracticeGame;
+  myEndgamesBoard.position(visible.fen(), false);
+  updateMyEndgamePracticePremoveHighlights();
+  if (myEndgamesBoard.resize) myEndgamesBoard.resize();
+}
+
+function checkMyEndgamePracticeGameOver() {
+  if (!myEndgamePracticeGame) return true;
+  if (myEndgamePracticeGame.in_checkmate()) {
+    const humanWon = myEndgamePracticeGame.turn() !== myEndgamePracticeColor;
+    finishMyEndgamePractice(
+      humanWon ? 'ok' : 'err',
+      humanWon ? '✅ Мат! Ты победил Stockfish!' : '❌ Мат. На этот раз бот оказался сильнее.'
+    );
+    return true;
+  }
+  if (
+    myEndgamePracticeGame.in_draw()
+    || myEndgamePracticeGame.in_stalemate()
+    || myEndgamePracticeGame.in_threefold_repetition()
+    || myEndgamePracticeGame.insufficient_material()
+  ) {
+    finishMyEndgamePractice('info', '🤝 Ничья. Можно начать заново или выбрать другой эндшпиль.');
+    return true;
+  }
+  return false;
+}
+
+function onMyEndgamePracticeDragStart(source, piece) {
+  if (!myEndgamePracticeActive || !myEndgamePracticeGame || !piece || piece.charAt(0) !== myEndgamePracticeColor) return false;
+  const planning = myEndgamePracticeGame.turn() !== myEndgamePracticeColor
+    || myEndgamePracticeBotActive || myEndgamePracticeQueue.length > 0;
+  const activeGame = planning ? myEndgamePracticeVirtualGame : myEndgamePracticeGame;
+  if (!activeGame || !activeGame.moves({ square: source }).length) return false;
+  clearUserDrawings('myEndgamesBoard');
+  highlightMoves(activeGame, source);
+  return true;
+}
+
+function handleMyEndgamePracticeDrop(source, target) {
+  clearHighlights();
+  if (!myEndgamePracticeActive || !myEndgamePracticeGame || source === target || myEndgamePracticeGame.game_over()) return 'snapback';
+
+  const planning = myEndgamePracticeGame.turn() !== myEndgamePracticeColor
+    || myEndgamePracticeBotActive || myEndgamePracticeQueue.length > 0;
+
+  if (planning) {
+    if (!myEndgamePracticeVirtualGame) return 'snapback';
+    let planned = null;
+    try {
+      planned = myEndgamePracticeVirtualGame.move({ from: source, to: target, promotion: 'q' });
+    } catch (error) {
+      planned = null;
+    }
+    if (!planned) return 'snapback';
+    myEndgamePracticeQueue.push({ from: source, to: target, promotion: 'q' });
+    renderMyEndgamePracticeBoard();
+    setMyEndgamePracticeFeedback('Премув ' + source + ' → ' + target + ' поставлен. Он выполнится, если ход останется легальным.', '');
+    return;
+  }
+
+  let move = null;
+  try {
+    move = myEndgamePracticeGame.move({ from: source, to: target, promotion: 'q' });
+  } catch (error) {
+    move = null;
+  }
+  if (!move) return 'snapback';
+
+  renderMyEndgamePracticeBoard();
+  playMoveSound();
+  if (checkMyEndgamePracticeGameOver()) return;
+
+  pauseMyEndgamePracticeTimer();
+  setMyEndgamePracticeFeedback('Stockfish думает… Можешь заранее поставить премув.', '');
+  setTimeout(makeMyEndgamePracticeBotMove, 120);
+}
+
+async function makeMyEndgamePracticeBotMove() {
+  if (
+    !myEndgamePracticeActive || !myEndgamePracticeGame
+    || myEndgamePracticeGame.game_over()
+    || myEndgamePracticeGame.turn() === myEndgamePracticeColor
+    || myEndgamePracticeBotActive
+  ) return;
+
+  myEndgamePracticeBotActive = true;
+  pauseMyEndgamePracticeTimer();
+  const requestVersion = myEndgamePracticeVersion;
+  const requestFen = myEndgamePracticeGame.fen();
+
+  try {
+    const response = await fetch('/api/bot_move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fen: requestFen, level: 6 })
+    });
+    if (!response.ok) throw new Error('Stockfish вернул ошибку ' + response.status);
+    const data = await response.json();
+    if (requestVersion !== myEndgamePracticeVersion || !myEndgamePracticeActive) return;
+
+    let applied = null;
+    if (data && data.move) {
+      try {
+        applied = myEndgamePracticeGame.move({
+          from: data.move.slice(0, 2),
+          to: data.move.slice(2, 4),
+          promotion: data.move[4] || 'q'
+        });
+      } catch (error) {
+        applied = null;
+      }
+    }
+    if (!applied) throw new Error('Stockfish не вернул допустимый ход');
+    playMoveSound();
+  } catch (error) {
+    if (requestVersion !== myEndgamePracticeVersion || !myEndgamePracticeActive) return;
+    const fallbackMoves = myEndgamePracticeGame.moves({ verbose: true });
+    if (!fallbackMoves.length) {
+      finishMyEndgamePractice('err', 'Не удалось получить ход Stockfish. Начни практику заново.');
+      return;
+    }
+    const fallback = fallbackMoves[Math.floor(Math.random() * fallbackMoves.length)];
+    myEndgamePracticeGame.move({
+      from: fallback.from,
+      to: fallback.to,
+      promotion: fallback.promotion || 'q'
+    });
+    setMyEndgamePracticeFeedback('Связь с Stockfish прервалась. Сыгран запасной ход, партия продолжается.', 'err');
+  } finally {
+    if (requestVersion !== myEndgamePracticeVersion) return;
+    myEndgamePracticeBotActive = false;
+    if (!myEndgamePracticeActive) return;
+
+    renderMyEndgamePracticeBoard();
+    if (checkMyEndgamePracticeGameOver()) return;
+
+    if (myEndgamePracticeQueue.length) executeMyEndgamePracticePremove();
+    else {
+      setMyEndgamePracticeFeedback('Твой ход. Время снова пошло.', '');
+      startMyEndgamePracticeTimer();
+    }
+  }
+}
+
+function executeMyEndgamePracticePremove() {
+  if (
+    !myEndgamePracticeQueue.length || !myEndgamePracticeActive
+    || !myEndgamePracticeGame || myEndgamePracticeGame.game_over()
+    || myEndgamePracticeGame.turn() !== myEndgamePracticeColor
+  ) {
+    renderMyEndgamePracticeBoard();
+    return;
+  }
+  const planned = myEndgamePracticeQueue.shift();
+  let move = null;
+  try {
+    move = myEndgamePracticeGame.move({
+      from: planned.from,
+      to: planned.to,
+      promotion: planned.promotion || 'q'
+    });
+  } catch (error) {
+    move = null;
+  }
+  if (!move) {
+    myEndgamePracticeQueue = [];
+    renderMyEndgamePracticeBoard();
+    setMyEndgamePracticeFeedback('Премув отменён: после хода бота позиция изменилась.', 'err');
+    startMyEndgamePracticeTimer();
+    return;
+  }
+
+  myEndgamePracticeTimeLeft = Math.max(0, myEndgamePracticeTimeLeft - 0.1);
+  setMyEndgamePracticeClock();
+  if (myEndgamePracticeTimeLeft <= 0) {
+    finishMyEndgamePractice('err', '⏰ Время вышло. Бот победил. Попробуй ещё раз!');
+    return;
+  }
+  renderMyEndgamePracticeBoard();
+  playMoveSound();
+  if (checkMyEndgamePracticeGameOver()) return;
+  pauseMyEndgamePracticeTimer();
+  setMyEndgamePracticeFeedback('Премув выполнен. Stockfish отвечает…', '');
+  setTimeout(makeMyEndgamePracticeBotMove, 120);
+}
+
+function startMyEndgamePractice() {
+  if (!myEndgamesCurrent) return;
+  let seconds = 300;
+  try {
+    seconds = getMyEndgamePracticeTime();
+  } catch (error) {
+    setMyEndgamePracticeFeedback(error.message, 'err');
+    return;
+  }
+  stopMyEndgamePracticeTimer();
+  myEndgamePracticeVersion++;
+  myEndgamePracticeGame = new Chess(myEndgamesCurrent.fen);
+  myEndgamePracticeColor = myEndgamesCurrent.playerColor === 'w' || myEndgamesCurrent.playerColor === 'b'
+    ? myEndgamesCurrent.playerColor
+    : myEndgamePracticeGame.turn();
+  myEndgamePracticeVirtualGame = new Chess(myEndgamePracticeGame.fen());
+  myEndgamePracticeQueue = [];
+  myEndgamePracticeBotActive = false;
+  myEndgamePracticeTimeLimit = seconds;
+  myEndgamePracticeTimeLeft = seconds;
+  myEndgamePracticeActive = true;
+  myEndgameMoveIndex = 0;
+
+  if (myEndgamesBoard && myEndgamesBoard.orientation) {
+    myEndgamesBoard.orientation(myEndgamePracticeColor === 'w' ? 'white' : 'black');
+  }
+  if (myEndgamesBoard) myEndgamesBoard.position(myEndgamePracticeGame.fen(), false);
+  setMyEndgamePracticeClock();
+  updateMyEndgamePracticeControls();
+
+  clearHighlights();
+  clearUserDrawings('myEndgamesBoard');
+  if (myEndgamePracticeGame.turn() === myEndgamePracticeColor) {
+    setMyEndgamePracticeFeedback('Практика началась. Ты играешь ' + (myEndgamePracticeColor === 'w' ? 'белыми' : 'чёрными') + '. Твой ход!', 'success');
+    startMyEndgamePracticeTimer();
+  } else {
+    setMyEndgamePracticeFeedback('Практика началась. Соперник ходит первым…', '');
+    setTimeout(makeMyEndgamePracticeBotMove, 120);
+  }
+}
+
+function resetMyEndgamePractice() {
+  if (!myEndgamesCurrent) return;
+  startMyEndgamePractice();
+}
+
+function stopMyEndgamePractice() {
+  stopMyEndgamePracticeTimer();
+  myEndgamePracticeActive = false;
+  myEndgamePracticeBotActive = false;
+  myEndgamePracticeQueue = [];
+  myEndgamePracticeGame = null;
+  myEndgamePracticeVirtualGame = null;
+  myEndgamePracticeVersion++;
+  clearHighlights();
+  updateMyEndgamePracticeControls();
+  setMyEndgamePracticeClock();
+}
+
 function initMyEndgamesUI() {
   const wrapper = document.getElementById('tab-endgames');
   if (!wrapper || wrapper.dataset.personalReady === '1') return;
@@ -754,6 +1195,7 @@ function initMyEndgamesUI() {
       if (catalog) catalog.hidden = mine;
       if (personalView) personalView.hidden = !mine;
       if (mine) {
+        if (!myEndgamePracticeActive) stopMyEndgamePractice();
         renderMyEndgamesList();
         const items = readMyEndgames();
         if (!myEndgamesCurrent && items.length) selectMyEndgame(items[0]);
@@ -761,6 +1203,42 @@ function initMyEndgamesUI() {
       }
     });
   });
+  const timeSelect = document.getElementById('myEndgameTimeControl');
+  const customMinutes = document.getElementById('myEndgameCustomMinutes');
+  const startPractice = document.getElementById('myEndgamePracticeStart');
+  const resetPractice = document.getElementById('myEndgamePracticeReset');
+  if (timeSelect) {
+    timeSelect.addEventListener('change', () => {
+      if (customMinutes) customMinutes.hidden = timeSelect.value !== 'custom';
+      try {
+        const seconds = getMyEndgamePracticeTime();
+        if (!myEndgamePracticeActive) {
+          myEndgamePracticeTimeLeft = seconds;
+          myEndgamePracticeTimeLimit = seconds;
+          setMyEndgamePracticeClock();
+        }
+      } catch (error) {
+        setMyEndgamePracticeFeedback(error.message, 'err');
+      }
+    });
+  }
+  if (customMinutes) {
+    customMinutes.addEventListener('input', () => {
+      if (!myEndgamePracticeActive) {
+        try {
+          const seconds = getMyEndgamePracticeTime();
+          myEndgamePracticeTimeLeft = seconds;
+          myEndgamePracticeTimeLimit = seconds;
+          setMyEndgamePracticeClock();
+        } catch (error) {
+          setMyEndgamePracticeFeedback(error.message, 'err');
+        }
+      }
+    });
+  }
+  if (startPractice) startPractice.addEventListener('click', startMyEndgamePractice);
+  if (resetPractice) resetPractice.addEventListener('click', resetMyEndgamePractice);
+
   const prev = document.getElementById('myEndgamePrev');
   const next = document.getElementById('myEndgameNext');
   if (prev) prev.addEventListener('click', () => moveMyEndgame(-1));
