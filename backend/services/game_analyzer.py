@@ -233,6 +233,26 @@ def _classify_game_phase(board):
     return "middlegame"
 
 
+def _parse_time_control(time_control):
+    """Return (initial seconds, increment seconds) from common PGN TimeControl."""
+    if not time_control:
+        return None, 0.0
+
+    first_stage = str(time_control).split(":", 1)[0].strip()
+    parts = first_stage.split("+", 1)
+    base_part = parts[0].strip().split("/")[-1].strip()
+    increment_part = parts[1].strip() if len(parts) > 1 else "0"
+
+    try:
+        initial = float(base_part)
+        increment = float(increment_part or 0)
+        if initial < 0 or increment < 0:
+            return None, 0.0
+        return initial, increment
+    except (TypeError, ValueError):
+        return None, 0.0
+
+
 def _is_time_pressure(clock_before, initial_clock, time_spent):
     if clock_before is None:
         return False
@@ -297,17 +317,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
             black_player = game.headers.get("Black", "Black")
 
             time_control = game.headers.get("TimeControl", "")
-            initial_clock = None
-
-            try:
-                first_control = time_control.split(":", 1)[0]
-                base_part = first_control.split("+", 1)[0]
-
-                if base_part.isdigit():
-                    initial_clock = float(base_part)
-
-            except Exception:
-                initial_clock = None
+            initial_clock, time_increment = _parse_time_control(time_control)
 
             board = game.board()
 
@@ -345,6 +355,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 )
 
             node = game
+            previous_clock = initial_clock
 
             for i, move in enumerate(game.mainline_moves()):
 
@@ -415,12 +426,20 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 is_sacrifice = sacrifice_details is not None
                 second_best_gap = get_second_best_gap(before_infos, mover)
 
-                clock_before = node.clock() if node else None
+                # PGN [%clk] is attached to the node after the move.
+                # Compare it with the previous node's remaining time and add
+                # the increment to avoid treating the same clock as before/after.
+                clock_before = previous_clock
                 board.push(move)
                 clock_after = node.clock() if node else None
                 time_spent = None
-                if clock_before is not None and clock_after is not None:
-                    time_spent = max(0, clock_before - clock_after)
+                if clock_after is not None:
+                    if clock_before is not None:
+                        time_spent = max(
+                            0.0,
+                            clock_before + time_increment - clock_after,
+                        )
+                    previous_clock = clock_after
 
                 after_info = engine.analyse(
                     board,
