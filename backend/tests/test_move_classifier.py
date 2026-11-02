@@ -17,7 +17,11 @@ from services.game_analyzer import (
     _classify_game_phase,
     _parse_time_control,
 )
-from services.stockfish import calc_expected_points
+from services.stockfish import (
+    calc_expected_points,
+    get_position_analysis,
+    format_multipv_infos,
+)
 
 
 class SacrificeDetectionTests(unittest.TestCase):
@@ -142,6 +146,55 @@ class AnalysisMetricTests(unittest.TestCase):
         self.assertEqual(_classify_game_phase(chess.Board()), "opening")
         kings_only = chess.Board("7k/8/8/8/8/8/8/K7 w - - 0 40")
         self.assertEqual(_classify_game_phase(kings_only), "endgame")
+
+
+
+    def test_multipv_fallback_recovers_three_unique_lines(self):
+        board = chess.Board()
+
+        class FakeEngine:
+            def __init__(self):
+                self.calls = 0
+
+            def analyse(self, position, limit, multipv=1, root_moves=None):
+                self.calls += 1
+                roots = list(root_moves) if root_moves is not None else list(position.legal_moves)
+                infos = []
+                for index, move in enumerate(roots):
+                    score = chess.engine.PovScore(
+                        chess.engine.Cp(200 - index * 25),
+                        chess.WHITE,
+                    )
+                    infos.append({"pv": [move], "score": score})
+                # Simulate an engine wrapper that ignores MultiPV on the first call.
+                return infos[:1] if self.calls == 1 else infos[:multipv]
+
+        engine = FakeEngine()
+        infos = get_position_analysis(engine, board)
+
+        self.assertEqual(len(infos), 3)
+        self.assertEqual(len({info["pv"][0].uci() for info in infos}), 3)
+        self.assertEqual(engine.calls, 2)
+
+        lines = format_multipv_infos(board, infos)
+        self.assertEqual(len(lines), 3)
+        self.assertEqual(lines[0]["rank"], 1)
+        self.assertEqual(lines[0]["uci"], infos[0]["pv"][0].uci())
+
+    def test_expected_points_loss_is_non_negative_and_uses_player_pov(self):
+        from services.game_analyzer import _calculate_loss_metrics
+
+        before = chess.engine.PovScore(chess.engine.Cp(150), chess.WHITE)
+        after = chess.engine.PovScore(chess.engine.Cp(50), chess.WHITE)
+        loss, cp_loss, before_cp, after_cp = _calculate_loss_metrics(
+            before,
+            after,
+            chess.WHITE,
+        )
+        self.assertGreater(loss, 0)
+        self.assertEqual(cp_loss, 100)
+        self.assertEqual(before_cp, 150)
+        self.assertEqual(after_cp, 50)
 
 
 if __name__ == "__main__":
