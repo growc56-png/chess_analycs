@@ -1022,3 +1022,100 @@
 @media (max-width: 1100px) {
   #tab-analysis .right-panel { display: flex !important; flex-direction: column !important; }
 }
+
+
+/* Deep game review: phase accuracy and a human-readable explanation per move */
+.analysis-phase-card,
+.analysis-move-insight {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 11px;
+  background: #292c32;
+  box-shadow: 0 3px 10px rgba(0,0,0,.12);
+  color: #eef2f5;
+}
+.analysis-phase-rows {
+  display: grid;
+  gap: 9px;
+}
+.analysis-phase-row {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) minmax(80px, 2fr) 52px;
+  align-items: center;
+  gap: 10px;
+  color: #b8c2cb;
+  font-size: 11px;
+}
+.analysis-phase-row strong {
+  color: #e3ebef;
+  font-size: 11px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.analysis-phase-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #171b20;
+}
+.analysis-phase-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4b83ce, #8fc75c);
+  transition: width .25s ease;
+}
+.analysis-deep-summary {
+  margin-top: 9px;
+  color: #8295a3;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.analysis-move-insight {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.analysis-move-insight-heading {
+  color: #9babb6;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.analysis-move-insight > strong {
+  color: #f1f5f7;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.analysis-move-insight p {
+  margin: 0;
+  color: #bac5cc;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.analysis-move-insight-best {
+  padding: 8px 9px;
+  border-left: 3px solid #8fbe60;
+  border-radius: 5px;
+  background: rgba(143,190,96,.08);
+  color: #dce9d2;
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.analysis-move-insight-meta {
+  color: #8496a3;
+  font-size: 9px;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .analysis-phase-row {
+    grid-template-columns: minmax(78px, 1fr) minmax(65px, 1.4fr) 48px;
+    gap: 7px;
+    font-size: 10px;
+  }
+  .analysis-move-insight { padding: 11px; }
+}
