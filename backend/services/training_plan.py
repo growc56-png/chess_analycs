@@ -299,12 +299,20 @@ def _make_personal_task(task_type: str, minutes: int, topics: dict) -> dict:
         "minutes": minutes,
     })
     if task_type == "game":
-        game_count = max(1, min(5, minutes // 30))
+        short_control = minutes < 30
+        control = "5+0" if short_control else "10+0"
+        game_count = max(1, min(5, minutes // (15 if short_control else 35)))
         item["game_count"] = game_count
-        item["title"] = f"Сыграй {game_count} рапид-парт." if game_count > 1 else "Сыграй одну рапид-партию"
+        item["time_control"] = control
+        item["title"] = (
+            f"Сыграй {game_count} партий ({control})"
+            if game_count > 1
+            else f"Сыграй одну партию ({control})"
+        )
         item["detail"] = (
-            f"Сыграй {game_count} партий с контролем 10+0 или 15+10. "
-            "Между партиями делай короткую паузу и не играй на автопилоте."
+            f"Сыграй {game_count} партий с контролем {control}. "
+            "После каждой партии разбери хотя бы один критический момент. "
+            "Между партиями делай паузу; прекращай игру, если начинаешь ходить автоматически."
         )
     return item
 
