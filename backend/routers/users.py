@@ -34,7 +34,7 @@ class ActivityBody(BaseModel):
 
 
 class StreakBody(BaseModel):
-    result: str = Field(pattern="^(win|loss|draw)$")
+    result: str = Field(min_length=3, max_length=4)
 
 
 def _require_profile(user: User) -> None:
@@ -236,6 +236,8 @@ def add_streak_result(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if body.result not in {"win", "loss", "draw"}:
+        raise HTTPException(status_code=422, detail="Результат должен быть win, loss или draw.")
     db.add(UserStreakResult(
         user_id=user.id,
         date=date.today().isoformat(),
