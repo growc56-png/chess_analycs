@@ -689,8 +689,7 @@ function handleEndgameDrop(source, target) {
 
   const planningMode =
     endgameGame.turn() !== endgamePlayerColor ||
-    endgameBotRequestActive ||
-    endgamePremoveQueue.length > 0;
+    endgameBotRequestActive;
 
   // На один ход соперника можно поставить только один premove.
   // Если пользователь выбирает другой ход, он заменяет предыдущий.
