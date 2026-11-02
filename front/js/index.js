@@ -2181,15 +2181,14 @@ function getMoveAccuracy(move) {
 
   const storedAccuracy = move.move_accuracy == null ? NaN : Number(move.move_accuracy);
   const accuracyVersion = Number(move.move_accuracy_version || 0);
-  if (accuracyVersion >= 2 && Number.isFinite(storedAccuracy)) {
+  if (accuracyVersion >= 3 && Number.isFinite(storedAccuracy)) {
     return Math.max(0, Math.min(100, storedAccuracy));
   }
 
-  // Для старых отчётов пересчитываем точность по потере в сантипешках,
-  // а не по изменению ожидаемого результата в уже выигранной/проигранной позиции.
+  // Старые отчёты пересчитываем по более строгой кривой потери в сантипешках.
   const rawCpLoss = move.cp_loss == null ? NaN : Number(move.cp_loss);
   if (Number.isFinite(rawCpLoss)) {
-    return Math.max(0, Math.min(100, 100 * Math.exp(-0.004 * Math.max(0, rawCpLoss))));
+    return Math.max(0, Math.min(100, 100 * Math.exp(-0.006 * Math.max(0, rawCpLoss))));
   }
 
   if (Number.isFinite(storedAccuracy)) {
@@ -2447,6 +2446,12 @@ function refreshAnalysisNavigation() {
   setDisabled('analysisPrev', !hasMoves || index <= 0);
   setDisabled('analysisNext', !hasMoves || index >= analysisMoves.length - 1);
   setDisabled('analysisEnd', !hasMoves || index >= analysisMoves.length - 1);
+  const drillsButton = document.getElementById('analysisSendToDrillsBtn');
+  if (drillsButton) {
+    const drillCount = getAnalysisTrainingOpportunities().length;
+    drillsButton.disabled = !hasMoves || drillCount === 0;
+    drillsButton.textContent = drillCount ? '⚡ В тактику · ' + drillCount : '⚡ В тактику';
+  }
   const play = document.getElementById('analysisPlay');
   if (play) {
     play.textContent = analysisPlaybackTimer ? 'Ⅱ' : '▶';
@@ -2842,7 +2847,69 @@ function renderMoveTable() {
   }
 }
 
-// ДОБАВЛЕНА НЕДОСТАЮЩАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ХОДОВ
+function getAnalysisTrainingOpportunities() {
+  const retryable = new Set(['inaccuracy', 'mistake', 'miss', 'blunder']);
+  const gameLabel = (currentWhitePlayer || 'Белые') + ' — ' + (currentBlackPlayer || 'Чёрные');
+  const date = new Date().toLocaleDateString('ru-RU');
+  let playerColor = null;
+  if (myUsername) {
+    const username = String(myUsername).trim().toLowerCase();
+    if (String(currentWhitePlayer || '').trim().toLowerCase() === username) playerColor = 'white';
+    else if (String(currentBlackPlayer || '').trim().toLowerCase() === username) playerColor = 'black';
+  }
+  return analysisMoves.map((move, index) => {
+    if (!move || !retryable.has(String(move.classification || ''))) return null;
+    if (playerColor && move.mover !== playerColor) return null;
+    if (!move.before_fen || !/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(String(move.best_move_uci || ''))) return null;
+    const accepted = Array.isArray(move.acceptable_moves_uci)
+      ? [...new Set(move.acceptable_moves_uci.filter(value => typeof value === 'string'))]
+      : [];
+    if (accepted.includes(move.uci)) return null;
+    if (!accepted.includes(move.best_move_uci)) accepted.unshift(move.best_move_uci);
+    const alternatives = Array.isArray(move.acceptable_moves) ? move.acceptable_moves : [];
+    const bestCandidate = alternatives.find(item => item && item.uci === move.best_move_uci);
+    const bestLine = bestCandidate && Array.isArray(bestCandidate.line_san)
+      ? bestCandidate.line_san
+      : (Array.isArray(move.best_line_san) ? move.best_line_san : []);
+    return {
+      id: 'analysis-' + index + '-' + move.move_num + '-' + move.uci + '-' + String(move.before_fen).slice(0, 14),
+      gameLabel,
+      date,
+      event: 'Текущий анализ',
+      source: 'analysis',
+      color: move.mover || 'white',
+      moveNum: Number(move.move_num) || Math.floor(index / 2) + 1,
+      playedSan: move.san || move.uci,
+      classification: move.classification,
+      cpLoss: Number(move.cp_loss || 0),
+      beforeFen: move.before_fen,
+      bestMoveUci: move.best_move_uci,
+      bestMoveSan: move.best_move_san || move.best_move_uci,
+      bestLineSan: bestLine.slice(0, 4),
+      bestMoveMotifs: Array.isArray(move.best_move_motifs) ? move.best_move_motifs : [],
+      acceptableMovesUci: accepted,
+      acceptableMovesSan: alternatives.map(item => item && item.san).filter(Boolean),
+      solved: false,
+      revealed: false
+    };
+  }).filter(Boolean);
+}
+
+function sendAnalysisMistakesToTraining() {
+  const items = getAnalysisTrainingOpportunities();
+  const status = document.getElementById('analysisMoveInsightText');
+  if (!items.length) {
+    if (status) status.textContent = 'В этой партии нет твоих ошибок с сохранённой позицией для тактической тренировки.';
+    return;
+  }
+  window.dispatchEvent(new CustomEvent('chessTrainer:add-analysis-drills', {
+    detail: { opportunities: items }
+  }));
+  const errorsTab = document.querySelector('.tab-btn[data-tab="errors"]');
+  if (errorsTab) errorsTab.click();
+}
+
+// Повтор выбранной ошибки и перенос ошибок партии в тактические задания.
 function updateAnalysisRetryButton(moveData) {
   const button = document.getElementById('analysisRetryMistakeBtn');
   if (!button) return;
@@ -3003,6 +3070,15 @@ function renderAnalysisMoveInsight(moveData) {
     check: 'шах',
     capture: 'взятие'
   };
+  const motifExplanations = {
+    mate: 'форсированное завершение партии',
+    mate_in_2: 'неотразимая матовая сеть',
+    fork: 'одновременная атака на две или более цели',
+    pin: 'связка фигуры, которая не может безопасно отойти',
+    discovered_check: 'вскрытие линии шаха другой фигурой',
+    check: 'темп с шахом королю',
+    capture: 'выигрыш материала'
+  };
 
   const moveNumber = Number(moveData.move_num) || Math.floor(currentAnalysisIndex / 2) + 1;
   const mover = moveData.mover === 'black' ? 'чёрные' : 'белые';
@@ -3051,9 +3127,16 @@ function renderAnalysisMoveInsight(moveData) {
     .map(motif => motifLabels[motif])
     .filter(Boolean);
   if (motifs.length) {
-    messages.push('В лучшем продолжении была идея: ' + [...new Set(motifs)].join(', ') + '.');
+    const uniqueMotifs = [...new Set(motifs)];
+    const motifDetails = uniqueMotifs.map(motif => motifExplanations[motif]).filter(Boolean);
+    messages.push('Тактическая идея лучшего продолжения: '
+      + (motifDetails.length ? motifDetails.join('; ') : uniqueMotifs.join(', ')) + '.');
   }
-
+  const cpLoss = Number(moveData.cp_loss ?? moveData.centipawn_loss);
+  if (Number.isFinite(cpLoss) && cpLoss >= 15) {
+    messages.push('Сыгранный ход уступил лучшему примерно на ' + (cpLoss / 100).toFixed(2)
+      + ' пешки по оценке Stockfish.');
+  }
   textEl.textContent = messages.join(' ');
   bestEl.textContent = moveData.best_line_san?.length
     ? 'Линия Stockfish: ' + moveData.best_line_san.join(' ')
@@ -3150,6 +3233,11 @@ window.showAnalysisMove = function(index) {
   if (retryButton && !retryButton.dataset.bound) {
     retryButton.addEventListener('click', startAnalysisMistakeChallenge);
     retryButton.dataset.bound = '1';
+  }
+  const drillsButton = document.getElementById('analysisSendToDrillsBtn');
+  if (drillsButton && !drillsButton.dataset.bound) {
+    drillsButton.addEventListener('click', sendAnalysisMistakesToTraining);
+    drillsButton.dataset.bound = '1';
   }
   const start = document.getElementById('analysisStart');
   const prev = document.getElementById('analysisPrev');
