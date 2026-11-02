@@ -21,3 +21,6 @@ jobs:
       - name: Run analysis regression tests
         working-directory: backend
         run: python -m unittest discover -s tests -v
+      - name: Check analysis frontend syntax
+        working-directory: .
+        run: node --check front/js/index.js
