@@ -45,6 +45,10 @@
     authResolved = true;
     hideGate();
     setAccount(currentUser);
+    if (allowed) {
+      window.__chessAuthReady = true;
+      window.dispatchEvent(new Event('chess-auth-ready'));
+    }
     if (resolveAuth) resolveAuth(Boolean(allowed));
   }
 
@@ -86,6 +90,7 @@
     $('goalDailyMinutes').value = user && user.profile && user.profile.daily_minutes
       ? String(user.profile.daily_minutes)
       : '90';
+    $('goalCancelBtn').hidden = !editing;
     setMessage('goalMessage', '', '');
     showGate('goal');
   }
@@ -221,6 +226,12 @@
     });
 
     $('goalSetupForm').addEventListener('submit', submitGoal);
+    $('goalCancelBtn').addEventListener('click', () => {
+      if (!editingProfile) return;
+      editingProfile = false;
+      hideGate();
+      setAccount(currentUser);
+    });
 
     $('accountEditGoalBtn').addEventListener('click', () => {
       if (!currentUser) return;
