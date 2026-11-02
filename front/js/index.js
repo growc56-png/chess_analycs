@@ -19,6 +19,7 @@ let currentAnalysisIndex = -1;
 let latestGamesCache = null;
 
 let analysisGame = new Chess();
+let activeAnalysisChallenge = null;
 let isAnalyzing = false;
 let currentWhitePlayer = "White";
 let currentBlackPlayer = "Black";
@@ -2465,6 +2466,10 @@ function handleAnalysisDrop(source, target) {
   try { move = analysisGame.move({ from: source, to: target }); } catch(e) {}
   if (!move) return 'snapback';
   const moveWithUci = { ...move, uci: moveObjectToUci(move) };
+  if (activeAnalysisChallenge) {
+    handleAnalysisChallengeMove(moveWithUci);
+    return 'snapback';
+  }
 
   currentAnalysisIndex = -1;
   playMoveSound();
@@ -2785,6 +2790,132 @@ function renderMoveTable() {
 }
 
 // ДОБАВЛЕНА НЕДОСТАЮЩАЯ ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ХОДОВ
+function updateAnalysisRetryButton(moveData) {
+  const button = document.getElementById('analysisRetryMistakeBtn');
+  if (!button) return;
+
+  if (activeAnalysisChallenge) {
+    button.hidden = false;
+    button.textContent = 'Выйти из тренировки';
+    button.classList.add('is-active');
+    return;
+  }
+
+  const retryable = ['inaccuracy', 'mistake', 'miss', 'blunder'];
+  const hasBestMove = Boolean(
+    moveData
+    && moveData.best_move_uci
+    && moveData.before_fen
+    && moveData.best_move_uci.length === 4
+    && retryable.includes(moveData.classification)
+  );
+
+  button.hidden = !hasBestMove;
+  button.textContent = 'Попробовать найти лучший ход';
+  button.classList.remove('is-active');
+}
+
+function startAnalysisMistakeChallenge() {
+  const button = document.getElementById('analysisRetryMistakeBtn');
+  const titleEl = document.getElementById('analysisMoveInsightTitle');
+  const textEl = document.getElementById('analysisMoveInsightText');
+  const bestEl = document.getElementById('analysisMoveInsightBest');
+  const metaEl = document.getElementById('analysisMoveInsightMeta');
+  if (activeAnalysisChallenge) {
+    activeAnalysisChallenge = null;
+    if (currentAnalysisIndex >= 0) showAnalysisMove(currentAnalysisIndex);
+    return;
+  }
+
+  const moveData = analysisMoves[currentAnalysisIndex];
+  if (
+    !moveData
+    || !moveData.before_fen
+    || !moveData.best_move_uci
+    || moveData.best_move_uci.length !== 4
+  ) return;
+
+  let challengeGame;
+  try {
+    challengeGame = new Chess(moveData.before_fen);
+  } catch (error) {
+    if (textEl) textEl.textContent = 'Не удалось восстановить позицию для тренировки.';
+    return;
+  }
+
+  const acceptedMoves = Array.isArray(moveData.acceptable_moves_uci)
+    ? moveData.acceptable_moves_uci.filter(value => typeof value === 'string')
+    : [];
+  if (!acceptedMoves.includes(moveData.best_move_uci)) {
+    acceptedMoves.unshift(moveData.best_move_uci);
+  }
+
+  activeAnalysisChallenge = {
+    moveIndex: currentAnalysisIndex,
+    beforeFen: moveData.before_fen,
+    bestMoveUci: moveData.best_move_uci,
+    bestMoveSan: moveData.best_move_san || moveData.best_move_uci,
+    acceptedMoves: [...new Set(acceptedMoves)],
+    bestLine: Array.isArray(moveData.best_line_san) ? moveData.best_line_san : []
+  };
+
+  analysisGame = challengeGame;
+  if (analysisBoard) analysisBoard.position(challengeGame.fen());
+  drawArrows(null);
+  const overlay = document.querySelector('#analysisBoard .custom-overlay');
+  if (overlay) overlay.innerHTML = '';
+  stopAnalysisPlayback();
+
+  if (titleEl) titleEl.textContent = 'Тренировка ошибки · найди лучший ход';
+  if (textEl) textEl.textContent = 'Позиция восстановлена до твоего хода. Найди сильнейшее продолжение самостоятельно. Подсказка пока скрыта.';
+  if (bestEl) bestEl.textContent = 'Сделай ход на доске. Подойдут и равноценные варианты Stockfish.';
+  if (metaEl) metaEl.textContent = 'Режим тренировки · ' + (moveData.mover === 'black' ? 'ход чёрных' : 'ход белых');
+  updateAnalysisRetryButton(moveData);
+}
+
+function handleAnalysisChallengeMove(moveWithUci) {
+  const challenge = activeAnalysisChallenge;
+  if (!challenge) return false;
+
+  const playedUci = moveWithUci && moveWithUci.uci;
+  const accepted = challenge.acceptedMoves.includes(playedUci);
+  const textEl = document.getElementById('analysisMoveInsightText');
+  const bestEl = document.getElementById('analysisMoveInsightBest');
+  const metaEl = document.getElementById('analysisMoveInsightMeta');
+
+  if (!accepted) {
+    analysisGame.undo();
+    if (analysisBoard) analysisBoard.position(challenge.beforeFen);
+    if (textEl) {
+      textEl.textContent = 'Не тот ход. Позиция возвращена назад — попробуй ещё раз. Проверь шахи, взятия и угрозы соперника.';
+    }
+    if (bestEl) bestEl.textContent = 'Подсказка пока не открыта.';
+    if (errorSound && typeof errorSound.play === 'function') {
+      const sound = errorSound.play();
+      if (sound && typeof sound.catch === 'function') sound.catch(() => {});
+    }
+    return true;
+  }
+
+  activeAnalysisChallenge = null;
+  currentAnalysisIndex = challenge.moveIndex;
+  if (analysisBoard) analysisBoard.position(analysisGame.fen());
+  playMoveSound();
+
+  const moveData = analysisMoves[challenge.moveIndex];
+  const label = moveData?.best_move_san || challenge.bestMoveSan;
+  if (textEl) textEl.textContent = 'Верно! Ты нашёл лучший или равноценный ход. Сравни идею с продолжением движка.';
+  if (bestEl) {
+    bestEl.textContent = 'Твой ход: ' + (moveWithUci.san || label)
+      + (challenge.bestLine.length ? ' · Линия Stockfish: ' + challenge.bestLine.join(' ') : '');
+  }
+  if (metaEl) metaEl.textContent = 'Задача решена · правильный вариант найден';
+  updateAnalysisRetryButton(moveData);
+  updateAnalysisProgress(challenge.moveIndex);
+  refreshAnalysisNavigation();
+  return true;
+}
+
 function renderAnalysisMoveInsight(moveData) {
   const titleEl = document.getElementById('analysisMoveInsightTitle');
   const textEl = document.getElementById('analysisMoveInsightText');
@@ -2934,9 +3065,13 @@ window.showAnalysisMove = function(index) {
 
   updateEvalBar(!!moveData.is_mate, Number(moveData.mate_in || 0), Number(moveData.eval || 0));
   updatePlayerNamesAndMaterial(analysisGame.fen());
+  if (activeAnalysisChallenge && activeAnalysisChallenge.moveIndex !== targetIndex) {
+    activeAnalysisChallenge = null;
+  }
   drawGraph(fullEvals, targetIndex);
   drawBoardBadge(moveData);
   renderAnalysisMoveInsight(moveData);
+  updateAnalysisRetryButton(moveData);
 
   const savedEngineLines = normaliseEngineLines(moveData.next_top_moves || []);
   if (savedEngineLines.length === 3) {
@@ -2958,6 +3093,11 @@ window.showAnalysisMove = function(index) {
 
 // Навигация по уже проанализированной партии.
 (function initAnalysisNavigationControls() {
+  const retryButton = document.getElementById('analysisRetryMistakeBtn');
+  if (retryButton && !retryButton.dataset.bound) {
+    retryButton.addEventListener('click', startAnalysisMistakeChallenge);
+    retryButton.dataset.bound = '1';
+  }
   const start = document.getElementById('analysisStart');
   const prev = document.getElementById('analysisPrev');
   const next = document.getElementById('analysisNext');
