@@ -73,10 +73,16 @@ def get_acceptable_move_candidates(board, infos, mover, expected_points_toleranc
                 line_san.append(line_board.san(line_move))
                 line_board.push(line_move)
 
+            motifs = get_tactical_motifs(
+                board,
+                first_move,
+                mate_distance if winning_mate else None,
+            )
             candidates.append({
                 "uci": first_move.uci(),
                 "san": board.san(first_move),
-                "line_san": line_san,
+                "line_san": line_san[:4],
+                "motifs": motifs,
                 "expected_points": expected_points,
                 "winning_mate": bool(winning_mate),
                 "mate_in": mate_distance if winning_mate else None,
@@ -107,6 +113,72 @@ def get_acceptable_move_candidates(board, infos, mover, expected_points_toleranc
         ]
 
     return accepted or [max(candidates, key=lambda item: item["expected_points"])]
+
+
+
+def get_tactical_motifs(board, move, mate_in=None):
+    """Отмечает короткие тактические идеи в ходе: шах, мат, вилка, связка."""
+    mover = board.turn
+    opponent = not mover
+    after = board.copy(stack=False)
+
+    try:
+        after.push(move)
+    except (ValueError, AssertionError):
+        return []
+
+    motifs = []
+    moved_piece = after.piece_at(move.to_square)
+
+    if after.is_checkmate():
+        motifs.append("mate")
+    elif after.is_check():
+        motifs.append("check")
+
+    if mate_in is not None and 0 < abs(int(mate_in)) <= 2:
+        if "mate" not in motifs:
+            motifs.append("mate_in_2")
+
+    if moved_piece is not None:
+        attacked_targets = []
+        for square, target_piece in after.piece_map().items():
+            if target_piece.color != opponent or target_piece.piece_type == chess.KING:
+                continue
+            if target_piece.piece_type not in (
+                chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN
+            ):
+                continue
+            if move.to_square in after.attackers(mover, square):
+                attacked_targets.append(square)
+
+        checked_king = after.king(opponent)
+        checking_piece_is_moved_piece = bool(
+            checked_king is not None
+            and move.to_square in after.attackers(mover, checked_king)
+        )
+        fork_targets = len(attacked_targets) + (1 if after.is_check() and checking_piece_is_moved_piece else 0)
+        if fork_targets >= 2:
+            motifs.append("fork")
+
+    newly_pinned = []
+    for square, target_piece in after.piece_map().items():
+        if target_piece.color != opponent or target_piece.piece_type == chess.KING:
+            continue
+        if after.is_pinned(opponent, square) and not board.is_pinned(opponent, square):
+            newly_pinned.append(square)
+    if newly_pinned:
+        motifs.append("pin")
+
+    if after.is_check() and moved_piece is not None and "check" in motifs:
+        attackers = after.attackers(mover, after.king(opponent))
+        if any(square != move.to_square for square in attackers):
+            motifs.append("discovered_check")
+
+    if board.is_capture(move):
+        motifs.append("capture")
+
+    # Сохраняем порядок и удаляем дубликаты.
+    return list(dict.fromkeys(motifs))
 
 def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
@@ -390,6 +462,21 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "best_move_uci": best_move_uci,
                     "best_move_san": best_move_san,
                     "best_line_san": best_line_san,
+                    "best_move_motifs": (
+                        acceptable_move_by_uci.get(best_move_uci, {}).get("motifs", [])
+                        if best_move_uci else []
+                    ),
+                    "acceptable_moves": [
+                        {
+                            "uci": item["uci"],
+                            "san": item["san"],
+                            "line_san": item["line_san"],
+                            "motifs": item["motifs"],
+                            "winning_mate": item["winning_mate"],
+                            "mate_in": item["mate_in"],
+                        }
+                        for item in acceptable_move_candidates
+                    ],
                     "acceptable_moves_uci": acceptable_moves_uci,
                     "acceptable_moves": [
                         {
