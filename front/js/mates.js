@@ -199,18 +199,19 @@ function selectMate(mate) {
     });
 
     initRightClickDrawing('mateBoard');
-    if (window.initBoardClickToMove) {
-      window.initBoardClickToMove(
-        'mateBoard',
-        () => (
-          game.turn() === 'b' || botRequestActive || premoveQueue.length > 0
-        ) ? virtualGame : game,
-        handleDrop,
-        { canSelect: piece => Boolean(gameActive && piece && piece.color === 'w') }
-      );
-    }
   } else {
     renderBoard();
+  }
+
+  if (window.initBoardClickToMove) {
+    window.initBoardClickToMove(
+      'mateBoard',
+      () => (
+        game.turn() === 'b' || botRequestActive || premoveQueue.length > 0
+      ) ? virtualGame : game,
+      handleDrop,
+      { canSelect: piece => Boolean(gameActive && piece && piece.color === 'w') }
+    );
   }
 
   stopTimer();
