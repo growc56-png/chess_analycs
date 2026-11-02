@@ -828,7 +828,7 @@ function updateMyEndgamePracticeControls() {
     start.textContent = active ? 'Игра идёт' : '▶ Практика';
   }
   if (reset) reset.disabled = !hasGame || (!active && !myEndgamePracticeGame);
-  if (review) review.hidden = active;
+  if (review) review.hidden = Boolean(myEndgamePracticeGame);
 }
 
 function stopMyEndgamePracticeTimer() {
@@ -1140,6 +1140,7 @@ function startMyEndgamePractice() {
     : myEndgamePracticeGame.turn();
   myEndgamePracticeVirtualGame = new Chess(myEndgamePracticeGame.fen());
   myEndgamePracticeQueue = [];
+  rebuildMyEndgamePracticeVirtualBoard();
   myEndgamePracticeBotActive = false;
   myEndgamePracticeTimeLimit = seconds;
   myEndgamePracticeTimeLeft = seconds;
@@ -1177,6 +1178,8 @@ function stopMyEndgamePractice() {
   myEndgamePracticeGame = null;
   myEndgamePracticeVirtualGame = null;
   myEndgamePracticeVersion++;
+  try { myEndgamePracticeTimeLeft = getMyEndgamePracticeTime(); }
+  catch (error) { myEndgamePracticeTimeLeft = 300; }
   clearHighlights();
   updateMyEndgamePracticeControls();
   setMyEndgamePracticeClock();
