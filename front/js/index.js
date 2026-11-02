@@ -2420,6 +2420,7 @@ function stopAnalysisPlayback() {
 }
 
 function loadAnalysisData(data) {
+  activeAnalysisChallenge = null;
   analysisMoves = Array.isArray(data.moves) ? data.moves : [];
   fullEvals = Array.isArray(data.evals) ? data.evals : [];
   currentAnalysisIndex = -1;
@@ -2467,8 +2468,8 @@ function handleAnalysisDrop(source, target) {
   if (!move) return 'snapback';
   const moveWithUci = { ...move, uci: moveObjectToUci(move) };
   if (activeAnalysisChallenge) {
-    handleAnalysisChallengeMove(moveWithUci);
-    return 'snapback';
+    const solved = handleAnalysisChallengeMove(moveWithUci);
+    return solved ? undefined : 'snapback';
   }
 
   currentAnalysisIndex = -1;
@@ -2894,7 +2895,7 @@ function handleAnalysisChallengeMove(moveWithUci) {
       const sound = errorSound.play();
       if (sound && typeof sound.catch === 'function') sound.catch(() => {});
     }
-    return true;
+    return false;
   }
 
   activeAnalysisChallenge = null;
