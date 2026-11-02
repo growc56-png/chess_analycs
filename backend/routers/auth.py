@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models.user import User
+from models.user_data import UserCompleted, UserNote
 from services.auth import (
     SESSION_COOKIE_NAME,
     create_session,
@@ -99,8 +100,11 @@ def _user_payload(user: User) -> dict:
     }
 
 
-def _secure_cookie() -> bool:
-    return os.getenv("CHESS_COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes", "on"}
+def _secure_cookie(request: Request) -> bool:
+    configured = os.getenv("CHESS_COOKIE_SECURE")
+    if configured is not None:
+        return configured.strip().lower() in {"1", "true", "yes", "on"}
+    return request.url.scheme == "https"
 
 
 @router.post("/api/auth/register", status_code=201)
@@ -143,7 +147,7 @@ def register(
         raise HTTPException(status_code=409, detail="Почта или ник уже используются.")
 
     token = create_session(db, user)
-    set_session_cookie(response, token, secure=_secure_cookie())
+    set_session_cookie(response, token, secure=_secure_cookie(request))
     return {"ok": True, "user": _user_payload(user)}
 
 
@@ -184,7 +188,7 @@ def logout(
         key=SESSION_COOKIE_NAME,
         path="/",
         httponly=True,
-        secure=_secure_cookie(),
+        secure=_secure_cookie(request),
         samesite="lax",
     )
     return {"ok": True}
@@ -206,6 +210,12 @@ def save_profile(
             status_code=422,
             detail="Целевой рейтинг должен быть не ниже текущего.",
         )
+
+    # Изменение цели начинает новый план. Историю дневника и партий сохраняем,
+    # но галочки и заметки старого расписания не переносим на новые задания.
+    if user.onboarding_completed:
+        db.query(UserCompleted).filter(UserCompleted.user_id == user.id).delete(synchronize_session=False)
+        db.query(UserNote).filter(UserNote.user_id == user.id).delete(synchronize_session=False)
 
     user.current_elo = body.current_elo
     user.target_elo = body.target_elo
