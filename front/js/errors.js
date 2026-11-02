@@ -26,6 +26,31 @@
   let activeGame = null;
   let errorBoard = null;
   let isAnalyzing = false;
+  const SAVED_ANALYSIS_DRILLS_KEY = 'chessTrainer.errors.analysisDrills.v1';
+
+  function readSavedAnalysisDrills() {
+    try {
+      const raw = localStorage.getItem(SAVED_ANALYSIS_DRILLS_KEY);
+      const items = raw ? JSON.parse(raw) : [];
+      return Array.isArray(items) ? items : [];
+    } catch (error) {
+      console.warn('Не удалось прочитать сохранённые тактические задания:', error);
+      return [];
+    }
+  }
+
+  function persistAnalysisDrill(item) {
+    if (!item || item.source !== 'analysis') return;
+    try {
+      const items = readSavedAnalysisDrills();
+      const index = items.findIndex(saved => saved && saved.id === item.id);
+      if (index >= 0) items[index] = item;
+      else items.push(item);
+      localStorage.setItem(SAVED_ANALYSIS_DRILLS_KEY, JSON.stringify(items.slice(-120)));
+    } catch (error) {
+      console.warn('Не удалось сохранить прогресс тактического задания:', error);
+    }
+  }
 
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -208,6 +233,41 @@
     };
   }
 
+  function importAnalysisDrills(event) {
+    const incoming = event && event.detail && Array.isArray(event.detail.opportunities)
+      ? event.detail.opportunities
+      : [];
+    const saved = readSavedAnalysisDrills();
+    const savedIds = new Set(saved.map(item => item && item.id).filter(Boolean));
+    const added = incoming
+      .filter(item => item && item.id && !savedIds.has(item.id))
+      .map(item => ({ ...item, source: 'analysis', solved: Boolean(item.solved), revealed: Boolean(item.revealed) }));
+    const mergedSaved = [...saved, ...added].slice(-120);
+    try {
+      localStorage.setItem(SAVED_ANALYSIS_DRILLS_KEY, JSON.stringify(mergedSaved));
+    } catch (error) {
+      console.warn('Не удалось сохранить новые задания в браузере:', error);
+    }
+    const byId = new Map();
+    opportunities.forEach(item => { if (item && item.id) byId.set(item.id, item); });
+    mergedSaved.forEach(item => { if (item && item.id) byId.set(item.id, item); });
+    opportunities = Array.from(byId.values());
+    const severity = { blunder: 4, mistake: 3, miss: 2, inaccuracy: 1 };
+    opportunities.sort((a, b) =>
+      (severity[b.classification] - severity[a.classification]) || (Number(b.cpLoss || 0) - Number(a.cpLoss || 0))
+    );
+    activeIndex = added.length ? opportunities.findIndex(item => item.id === added[0].id) : -1;
+    $('errorsMetricTactics').textContent = String(opportunities.length);
+    $('errorsMetricBlunders').textContent = String(opportunities.filter(item => ['blunder', 'mistake'].includes(item.classification)).length);
+    $('errorsSummary').textContent = added.length
+      ? 'Из текущего анализа сохранено ' + added.length + ' позиций. Решай их здесь, а прогресс останется в этом браузере.'
+      : 'Эти позиции уже были добавлены раньше. Они сохранены в твоём тактическом наборе.';
+    renderOpportunities();
+    setStatus(added.length
+      ? 'Добавлено в тактическую тренировку: ' + added.length + ' позиций.'
+      : 'Эти задания уже есть в сохранённом наборе.', 'success');
+  }
+
   async function runLastTenAnalysis() {
     if (isAnalyzing) return;
     isAnalyzing = true;
@@ -215,7 +275,7 @@
     $('errorsProgress').hidden = false;
     $('errorsProgressFill').style.width = '0%';
     $('errorsProgressText').textContent = '0%';
-    opportunities = [];
+    opportunities = readSavedAnalysisDrills();
     activeIndex = -1;
     renderOpportunities();
 
@@ -436,6 +496,7 @@
 
     if (acceptable.includes(uci)) {
       item.solved = true;
+      persistAnalysisDrill(item);
       errorBoard.position(activeGame.fen());
       const line = item.bestLineSan.length ? ' Короткий вариант: ' + item.bestLineSan.slice(0, 4).join(' ') + '.' : '';
       setDrillFeedback('Верно! Лучший ход: ' + (item.bestMoveSan || uci) + '.' + line + ' Здесь можно было реализовать тактическую возможность.', 'success');
@@ -463,6 +524,7 @@
     }
     errorBoard.position(activeGame.fen());
     item.revealed = true;
+    persistAnalysisDrill(item);
     const line = item.bestLineSan.length ? item.bestLineSan.slice(0, 4).join(' ') : item.bestMoveSan;
     setDrillFeedback('Ход Stockfish: ' + item.bestMoveSan + '. Короткое продолжение (до двух ходов): ' + line + '.', 'success');
   }
@@ -480,6 +542,17 @@
     $('tab-errors').dataset.ready = '1';
 
     $('errorsAnalyzeBtn').addEventListener('click', runLastTenAnalysis);
+    window.addEventListener('chessTrainer:add-analysis-drills', importAnalysisDrills);
+    const savedDrills = readSavedAnalysisDrills();
+    if (savedDrills.length) {
+      opportunities = savedDrills;
+      $('errorsMetricTactics').textContent = String(savedDrills.length);
+      $('errorsMetricBlunders').textContent = String(savedDrills.filter(item => ['blunder', 'mistake'].includes(item.classification)).length);
+      $('errorsSummary').textContent = 'Сохранено тактических позиций: ' + savedDrills.length
+        + '. Решённые задания отмечаются, прогресс хранится в этом браузере.';
+      setStatus('Загружены сохранённые задания из предыдущих разборов.', 'success');
+      renderOpportunities();
+    }
     $('errorsShowLine').addEventListener('click', revealShortLine);
     $('errorsResetDrill').addEventListener('click', resetOpportunity);
     $('errorsFilters').querySelectorAll('button[data-motif]').forEach(button => {
