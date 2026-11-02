@@ -2529,6 +2529,13 @@ function handleAnalysisDrop(source, target) {
   const moves = analysisGame.moves({ verbose: true });
   const isPromotion = moves.some(m => m.from === source && m.to === target && m.flags.includes('p'));
   if (isPromotion) {
+    if (activeAnalysisChallenge) {
+      const textEl = document.getElementById('analysisMoveInsightText');
+      if (textEl) {
+        textEl.textContent = 'В этой задаче лучший ход не требует превращения пешки. Попробуй другой вариант.';
+      }
+      return 'snapback';
+    }
     pendingPromotion = { source, target, context: 'analysis' };
     document.getElementById('promotionModal').style.display = 'flex';
     return 'snapback';
