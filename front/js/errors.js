@@ -190,7 +190,10 @@
       const percent = Number(status.percent || 0);
       const overall = ((gameIndex + percent / 100) / gameTotal) * 100;
       setProgress(overall, 'Stockfish: партия ' + (gameIndex + 1) + ' из ' + gameTotal + ' · ' + Math.round(percent) + '%');
-      if (status.status === 'completed') return status.result;
+      if (status.status === 'completed') {
+        if (typeof window.saveMyEndgameFromPgn === 'function') window.saveMyEndgameFromPgn(pgn);
+        return status.result;
+      }
       if (status.status === 'failed') throw new Error(status.error || 'Stockfish не смог разобрать партию.');
     }
     throw new Error('Анализ партии превысил лимит ожидания. Попробуй повторить позже.');
