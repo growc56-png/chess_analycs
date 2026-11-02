@@ -1036,6 +1036,9 @@
     loadOpeningCatalog();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  if (window.__chessAuthReady) {
+    init();
+  } else {
+    window.addEventListener('chess-auth-ready', init, { once: true });
+  }
 })();
