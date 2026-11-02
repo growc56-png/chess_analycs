@@ -13,6 +13,11 @@ from services.move_classifier import (
     get_sacrifice_details,
     is_true_sacrifice,
 )
+from services.game_analyzer import (
+    _classify_game_phase,
+    _parse_time_control,
+)
+from services.stockfish import calc_expected_points
 
 
 class SacrificeDetectionTests(unittest.TestCase):
@@ -109,6 +114,34 @@ class MoveClassificationTests(unittest.TestCase):
             ),
             "forced",
         )
+
+
+
+class AnalysisMetricTests(unittest.TestCase):
+    def test_time_control_parses_increment(self):
+        self.assertEqual(_parse_time_control("600+5"), (600.0, 5.0))
+        self.assertEqual(_parse_time_control("300+0"), (300.0, 0.0))
+
+    def test_time_control_parses_multi_stage_base(self):
+        self.assertEqual(_parse_time_control("40/7200:3600"), (7200.0, 0.0))
+
+    def test_time_control_missing_or_unusual_is_safe(self):
+        self.assertEqual(_parse_time_control(""), (None, 0.0))
+        self.assertEqual(_parse_time_control("unknown"), (None, 0.0))
+
+    def test_expected_points_are_monotonic_and_symmetric(self):
+        self.assertGreater(calc_expected_points(100), calc_expected_points(0))
+        self.assertGreater(calc_expected_points(0), calc_expected_points(-100))
+        self.assertAlmostEqual(
+            calc_expected_points(100) + calc_expected_points(-100),
+            1.0,
+            places=8,
+        )
+
+    def test_phase_detection(self):
+        self.assertEqual(_classify_game_phase(chess.Board()), "opening")
+        kings_only = chess.Board("7k/8/8/8/8/8/8/K7 w - - 0 40")
+        self.assertEqual(_classify_game_phase(kings_only), "endgame")
 
 
 if __name__ == "__main__":
