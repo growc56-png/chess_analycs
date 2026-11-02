@@ -1408,6 +1408,11 @@ function renderWeeks() {
     };
   });
 }
+function getPersonalChecklistPrefix() {
+  const user = window.getChessTrainerUser ? window.getChessTrainerUser() : null;
+  return 'chessTrainer.user.' + (user && user.id ? user.id : 'guest') + '.';
+}
+
 function showDay(dayNum) {
   if (dayNum < 1 || dayNum > totalDays) return;
   currentDay = dayNum;
@@ -1419,7 +1424,7 @@ function showDay(dayNum) {
     if (t.checklist && t.checklist.length > 0) {
       buttonHTML = `<button class="checklist-btn" onclick="toggleChecklistView('${taskId}-box', this)">📋 Чек-лист</button>`;
       const itemsHTML = t.checklist.map((item, iIdx) => {
-        const checkId = `${taskId}-item-${iIdx}`;
+        const checkId = `${getPersonalChecklistPrefix()}${taskId}-item-${iIdx}`;
         const isChecked = localStorage.getItem(checkId) === 'true' ? 'checked' : '';
         return `<div class="checklist-item"><input type="checkbox" id="${checkId}" ${isChecked} onchange="toggleChecklistItem('${checkId}')"><label for="${checkId}">${item}</label></div>`;
       }).join('');
