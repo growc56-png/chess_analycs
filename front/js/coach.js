@@ -611,6 +611,14 @@
     setDrillFeedback(drill.solved ? 'Эта позиция уже решена. Можешь повторить её ещё раз.' : 'Найди лучший ход в позиции. Ищи решение так, будто это твоя партия.', '');
   }
 
+  function completeDrillSolution(drill, uci, message) {
+    drill.solved = true;
+    writeStorage(COACH_REPORT_KEY, report);
+    drillBoard.position(drillGame.fen());
+    setDrillFeedback(message, 'success');
+    renderDrillListSolvedState();
+  }
+
   function handleDrillDrop(source, target) {
     const drill = currentDrills()[activeDrillIndex];
     if (!drill || !drillGame || source === target) return 'snapback';
@@ -621,24 +629,78 @@
       move = null;
     }
     if (!move) return 'snapback';
+
     const uci = move.from + move.to + (move.promotion || '');
     const acceptedMoves = Array.isArray(drill.acceptableMovesUci) && drill.acceptableMovesUci.length
       ? drill.acceptableMovesUci
       : [drill.bestMoveUci];
+
     if (acceptedMoves.includes(uci)) {
-      drill.solved = true;
-      writeStorage(COACH_REPORT_KEY, report);
-      drillBoard.position(drillGame.fen());
       const alternatives = acceptedMoves.length > 1
-        ? ' Здесь есть несколько равноценных решений: ' + (drill.acceptableMovesSan || []).join(', ') + '.'
+        ? ' Есть несколько равноценных решений: ' + (drill.acceptableMovesSan || []).join(', ') + '.'
         : ' Лучший ход: ' + (drill.bestMoveSan || uci) + '.';
-      setDrillFeedback('Верно! ' + alternatives + ' Решение сохранено в твоём отчёте.', 'success');
-      renderDrillListSolvedState();
+      completeDrillSolution(drill, uci, 'Верно!' + alternatives + ' Решение сохранено в отчёте.');
       return;
     }
-    drillGame.undo();
-    setDrillFeedback('Это легальный ход, но Stockfish выбрал другое продолжение. Попробуй ещё раз.', 'error');
-    return 'snapback';
+
+    // Если MultiPV не показал эту линию, отдельно проверяем её через Stockfish.
+    // Это важно для позиций, где есть больше одного форсированного мата.
+    if (drillGame.in_checkmate()) {
+      completeDrillSolution(drill, uci, 'Верно! Это тоже мат. Решение сохранено в отчёте.');
+      return;
+    }
+
+    const candidateFen = drillGame.fen();
+    const playerColor = new Chess(drill.beforeFen).turn();
+    const drillIndex = activeDrillIndex;
+    setDrillFeedback('Проверяю этот вариант Stockfish — возможно, это альтернативный форсированный мат…', '');
+
+    verifyAlternativeMate(candidateFen, playerColor, drillIndex, drill.beforeFen);
+    return;
+  }
+
+  async function verifyAlternativeMate(candidateFen, playerColor, drillIndex, beforeFen) {
+    try {
+      const response = await fetch('/api/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fen: candidateFen })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Stockfish не смог проверить продолжение.');
+
+      // Пользователь мог переключить упражнение, пока движок анализировал позицию.
+      if (activeDrillIndex !== drillIndex || !drillGame || drillGame.fen() !== candidateFen) return;
+
+      const mateForPlayer = Boolean(
+        data.is_mate &&
+        (playerColor === 'w'
+          ? Number(data.mate_in) > 0
+          : Number(data.mate_in) < 0)
+      );
+
+      if (mateForPlayer) {
+        const drill = currentDrills()[drillIndex];
+        if (drill) {
+          completeDrillSolution(
+            drill,
+            '',
+            'Верно! Stockfish подтвердил, что этот ход тоже ведёт к форсированному мату. Решение сохранено.'
+          );
+        }
+        return;
+      }
+
+      drillGame.undo();
+      drillBoard.position(beforeFen, false);
+      setDrillFeedback('Этот ход не сохраняет форсированный мат. Попробуй другой вариант.', 'error');
+    } catch (error) {
+      if (activeDrillIndex === drillIndex && drillGame && drillGame.fen() === candidateFen) {
+        drillGame.undo();
+        drillBoard.position(beforeFen, false);
+        setDrillFeedback('Не удалось проверить альтернативу: ' + error.message + ' Попробуй ещё раз.', 'error');
+      }
+    }
   }
 
   function renderDrillListSolvedState() {
