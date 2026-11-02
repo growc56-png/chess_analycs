@@ -22,6 +22,7 @@ from services.stockfish import (
     parse_score,
     score_to_cp,
     expected_points_from_score,
+    accuracy_from_centipawn_loss,
     format_multipv_infos,
     get_position_analysis,
     get_best_move_info,
@@ -676,10 +677,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         win_points_loss * 100,
                         2
                     ),
-                    "move_accuracy": round(
-                        max(0.0, min(100.0, 100.0 - win_points_loss * 100.0)),
-                        1
-                    ),
+                    "move_accuracy": accuracy_from_centipawn_loss(centipawn_loss),
+                    "move_accuracy_version": 2,
                     "classification": classification,
                     "phase": phase,
                     "deep_analysis": deep_analysis_performed,
@@ -725,7 +724,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 "deep_analysis_depth": DEEP_ANALYSIS_DEPTH,
                 "deep_analysis_time": DEEP_ANALYSIS_TIME,
                 "deep_positions_checked": deep_positions_checked,
-                "analysis_profile": "two_pass_expected_points"
+                "analysis_profile": "two_pass_centipawn_accuracy_v2"
             }
 
         except HTTPException:
