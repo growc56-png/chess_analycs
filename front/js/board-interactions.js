@@ -5,6 +5,7 @@
     const boardEl = document.getElementById(boardId);
     if (!boardEl || typeof getGame !== 'function' || typeof onMove !== 'function') return null;
     if (boardEl.__clickToMoveReady) {
+      if (boardEl.__clearClickSelection) boardEl.__clearClickSelection();
       boardEl.__clickToMoveConfig = { getGame, onMove, options: options || {} };
       return boardEl.__clearClickSelection || null;
     }
@@ -12,6 +13,8 @@
     boardEl.__clickToMoveReady = true;
     boardEl.__clickToMoveConfig = { getGame, onMove, options: options || {} };
     let selectedSquare = null;
+    let pointerStart = null;
+    let pointerDragged = false;
 
     function clearSelection() {
       selectedSquare = null;
@@ -39,8 +42,28 @@
       event.preventDefault();
     });
 
+    boardEl.addEventListener('mousedown', event => {
+      if (event.button !== 0) return;
+      pointerStart = { x: event.clientX, y: event.clientY };
+      pointerDragged = false;
+    }, true);
+
+    document.addEventListener('mousemove', event => {
+      if (!pointerStart || pointerDragged) return;
+      const dx = event.clientX - pointerStart.x;
+      const dy = event.clientY - pointerStart.y;
+      if ((dx * dx) + (dy * dy) > 36) pointerDragged = true;
+    }, true);
+
     boardEl.addEventListener('click', event => {
       if (event.button !== 0) return;
+      if (pointerDragged) {
+        pointerStart = null;
+        pointerDragged = false;
+        clearSelection();
+        return;
+      }
+      pointerStart = null;
       const squareElement = getSquareElement(event.target);
       if (!squareElement) return;
       const square = squareElement.getAttribute('data-square');
