@@ -135,7 +135,7 @@
     // Chess.com sometimes uses a canonical username with different capitalization.
     if (username && white.includes(username)) return 'white';
     if (username && black.includes(username)) return 'black';
-    return 'white';
+    return null;
   }
 
   async function analyzeGame(pgn, gameIndex, gameTotal) {
@@ -233,6 +233,9 @@
         setProgress((index / sourceGames.length) * 100, 'Подготовка партии ' + (index + 1) + ' из ' + sourceGames.length + '…');
         const analysis = await analyzeGame(game.pgn, index, sourceGames.length);
         const playerColor = getPlayerColor(game, selectedSide);
+        if (!playerColor) {
+          throw new Error('Не удалось автоматически определить твой цвет в партии ' + (index + 1) + '. Выбери «Белыми» или «Чёрными» и запусти анализ снова.');
+        }
         const ownMoves = (analysis.moves || []).filter(move => move.mover === playerColor);
         allOwnMoves += ownMoves.length;
 
