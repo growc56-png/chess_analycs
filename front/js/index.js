@@ -1331,7 +1331,7 @@ function renderGoalSummary(goal) {
   container.hidden = false;
   const warning = goal.warning
     ? '<div class="goal-summary-warning"><strong>Важно о сроке</strong><span>' + goal.warning + '</span></div>'
-    : '<div class="goal-summary-note">Оценка срока — ориентир, не гарантия изменения рейтинга. Регулярный разбор партий важнее количества сыгранных партий.</div>';
+    : '<div class="goal-summary-note">' + (goal.estimate_basis || 'Срок — ориентир для расчёта нагрузки, не гарантия изменения рейтинга.') + ' Рост рейтинга не гарантирован: важны качество партий, регулярность и разбор ошибок.</div>';
   container.innerHTML = `
     <div class="goal-summary-main">
       <div class="goal-summary-item"><span>Текущий рейтинг</span><strong>${goal.current_elo} <small>Elo</small></strong></div>
@@ -1370,7 +1370,10 @@ function renderPlan(todayName) {
     const currentWeek = firstOpen ? firstOpen.week : 1;
     todayTraining = PLAN.find(d => d.week === currentWeek && d.weekday === todayName);
   }
-  if (!todayTraining) todayTraining = firstOpen || PLAN[0];
+  if (todayTraining && todayTraining.completed && firstOpen) {
+    todayTraining = firstOpen;
+  }
+  if (!todayTraining) todayTraining = firstOpen || PLAN[PLAN.length - 1];
   if (!todayTraining) return;
 
   currentDay = todayTraining.day;
