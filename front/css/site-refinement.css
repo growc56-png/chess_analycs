@@ -1,0 +1,41 @@
+
+/* Refined dark palette and clearer spacing */
+:root{--bg:#141c22;--panel:#1c2931;--panel-hover:#263740;--border:#344750;--border-soft:#2d404a;--green:#8cbd76;--green-hover:#a5d48c;--green-soft:rgba(140,189,118,.14)}
+body{background:radial-gradient(ellipse at 10% 0%,rgba(90,132,105,.10),transparent 34%),radial-gradient(ellipse at 92% 8%,rgba(86,122,150,.08),transparent 30%),var(--bg)}
+.sidebar{background:#17232a;border-right-color:rgba(155,185,195,.11)}
+.brand-mark{border-radius:10px}
+.side-link{border-radius:9px;transition:background .16s ease,color .16s ease}
+.side-link:hover{background:rgba(255,255,255,.045)}
+.side-link.active{background:rgba(140,189,118,.13);color:#d8efcf}
+.section-heading{margin-bottom:15px}.section-heading h2{letter-spacing:-.35px}.section-heading p{color:#91a6b1}
+.section-badge{border-radius:7px}
+.action-btn,.nav-btn,.side-btn{border-radius:8px;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+.action-btn:focus-visible,.nav-btn:focus-visible,.side-btn:focus-visible,.side-link:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid rgba(140,189,118,.7);outline-offset:2px}
+.diary-container,.board-wrap,.list-box,.coach-panel{border-color:rgba(145,174,184,.16);box-shadow:0 8px 24px rgba(0,0,0,.10)}
+.endgames-switch{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.endgames-switch button{min-height:38px;padding:8px 14px;border:1px solid #354a54;border-radius:8px;background:#1b2931;color:#a9bbc4;font-size:12px;font-weight:800;cursor:pointer}
+.endgames-switch button.active{border-color:rgba(140,189,118,.4);background:rgba(140,189,118,.13);color:#d8edcb}
+.endgames-switch button span{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:5px;border-radius:6px;background:rgba(255,255,255,.07);color:#e7f0e9;font-size:10px}
+#endgamesCatalogView[hidden],#myEndgamesView[hidden]{display:none!important}
+.my-endgames-layout{display:grid;grid-template-columns:minmax(230px,310px) minmax(0,1fr);gap:14px;align-items:start}
+.my-endgames-list{display:grid;align-content:start;gap:6px;max-height:620px}
+.my-endgames-list .my-endgame-item{display:flex;flex-direction:column;align-items:flex-start;gap:5px;width:100%;margin:0;padding:11px 12px;text-align:left}
+.my-endgames-list .my-endgame-item strong{color:#e4edf0;font-size:11px;line-height:1.45}
+.my-endgames-list .my-endgame-item small{color:#8ba0aa;font-size:10px}
+.my-endgame-viewer{min-width:0}
+.my-endgame-heading{display:grid;gap:3px;width:100%;text-align:center}
+.my-endgame-heading h3{margin:0;color:#eaf1f2;font-size:16px}
+.my-endgame-heading span{color:#879ca7;font-size:10px}
+#myEndgamesBoard{width:min(480px,100%);max-width:100%}
+.my-endgame-controls{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;width:100%}
+.my-endgame-controls span{min-width:115px;color:#a7bac3;font-size:11px;text-align:center}
+.my-endgame-controls button{min-height:36px}
+.streak-panel{padding:18px}
+.streak-input-row{display:grid;gap:7px;max-width:640px;margin-bottom:12px}
+.streak-input-row>label{color:#a9bbc4;font-size:10px;font-weight:800}
+.streak-input-controls{display:flex;gap:8px}
+.streak-input-controls input{flex:1;min-width:0;min-height:40px;padding:8px 12px;border:1px solid #3b515c;border-radius:8px;background:#14212a;color:#edf3f6;font:inherit}
+.streak-status{min-height:18px;margin:8px 0 14px;color:#8fa4af;font-size:11px}
+.streak-status.success{color:#a7d29c}.streak-status.error{color:#e69a9a}
+.streak-second-row{margin-top:10px}
+@media(max-width:760px){.my-endgames-layout{grid-template-columns:1fr}.my-endgames-list{max-height:230px}.streak-input-controls{flex-direction:column}.streak-input-controls .action-btn{width:100%}}
