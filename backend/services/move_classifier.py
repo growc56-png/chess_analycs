@@ -60,7 +60,7 @@ def get_sacrifice_details(board_before, move):
             "captured_symbol": None,
             "recapture_san": after.san(reply),
             "attacker": chess.piece_name(attacker.piece_type),
-            "material_difference": moving_value - captured_value,
+            "material_difference": moving_value,
         }
 
     return None
@@ -100,7 +100,7 @@ def classify_move(
     # is_best означает, что сыгранный ход входит в набор практически
     # равноценных лучших вариантов Stockfish. Дополнительно ограничиваем
     # потерю ожидаемого результата одним процентным пунктом.
-    if is_best and is_sacrifice and loss <= 0.01:
+    if is_best and is_sacrifice:
         return "brilliant"
 
     if is_best and loss <= 0.005 and second_best_gap >= 0.15:
