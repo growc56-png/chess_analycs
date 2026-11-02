@@ -310,8 +310,15 @@
     container.querySelectorAll('button[data-motif]').forEach(button => {
       const key = button.dataset.motif;
       button.classList.toggle('active', key === currentFilter);
-      const baseText = button.dataset.baseLabel || button.textContent.replace(/\s+\d+$/, '');
-      button.dataset.baseLabel = baseText;
+      const labels = {
+        all: 'Все',
+        fork: 'Вилки',
+        pin: 'Связки',
+        check: 'Шахи',
+        mate: 'Маты',
+        capture: 'Выигрыш материала'
+      };
+      const baseText = labels[key] || 'Тема';
       const count = counts[key] || 0;
       button.textContent = baseText + (key === 'all' || count ? ' · ' + count : '');
     });
@@ -403,7 +410,9 @@
         : 'Найди лучший ход в позиции. Решение и короткое продолжение будут показаны после твоего ответа.',
       ''
     );
-    renderOpportunities();
+    $('errorsOpportunitiesList').querySelectorAll('button[data-opportunity-index]').forEach(button => {
+      button.classList.toggle('active', Number(button.dataset.opportunityIndex) === index);
+    });
   }
 
   function handleOpportunityMove(source, target) {
