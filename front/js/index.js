@@ -2,6 +2,7 @@ const daysMap = ['Воскресенье', 'Понедельник', 'Вторн
 const monthsMap = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 
 let PLAN = [], currentDay = 1, totalDays = 0;
+let GOAL_PROFILE = null;
 let puzzleBoard = null, puzzleGame = null, currentPuzzle = null, puzzleSolved = false;
 let endgameBoard = null, endgameGame = null, endgameVirtualGame = null, currentEndgame = null;
 let endgamePremoveQueue = [], endgameBotRequestActive = false, endgamePositionVersion = 0;
@@ -47,11 +48,16 @@ function showError(msg) {
   banner.innerHTML = msg;
 }
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   if (typeof jQuery === 'undefined') return showError('Ошибка: jQuery не загрузился.');
   if (typeof Chessboard === 'undefined') return showError('Ошибка: Chessboard.js не загрузился.');
   if (typeof Chess === 'undefined') return showError('Ошибка: Chess.js не загрузился.');
-  
+
+  if (window.requireChessAuth) {
+    const authenticated = await window.requireChessAuth();
+    if (!authenticated) return;
+  }
+
   document.addEventListener('contextmenu', function(e) {
     if (e.target.tagName === 'IMG' || e.target.closest('.board-bg') || e.target.closest('[id$="Board"]')) {
       e.preventDefault();
@@ -344,8 +350,11 @@ async function initApp() {
       return JSON.parse(text);
     };
 
-    PLAN = (await checkResponse(planRes, 'plan')).plan;
+    const planData = await checkResponse(planRes, 'plan');
+    PLAN = planData.plan || [];
+    GOAL_PROFILE = planData.goal || null;
     totalDays = PLAN.length;
+    renderGoalSummary(GOAL_PROFILE);
     puzzlesData = (await checkResponse(puzzlesRes, 'puzzles')).puzzles;
     endgamesData = (await checkResponse(endgamesRes, 'endgames')).endgames;
     openingsData = (await checkResponse(openingsRes, 'openings')).openings;
@@ -1302,6 +1311,43 @@ function startAnalysis(gameData) {
 
   analyzePGN(gameData.pgn, gameData.url);
   document.getElementById('analysisBoard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function formatTrainingTime(minutes) {
+  const value = Math.max(0, Number(minutes) || 0);
+  if (value < 60) return value + ' мин';
+  const hours = Math.floor(value / 60);
+  const mins = value % 60;
+  return hours + ' ч' + (mins ? ' ' + mins + ' мин' : '');
+}
+
+function renderGoalSummary(goal) {
+  const container = document.getElementById('goalSummary');
+  if (!container) return;
+  if (!goal) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+  const warning = goal.warning
+    ? '<div class="goal-summary-warning"><strong>Важно о сроке</strong><span>' + goal.warning + '</span></div>'
+    : '<div class="goal-summary-note">Оценка срока — ориентир, не гарантия изменения рейтинга. Регулярный разбор партий важнее количества сыгранных партий.</div>';
+  container.innerHTML = `
+    <div class="goal-summary-main">
+      <div class="goal-summary-item"><span>Текущий рейтинг</span><strong>${goal.current_elo} <small>Elo</small></strong></div>
+      <div class="goal-summary-arrow">→</div>
+      <div class="goal-summary-item target"><span>Твоя цель</span><strong>${goal.target_elo} <small>Elo</small></strong></div>
+      <div class="goal-summary-divider"></div>
+      <div class="goal-summary-meta"><span>Срок</span><strong>${goal.goal_days} дней</strong></div>
+      <div class="goal-summary-meta"><span>Тренировка в день</span><strong>${formatTrainingTime(goal.daily_minutes)}</strong></div>
+      <div class="goal-summary-meta"><span>Ориентир нагрузки</span><strong>${formatTrainingTime(goal.recommended_minutes)}</strong></div>
+    </div>
+    ${warning}
+  `;
+  const intro = document.getElementById('planIntroText');
+  if (intro) intro.textContent = 'Персональный маршрут от ' + goal.current_elo + ' до ' + goal.target_elo + ' Elo с ежедневными заданиями.';
+  const badge = document.getElementById('planDurationBadge');
+  if (badge) badge.textContent = goal.goal_days + ' дней';
 }
 
 function renderPlan(todayName) {
