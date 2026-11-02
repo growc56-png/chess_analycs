@@ -1148,6 +1148,7 @@ canvas#evalGraph {
 }
 
 .cls-brilliant { color: #8be0c9; background: #164b46; }
+.cls-critical { color: #f5d88f; background: #594522; }
 .cls-great { color: #b2d9ee; background: #234457; }
 .cls-best { color: #c4e4aa; background: #29442b; }
 .cls-excellent,
@@ -1180,6 +1181,7 @@ canvas#evalGraph {
 }
 
 .badge-brilliant { background: #17675e; }
+.badge-critical { background: #80602a; }
 .badge-great { background: #315d79; }
 .badge-best,
 .badge-excellent,
