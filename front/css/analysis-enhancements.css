@@ -1213,3 +1213,85 @@
     margin-top: -5px;
   }
 }
+
+
+/* Moves panel is kept beside the board instead of being pushed below the page. */
+#tab-analysis .right-panel {
+  min-width: 0;
+  max-height: none;
+  overflow: visible;
+  gap: 11px;
+}
+#tab-analysis .right-panel .move-list-container {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 220px;
+  max-height: clamp(260px, 42vh, 420px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+#tab-analysis .right-panel .move-list-toolbar {
+  flex-wrap: wrap;
+  min-height: 46px;
+}
+#tab-analysis .right-panel .move-list-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+#tab-analysis .right-panel .move-jump-btn {
+  min-height: 30px;
+  padding: 5px 7px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+#tab-analysis .right-panel .move-headers {
+  grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr);
+}
+#tab-analysis .right-panel .move-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  font-size: 12px;
+}
+#tab-analysis .right-panel .move-table td { padding: 6px 3px; }
+#tab-analysis .right-panel .move-table .col-num { width: 36px; }
+#tab-analysis .right-panel .move-cell {
+  display: inline-flex;
+  width: auto;
+  min-width: 0;
+  max-width: calc(100% - 20px);
+  min-height: 30px;
+  padding: 4px 5px;
+  justify-content: center;
+  font-size: 12px;
+}
+#tab-analysis .right-panel .move-class-badge {
+  width: 18px !important;
+  min-width: 18px !important;
+  height: 18px !important;
+  margin-left: 2px !important;
+  font-size: 9px !important;
+}
+#tab-analysis #analysisSendToDrillsBtn:not(:disabled) {
+  border-color: rgba(129,182,76,.55);
+  background: rgba(129,182,76,.17);
+  color: #c7e8a3;
+}
+@media (max-width: 900px) {
+  #tab-analysis .right-panel .move-list-container { max-height: 360px; }
+}
+@media (max-width: 560px) {
+  #tab-analysis .right-panel .move-list-toolbar { align-items: flex-start; }
+  #tab-analysis .right-panel .move-list-toolbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  #tab-analysis .right-panel .move-headers {
+    grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  #tab-analysis .right-panel .move-table .col-num { width: 32px; }
+}
