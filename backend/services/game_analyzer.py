@@ -678,7 +678,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         2
                     ),
                     "move_accuracy": accuracy_from_centipawn_loss(centipawn_loss),
-                    "move_accuracy_version": 2,
+                    "move_accuracy_version": 3,
                     "classification": classification,
                     "phase": phase,
                     "deep_analysis": deep_analysis_performed,
@@ -724,7 +724,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 "deep_analysis_depth": DEEP_ANALYSIS_DEPTH,
                 "deep_analysis_time": DEEP_ANALYSIS_TIME,
                 "deep_positions_checked": deep_positions_checked,
-                "analysis_profile": "two_pass_centipawn_accuracy_v2"
+                "analysis_profile": "two_pass_centipawn_accuracy_v3"
             }
 
         except HTTPException:
