@@ -4,23 +4,17 @@ from services.stockfish import PIECE_VALUES
 
 
 def get_sacrifice_details(board_before, move):
-    """
-    Описывает тихую жертву: ход фигурой без взятия,
-    после которого соперник может легально забрать эту фигуру.
+    """Return details only for a quiet, legally capturable material offer.
 
-    Сам факт жертвы ещё не делает ход хорошим. Его качество подтверждается
-    отдельно: Stockfish должен оценить сыгранный ход почти наравне с лучшим.
+    Captures followed by recaptures are exchanges, not sacrifices. The move
+    quality is checked separately by Stockfish after this material test.
     """
     piece = board_before.piece_at(move.from_square)
     if piece is None or piece.piece_type in (chess.PAWN, chess.KING):
         return None
 
-    captured = board_before.piece_at(move.to_square)
-
-    # Взятие с последующим разменом — это не жертва.
-    # Бриллиантовый ход должен быть тихим предложением материала,
-    # а не обычной последовательностью «взял — меня взяли».
-    if captured is not None or board_before.is_en_passant(move):
+    # A capture is not a sacrifice for the Brilliant classification.
+    if board_before.piece_at(move.to_square) is not None or board_before.is_en_passant(move):
         return None
 
     moving_value = PIECE_VALUES.get(piece.piece_type, 0)
@@ -29,7 +23,6 @@ def get_sacrifice_details(board_before, move):
 
     after = board_before.copy(stack=True)
     mover = board_before.turn
-
     try:
         after.push(move)
     except (ValueError, AssertionError):
@@ -37,20 +30,22 @@ def get_sacrifice_details(board_before, move):
 
     target = move.to_square
     opponent = not mover
-
     if not after.is_attacked_by(opponent, target):
         return None
 
+    # Only count a legal recapture. Pinned pieces and illegal king captures
+    # are naturally excluded by python-chess' legal move generator.
     for reply in after.legal_moves:
         if reply.to_square != target:
             continue
 
         target_piece = after.piece_at(target)
-        if target_piece is None or target_piece.color != mover:
-            continue
-
         attacker = after.piece_at(reply.from_square)
-        if attacker is None:
+        if (
+            target_piece is None
+            or target_piece.color != mover
+            or attacker is None
+        ):
             continue
 
         return {
@@ -67,7 +62,7 @@ def get_sacrifice_details(board_before, move):
 
 
 def is_true_sacrifice(board_before, move):
-    """Совместимый булевый интерфейс проверки жертвы."""
+    """Backward-compatible boolean sacrifice check."""
     return get_sacrifice_details(board_before, move) is not None
 
 
@@ -80,16 +75,17 @@ def classify_move(
     curr_eval,
     second_best_gap,
     is_mate=False,
-    mate_won=True
+    mate_won=True,
+    missed_tactic=False,
 ):
-    """
-    Классифицирует ход по потере ожидаемого результата.
+    """Classify a played move using the expected-points loss.
 
-    Бриллиантовый ход — почти лучший ход движка с реальной жертвой фигуры.
-    Условия по разрыву со вторым вариантом и абсолютной оценке позиции
-    намеренно не используются: они необоснованно отсеивали хорошие жертвы.
+    win_percent_loss is a fraction in [0, 1], not a percentage. The caller
+    computes it from the same Stockfish score scale before and after the move.
+    Thresholds are explicit heuristics; this is not Chess.com's proprietary
+    CAPS2 formula.
     """
-    loss = max(0.0, float(win_percent_loss or 0.0))
+    loss = max(0.0, min(1.0, float(win_percent_loss or 0.0)))
 
     if is_mate:
         return "best" if mate_won and loss <= 0.02 else "blunder"
@@ -97,13 +93,19 @@ def classify_move(
     if is_forced:
         return "forced"
 
-    # is_best означает, что сыгранный ход входит в набор практически
-    # равноценных лучших вариантов Stockfish. Дополнительно ограничиваем
-    # потерю ожидаемого результата одним процентным пунктом.
-    if is_best and is_sacrifice:
+    # A Brilliant move must be both a genuine quiet sacrifice and close to
+    # the engine's best continuation after the critical-position recheck.
+    if is_sacrifice and is_best and loss <= 0.01:
         return "brilliant"
 
-    if is_best and loss <= 0.005 and second_best_gap >= 0.15:
+    # "Miss" is reserved for a missed concrete tactical opportunity, not
+    # every ordinary inaccuracy in a position with a small edge.
+    if missed_tactic and 0.02 <= loss < 0.20:
+        return "miss"
+
+    # Great is a near-best move in a position where the second choice was
+    # materially worse: a difficult/unique decision, not simply any best move.
+    if is_best and loss <= 0.005 and second_best_gap >= 0.12:
         return "great"
 
     if loss <= 0.005:
