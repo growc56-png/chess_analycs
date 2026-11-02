@@ -8,11 +8,13 @@
 <link rel="stylesheet" href="/css/index.css">
 <link rel="stylesheet" href="/css/index-layout.css?v=20261101-endgame-premove-v1">
 <link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261101-arrow-visual-mate-v7">
+<link rel="stylesheet" href="/css/coach.css?v=20261102-coach-v1">
 <script src="/js/jquery.min.js"></script>
 <script src="/js/chessboard-1.0.0.min.js"></script>
 <script src="/js/chess.min.js"></script>
 <script src="/js/index.js?v=20261101-arrows-v2" defer></script>
 <script src="/js/diary-ui.js" defer></script>
+<script src="/js/coach.js?v=20261102-coach-v1" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -42,6 +44,7 @@
     <nav class="sidebar-nav">
       <button class="side-link tab-btn" data-tab="diary"><span class="side-icon">▤</span><span>Дневник</span></button>
       <button class="side-link tab-btn" data-tab="streak"><span class="side-icon">🔥</span><span>Винстрик</span></button>
+      <button class="side-link tab-btn" data-tab="coach"><span class="side-icon">✦</span><span>Мой тренер</span><span class="coach-nav-tag">NEW</span></button>
     </nav>
 
     <div class="sidebar-bottom">
@@ -74,6 +77,100 @@
             <div id="dayView"></div>
           </main>
         </div>
+      </section>
+
+
+      <section id="tab-coach" class="tab-content">
+        <div class="section-heading">
+          <div><div class="section-kicker">ПЕРСОНАЛЬНЫЙ ПРОГРЕСС</div><h2>Мой шахматный тренер</h2><p>Разбери свои партии, найди повторяющиеся ошибки и преврати их в план занятий</p></div>
+          <div class="section-badge coach-sample-badge">Отчёт хранится в этом браузере</div>
+        </div>
+
+        <div class="coach-hero">
+          <div class="coach-hero-copy">
+            <div class="coach-kicker">CHESS TRAINER · PERSONAL</div>
+            <h3>Тренируй не всё подряд. Работай над тем, что мешает именно тебе.</h3>
+            <p>Загрузи несколько партий. Stockfish найдёт ошибки, тренер выделит повторяющиеся проблемы и подберёт позиции для повторной практики.</p>
+            <div class="coach-hero-points"><span>✓ Анализ реальных партий</span><span>✓ Упражнения из твоих ошибок</span><span>✓ Повторение дебютов</span></div>
+          </div>
+          <div class="coach-hero-mark" aria-hidden="true">♞</div>
+        </div>
+
+        <section class="coach-panel coach-import-panel">
+          <div class="coach-panel-heading"><div><div class="coach-label">ШАГ 1</div><h3>Добавь свои партии</h3><p>Выбери источник и проанализируй от одной до пяти партий за запуск.</p></div><span class="coach-panel-icon">↥</span></div>
+          <div class="coach-import-controls">
+            <label class="coach-field"><span>Источник</span><select id="coachSource"><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option><option value="pgn">PGN-файл или текст</option></select></label>
+            <label class="coach-field"><span>Твой цвет</span><select id="coachSide"><option value="auto">Определить по нику</option><option value="white">Белыми</option><option value="black">Чёрными</option></select></label>
+            <label class="coach-field"><span>Количество партий</span><select id="coachGameLimit"><option value="1">1 партия</option><option value="3" selected>3 партии</option><option value="5">5 партий</option></select></label>
+          </div>
+          <div class="coach-source-row" id="coachChesscomFields">
+            <label class="coach-field coach-grow"><span>Ник на Chess.com</span><input id="coachChesscomUsername" type="text" placeholder="Например, Hikaru" autocomplete="off" spellcheck="false"></label>
+            <button class="action-btn coach-primary-btn" type="button" id="coachLoadChesscom">Загрузить партии</button>
+          </div>
+          <div class="coach-source-row" id="coachLichessFields" hidden>
+            <label class="coach-field coach-grow"><span>Ник на Lichess</span><input id="coachLichessUsername" type="text" placeholder="Твой ник на Lichess" autocomplete="off" spellcheck="false"></label>
+            <button class="action-btn coach-primary-btn" type="button" id="coachLoadLichess">Загрузить партии</button>
+          </div>
+          <div class="coach-pgn-panel" id="coachPgnFields" hidden>
+            <label class="coach-file-label">Выбрать PGN-файл<input id="coachPgnFile" type="file" accept=".pgn,.txt,text/plain,application/x-chess-pgn"></label>
+            <textarea id="coachPgnText" rows="4" placeholder="Или вставь сюда одну или несколько партий в формате PGN…"></textarea>
+            <button class="action-btn coach-primary-btn" type="button" id="coachLoadPgn">Подготовить партии</button>
+          </div>
+          <div id="coachImportStatus" class="coach-status" role="status">Загрузи партии, чтобы увидеть персональную диагностику.</div>
+          <div id="coachGamesList" class="coach-games-list"></div>
+          <div class="coach-run-row"><span id="coachSelectionCount">Выбрано: 0</span><button class="action-btn coach-primary-btn" type="button" id="coachAnalyzeBtn" disabled>✦ Найти мои слабости</button></div>
+          <div class="coach-progress" id="coachProgress" hidden><div class="coach-progress-track"><i id="coachProgressFill"></i></div><span id="coachProgressText">0%</span></div>
+        </section>
+
+        <div class="coach-section-subheading"><div><div class="coach-label">ШАГ 2</div><h3>Твоя шахматная форма</h3></div><span id="coachReportDate" class="coach-muted">Пока нет анализа</span></div>
+        <div class="coach-metrics-grid">
+          <article class="coach-metric"><span>Проанализировано партий</span><strong id="coachMetricGames">—</strong><small>В текущем отчёте</small></article>
+          <article class="coach-metric"><span>Точность твоих ходов</span><strong id="coachMetricAccuracy">—</strong><small>Оценка по классификации Stockfish</small></article>
+          <article class="coach-metric"><span>Ошибки и зевки</span><strong id="coachMetricErrors">—</strong><small>Неточности, ошибки и зевки</small></article>
+          <article class="coach-metric"><span>Ходы под проверкой</span><strong id="coachMetricMoves">—</strong><small>Твои ходы в разобранных партиях</small></article>
+        </div>
+
+        <div class="coach-dashboard-grid">
+          <section class="coach-panel">
+            <div class="coach-panel-heading"><div><div class="coach-label">ДИАГНОСТИКА</div><h3>Где теряешь очки</h3><p>Распределение ошибок по этапам партии.</p></div></div>
+            <div id="coachWeaknessList" class="coach-weakness-list"><div class="coach-empty">Сначала проанализируй партии — здесь появятся твои слабые стороны.</div></div>
+            <div class="coach-insight" id="coachInsight">После анализа здесь появится персональная рекомендация.</div>
+          </section>
+          <section class="coach-panel">
+            <div class="coach-panel-heading"><div><div class="coach-label">АДАПТИВНЫЙ ПЛАН</div><h3>Что тренировать дальше</h3><p>Задачи формируются по результатам твоего анализа.</p></div><span class="coach-panel-icon">↗</span></div>
+            <div id="coachPlanList" class="coach-plan-list"><div class="coach-empty">Твой план занятий появится после первой диагностики.</div></div>
+          </section>
+        </div>
+
+        <section class="coach-panel coach-drill-panel">
+          <div class="coach-panel-heading"><div><div class="coach-label">ШАГ 3</div><h3>Исправь собственные ошибки</h3><p>Вернись в позицию до ошибки и найди лучший ход движка.</p></div><span id="coachDrillCount" class="coach-count-pill">0 упражнений</span></div>
+          <div class="coach-drill-layout">
+            <div class="coach-drill-board-column">
+              <div class="coach-board-caption"><span id="coachDrillTitle">Выбери ошибку справа</span><span class="coach-board-side" id="coachDrillSide">—</span></div>
+              <div class="coach-board-shell"><div id="coachDrillBoard"></div></div>
+              <div class="coach-drill-feedback" id="coachDrillFeedback">После анализа здесь можно будет переиграть свои ошибки.</div>
+              <div class="coach-drill-actions"><button class="action-btn" type="button" id="coachDrillHint" disabled>Показать лучший ход</button><button class="action-btn" type="button" id="coachDrillReset" disabled>↺ Сбросить</button></div>
+            </div>
+            <div class="coach-drill-list" id="coachDrillList"><div class="coach-empty">Пока нет позиций для тренировки.</div></div>
+          </div>
+        </section>
+
+        <section class="coach-panel coach-opening-panel">
+          <div class="coach-panel-heading"><div><div class="coach-label">ИНТЕРВАЛЬНОЕ ПОВТОРЕНИЕ</div><h3>Закрепи дебютный репертуар</h3><p>Отвечай на вопросы по своим линиям и повторяй сложные ходы чаще.</p></div><span class="coach-panel-icon">♘</span></div>
+          <div class="coach-opening-toolbar">
+            <label class="coach-field"><span>Сторона репертуара</span><select id="coachOpeningSide"><option value="white">Белыми</option><option value="black">Чёрными</option></select></label>
+            <div class="coach-opening-due"><strong id="coachOpeningDue">—</strong><span>карточек ожидают повторения</span></div>
+            <button class="action-btn coach-primary-btn" type="button" id="coachOpeningStart">Начать повторение</button>
+          </div>
+          <div class="coach-opening-card" id="coachOpeningCard">
+            <div class="coach-empty">Нажми «Начать повторение», чтобы открыть дебютные карточки.</div>
+          </div>
+        </section>
+
+        <section class="coach-premium">
+          <div class="coach-premium-copy"><div class="coach-label">CHESS TRAINER PREMIUM</div><h3>Твоя подготовка — без ограничений</h3><p>Расширенный анализ, персональные тренировочные наборы, история прогресса, полный дебютный репертуар и AI-разбор позиций.</p><div class="coach-premium-features"><span>✓ Полный отчёт по партиям</span><span>✓ Персональные задания</span><span>✓ Продвинутая статистика</span><span>✓ AI-тренер</span></div></div>
+          <div class="coach-premium-price"><strong>Premium</strong><b>от $4.99 <small>/ месяц</small></b><span>Планируемый ориентир цены</span><button type="button" class="action-btn coach-premium-button" id="coachPremiumButton" disabled>Скоро будет доступно</button><small>Оплата ещё не подключена</small></div>
+        </section>
       </section>
 
       <!-- Скрытый технический контейнер нужен старому index.js, но пользователю раздел задач не показывается. -->
