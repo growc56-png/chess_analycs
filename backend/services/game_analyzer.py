@@ -557,7 +557,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         # analysis for the rest of the game.
                         deep_analysis_performed = False
 
-                if is_accepted_winning_mate:
+                if is_accepted_winning_mate or is_forced:
+                    # Accepted mating alternatives and sole legal moves should
+                    # not be penalised for engine horizon noise.
                     win_points_loss = 0.0
                     centipawn_loss = 0
 
