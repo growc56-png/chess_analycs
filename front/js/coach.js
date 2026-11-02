@@ -298,9 +298,13 @@
     const drills = [];
 
     ownMoves.forEach(move => {
-      accuracyTotal += moveAccuracy(move);
-      const classification = String(move.classification || '');
-      if (BAD_CLASSES.has(classification)) {
+      const acceptedMoves = Array.isArray(move.acceptable_moves_uci)
+        ? move.acceptable_moves_uci
+        : [];
+      const playedMoveAccepted = acceptedMoves.includes(move.uci);
+      accuracyTotal += playedMoveAccepted ? 100 : moveAccuracy(move);
+      const classification = playedMoveAccepted ? 'best' : String(move.classification || '');
+      if (BAD_CLASSES.has(classification) && !playedMoveAccepted) {
         counts[classification] = (counts[classification] || 0) + 1;
         const phase = phaseForMove(move);
         phaseErrors[phase] += 1;
@@ -314,6 +318,8 @@
             bestMoveUci: move.best_move_uci,
             bestMoveSan: move.best_move_san || move.best_move_uci,
             bestLineSan: Array.isArray(move.best_line_san) ? move.best_line_san : [],
+            acceptableMovesUci: acceptedMoves.length ? acceptedMoves : [move.best_move_uci],
+            acceptableMovesSan: Array.isArray(move.acceptable_moves) ? move.acceptable_moves.map(item => item.san) : [move.best_move_san || move.best_move_uci],
             beforeFen: move.before_fen,
             phase,
             classification,
@@ -616,11 +622,17 @@
     }
     if (!move) return 'snapback';
     const uci = move.from + move.to + (move.promotion || '');
-    if (uci === drill.bestMoveUci) {
+    const acceptedMoves = Array.isArray(drill.acceptableMovesUci) && drill.acceptableMovesUci.length
+      ? drill.acceptableMovesUci
+      : [drill.bestMoveUci];
+    if (acceptedMoves.includes(uci)) {
       drill.solved = true;
       writeStorage(COACH_REPORT_KEY, report);
       drillBoard.position(drillGame.fen());
-      setDrillFeedback('Верно! Лучший ход: ' + (drill.bestMoveSan || uci) + '. Это решение сохраняется в твоём отчёте.', 'success');
+      const alternatives = acceptedMoves.length > 1
+        ? ' Здесь есть несколько равноценных решений: ' + (drill.acceptableMovesSan || []).join(', ') + '.'
+        : ' Лучший ход: ' + (drill.bestMoveSan || uci) + '.';
+      setDrillFeedback('Верно! ' + alternatives + ' Решение сохранено в твоём отчёте.', 'success');
       renderDrillListSolvedState();
       return;
     }
