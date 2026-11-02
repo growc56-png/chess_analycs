@@ -369,7 +369,8 @@ def build_personal_plan(
             "Персональная подготовка",
         )
 
-        task_types, weights = week_templates[(day_num - 1) % 7]
+        date_value = start_date + timedelta(days=day_num - 1)
+        task_types, weights = week_templates[date_value.weekday()]
         if task_types == ["rest"]:
             tasks = [_make_personal_task("rest", min(20, max(10, daily_minutes // 6)), topics)]
         else:
@@ -385,7 +386,6 @@ def build_personal_plan(
                 tasks.append(_make_personal_task(task_type, minutes, topics))
 
         target_checkpoint = min(target_elo, int(round(current_elo + (target_elo - current_elo) * day_num / goal_days)))
-        date_value = start_date + timedelta(days=day_num - 1)
         plan.append({
             "day": day_num,
             "week": (day_num - 1) // 7 + 1,
