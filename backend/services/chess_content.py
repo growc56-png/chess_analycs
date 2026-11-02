@@ -1,5 +1,10 @@
 """Данные шахматного тренажёра: задачи, эндшпили и дебютный репертуар."""
 
+from functools import lru_cache
+
+import chess
+
+
 PUZZLES = [
     {"id": 1, "title": "Мат в 1: Ладья", "fen": "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1", "solution": "a1a8", "hint": "Ладья по последней горизонтали."},
     {"id": 2, "title": "Мат в 1: Ферзь", "fen": "6k1/5ppp/8/8/8/8/5PPP/3Q2K1 w - - 0 1", "solution": "d1d8", "hint": "Ферзь по открытой линии."},
@@ -68,12 +73,54 @@ POPULAR_OPENINGS = [
 ] + [opening["moves"] for opening in OPENINGS]
 
 
+def _position_key(board: chess.Board) -> str:
+    """Сравнивает позицию без номера хода и часов."""
+    return " ".join(board.fen().split(" ")[:4])
+
+
+@lru_cache(maxsize=1)
+def _known_opening_positions() -> set[str]:
+    """
+    Строит позиции всех префиксов известных дебютных линий.
+    Это позволяет узнавать теорию и после транспозиций, а не только
+    когда вся партия повторяет одну SAN-последовательность.
+    """
+    positions = set()
+
+    for line in POPULAR_OPENINGS:
+        board = chess.Board()
+        positions.add(_position_key(board))
+
+        for san_move in line:
+            try:
+                board.push_san(san_move)
+            except (ValueError, AssertionError):
+                break
+            positions.add(_position_key(board))
+
+    return positions
+
+
 def is_book_move(history_san: list[str]) -> bool:
-    """Проверяет, является ли последовательность SAN префиксом дебютной линии."""
+    """
+    Проверяет, входит ли текущая последовательность в известную дебютную
+    линию или приводит к позиции из каталога через транспозицию.
+    """
+    if not history_san:
+        return False
+
     for line in POPULAR_OPENINGS:
         if len(history_san) <= len(line) and history_san == line[:len(history_san)]:
             return True
-    return False
+
+    board = chess.Board()
+    try:
+        for san_move in history_san:
+            board.push_san(san_move)
+    except (ValueError, AssertionError):
+        return False
+
+    return _position_key(board) in _known_opening_positions()
 
 
 __all__ = ["PUZZLES", "ENDGAMES", "OPENINGS", "POPULAR_OPENINGS", "is_book_move"]
