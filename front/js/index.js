@@ -1917,69 +1917,61 @@ function initAnalysisArrowResize() {
 
 function drawBoardBadge(moveData) {
   const boardEl = document.getElementById('analysisBoard');
-  let overlay = boardEl.querySelector('.custom-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.className = 'custom-overlay';
-    overlay.style.position = 'absolute';
-    overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.width = '100%'; overlay.style.height = '100%';
-    overlay.style.pointerEvents = 'none'; overlay.style.zIndex = '100';
-    boardEl.appendChild(overlay);
-  }
+  if (!boardEl) return;
 
-  overlay.innerHTML = '';
-  if (!moveData || !moveData.uci) return;
+  // Старый плавающий слой мог позиционироваться относительно страницы,
+  // а не самой доски. Удаляем его и прикрепляем отметку прямо к клетке.
+  boardEl.querySelector('.custom-overlay')?.remove();
+  boardEl.querySelectorAll('.board-badge').forEach(node => node.remove());
 
+  if (!moveData || !moveData.uci || moveData.uci.length < 4) return;
   const toSquare = moveData.uci.slice(2, 4);
-  const files = ['a','b','c','d','e','f','g','h'];
-  
-  let file = files.indexOf(toSquare[0]);
-  let rank = parseInt(toSquare[1]) - 1;
-  
-  if (file < 0 || rank < 0) return;
+  if (!/^[a-h][1-8]$/.test(toSquare)) return;
 
-let xPct, yPct;
-
-if (isAnalysisBoardFlipped()) {
-  xPct = (7 - file) * 12.5;
-  yPct = rank * 12.5;
-} else {
-  xPct = file * 12.5;
-  yPct = (7 - rank) * 12.5;
-}
-
-  const badge = document.createElement('div');
-  badge.className = 'board-badge';
-
-  let text = ''; let cls = '';
+  const squareEl = boardEl.querySelector('.square-' + toSquare);
+  if (!squareEl) return;
 
   const classMap = {
-    'brilliant': { t: '!!', c: 'badge-brilliant' }, 'critical': { t: '⚠', c: 'badge-critical' }, 'great': { t: '!', c: 'badge-great' },
-    'best': { t: '★', c: 'badge-best' }, 'excellent': { t: '✓', c: 'badge-excellent' },
-    'good': { t: '✓', c: 'badge-good' }, 'inaccuracy': { t: '?!', c: 'badge-inaccuracy' },
-    'mistake': { t: '?', c: 'badge-mistake' }, 'miss': { t: '✗', c: 'badge-miss' },
-    'blunder': { t: '??', c: 'badge-blunder' }, 'book': { t: '📖', c: 'badge-book' },
-    'forced': { t: '□', c: 'badge-forced' }
+    brilliant: { text: '!!', title: 'Бриллиантовый ход', css: 'badge-brilliant' },
+    great: { text: '!', title: 'Замечательный ход', css: 'badge-great' },
+    best: { text: '★', title: 'Лучший ход', css: 'badge-best' },
+    excellent: { text: '✓', title: 'Отличный ход', css: 'badge-excellent' },
+    good: { text: '✓', title: 'Хороший ход', css: 'badge-good' },
+    inaccuracy: { text: '?!', title: 'Неточность', css: 'badge-inaccuracy' },
+    mistake: { text: '?', title: 'Ошибка', css: 'badge-mistake' },
+    miss: { text: '✗', title: 'Промах', css: 'badge-miss' },
+    blunder: { text: '??', title: 'Зевок', css: 'badge-blunder' },
+    book: { text: '📖', title: 'Дебютный ход', css: 'badge-book' },
+    forced: { text: '□', title: 'Вынужденный ход', css: 'badge-forced' }
   };
 
-  if (moveData.classification && classMap[moveData.classification]) {
-    text = classMap[moveData.classification].t; cls = classMap[moveData.classification].c;
-  } else if (moveData.is_mate) {
-    text = moveData.mate_in > 0 ? `М${moveData.mate_in}` : `-М${Math.abs(moveData.mate_in)}`; cls = 'badge-eval';
-  } else {
-    text = (moveData.eval > 0 ? '+' : '') + moveData.eval.toFixed(1); cls = 'badge-eval';
+  const marker = classMap[moveData.classification];
+  const badge = document.createElement('div');
+  badge.className = 'board-badge';
+  badge.style.position = 'absolute';
+  badge.style.top = '3px';
+  badge.style.right = '3px';
+  badge.style.left = 'auto';
+  badge.style.transform = 'none';
+  badge.textContent = marker ? marker.text : (
+    moveData.is_mate
+      ? (moveData.mate_in > 0 ? 'М' + moveData.mate_in : '-М' + Math.abs(moveData.mate_in))
+      : (Number(moveData.eval) > 0 ? '+' : '') + Number(moveData.eval || 0).toFixed(1)
+  );
+
+  const sacrifice = moveData.sacrifice_details;
+  badge.title = marker ? marker.title + ' · клетка ' + toSquare : 'Оценка после хода: ' + badge.text;
+  if (sacrifice) {
+    badge.title += ' · Жертва: ' + sacrifice.piece + '; соперник мог ответить ' + sacrifice.recapture_san;
   }
+  if (marker) badge.classList.add(marker.css);
 
-  badge.textContent = text;
-  badge.classList.add(cls);
-  
-  badge.style.left = `${xPct + 11.2}%`;
-  badge.style.top = `${yPct + 1.2}%`;
-  badge.style.transform = 'translate(-100%, 0)';
-  
-  overlay.appendChild(badge);
+  // Chessboard.js already marks each square with its algebraic coordinate.
+  // Making the square a positioning context keeps the badge on the right
+  // square in both board orientations and at every screen size.
+  squareEl.style.position = 'relative';
+  squareEl.appendChild(badge);
 }
-
 function drawGraph(evals, currentIndex = -1) {
   const canvas = document.getElementById('evalGraph');
   const ctx = canvas.getContext('2d');
@@ -2073,7 +2065,7 @@ async function analyzePGN(pgn, gameUrl) {
   updateAnalysisProgress(-1, 'running');
   stopAnalysisPlayback();
 
-  const ANALYSIS_VERSION = 'v8-sound-sacrifice-classification';
+  const ANALYSIS_VERSION = 'v9-quiet-sacrifice-board-badges';
   const cacheKey = `analysis_${ANALYSIS_VERSION}_${gameUrl || pgn.slice(0, 50)}`;
   const cachedData = localStorage.getItem(cacheKey);
   if (cachedData) {
@@ -2127,7 +2119,6 @@ function formatSpentTime(seconds) {
 
 const ANALYSIS_CLASS_ROWS = [
   { key: 'brilliant', label: 'Бриллиантовый', icon: '!!', className: 'brilliant' },
-  { key: 'critical', label: 'Критический момент', icon: '⚠', className: 'critical' },
   { key: 'great', label: 'Замечательный', icon: '!', className: 'great' },
   { key: 'best', label: 'Лучший', icon: '★', className: 'best' },
   { key: 'excellent', label: 'Отличный', icon: '👍', className: 'excellent' },
@@ -2149,7 +2140,7 @@ function getMoveAccuracy(move) {
   }
   // Fallback for older cached analyses that did not store cp_loss.
   const fallbackLoss = {
-    brilliant: 0, critical: 0.2, great: 0.5, best: 0, excellent: 1.5,
+    brilliant: 0, great: 0.5, best: 0, excellent: 1.5,
     good: 4, inaccuracy: 10, mistake: 22, miss: 30, blunder: 45,
     book: 0, forced: 0
   };
@@ -2255,7 +2246,7 @@ function animateAnalysisMove(moveData) {
   const classification = moveData.classification || '';
   let effectType = '';
   if (classification === 'brilliant') effectType = 'brilliant';
-  else if (classification === 'great' || classification === 'critical') effectType = 'great';
+  else if (classification === 'great') effectType = 'great';
   else if (classification === 'blunder') effectType = 'blunder';
   else if (classification === 'mistake' || classification === 'miss') effectType = 'mistake';
   if (!effectType) return;
@@ -2636,7 +2627,6 @@ function renderMoveTable() {
   
   const classSymbols = {
     'brilliant': { text: '!!', title: 'Бриллиантовый ход' },
-    'critical': { text: '⚠', title: 'Критический момент' },
     'great': { text: '!', title: 'Замечательный ход' },
     'best': { text: '★', title: 'Лучший ход' },
     'excellent': { text: '✓', title: 'Отличный ход' },
