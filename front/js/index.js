@@ -2311,6 +2311,77 @@ function renderAnalysisSummary() {
     deepSummary.textContent = 'Глубоко перепроверено позиций: ' + deepCount
       + ' · ходов в цейтноте: ' + timePressureCount;
   }
+
+  const keyMoments = document.getElementById('analysisKeyMoments');
+  if (keyMoments) {
+    if (!keyMoments.dataset.bound) {
+      keyMoments.addEventListener('click', event => {
+        const button = event.target.closest('button[data-move-index]');
+        if (!button) return;
+        const index = Number(button.dataset.moveIndex);
+        if (Number.isInteger(index)) window.showAnalysisMove(index);
+      });
+      keyMoments.dataset.bound = '1';
+    }
+
+    const errorMoments = analysisMoves
+      .map((move, index) => ({ move, index }))
+      .filter(item => ['blunder', 'miss', 'mistake'].includes(item.move?.classification))
+      .sort((a, b) => Number(b.move.win_percent_loss || 0) - Number(a.move.win_percent_loss || 0))
+      .slice(0, 3);
+
+    const bestMoments = analysisMoves
+      .map((move, index) => ({ move, index }))
+      .filter(item => ['brilliant', 'great'].includes(item.move?.classification))
+      .slice(0, 2);
+
+    const selectedMoments = [...errorMoments, ...bestMoments]
+      .sort((a, b) => a.index - b.index);
+
+    const momentLabels = {
+      brilliant: 'Бриллиант',
+      great: 'Замечательный',
+      blunder: 'Зевок',
+      miss: 'Промах',
+      mistake: 'Ошибка'
+    };
+
+    keyMoments.innerHTML = '';
+    if (!selectedMoments.length) {
+      const empty = document.createElement('div');
+      empty.className = 'analysis-stats-empty';
+      empty.textContent = 'Ярких переломных моментов не найдено.';
+      keyMoments.appendChild(empty);
+    } else {
+      selectedMoments.forEach(({ move, index }) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'analysis-key-moment';
+        button.dataset.moveIndex = String(index);
+
+        const number = Number(move.move_num) || Math.floor(index / 2) + 1;
+        const side = move.mover === 'black' ? 'чёрные' : 'белые';
+        const category = momentLabels[move.classification] || 'Ход';
+        const loss = Number(move.win_percent_loss);
+        const detail = Number.isFinite(loss) && loss > 0
+          ? loss.toFixed(1) + ' п.п.'
+          : (move.san || '');
+
+        const label = document.createElement('span');
+        label.className = 'analysis-key-moment-label';
+        label.textContent = category;
+
+        const notation = document.createElement('strong');
+        notation.textContent = number + '. ' + (move.san || '—');
+
+        const meta = document.createElement('small');
+        meta.textContent = side + (detail ? ' · ' + detail : '');
+
+        button.append(label, notation, meta);
+        keyMoments.appendChild(button);
+      });
+    }
+  }
 }
 
 function updateAnalysisProgress(index = -1, state = 'ready') {
