@@ -1,9 +1,9 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v1';
+  const COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v2';
   const OPENING_SRS_KEY = 'chessTrainer.openingSrs.v1';
-  const COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v1';
+  const COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2';
   const BAD_CLASSES = new Set(['blunder', 'mistake', 'inaccuracy', 'miss']);
   const CLASS_LABELS = { blunder: 'Зевок', mistake: 'Ошибка', inaccuracy: 'Неточность', miss: 'Промах' };
   const PHASE_LABELS = { opening: 'Дебют', middlegame: 'Миттельшпиль', endgame: 'Эндшпиль' };
@@ -962,6 +962,14 @@
     if (report && report.summary) {
       renderReport();
       setStatus('Загружен сохранённый отчёт от ' + new Date(report.createdAt).toLocaleString('ru-RU') + '. Новые партии можно добавить в любой момент.', 'success');
+      return;
+    }
+
+    // Старый отчёт оставляем в localStorage, но не показываем как пересчитанный:
+    // новая версия учитывает альтернативные лучшие ходы и транспозиции дебютов.
+    const previousReport = readStorage('chessTrainer.personalCoach.report.v1', null);
+    if (previousReport && previousReport.summary) {
+      setStatus('Обновилась система оценки ходов. Старый отчёт сохранён, но для корректной диагностики заново загрузи и проанализируй свои партии.');
     }
   }
 
