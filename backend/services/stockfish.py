@@ -159,17 +159,129 @@ def get_multipv_lines(engine, board, depth=None):
     return lines
 
 
-def get_position_analysis(engine, board):
-    infos = engine.analyse(
-        board,
-        get_engine_limit(),
-        multipv=3
-    )
+def _info_score_sort_value(info, pov):
+    score_obj = info.get("score")
+    if score_obj is None:
+        return -1e9
+    try:
+        value = score_obj.pov(pov).score(mate_score=MATE_SCORE)
+        return float(value if value is not None else -1e9)
+    except Exception:
+        return -1e9
 
+
+def get_position_analysis(engine, board):
+    """Get up to three unique legal root lines with resilient MultiPV fallback."""
+    limit = get_engine_limit()
+    legal_moves = list(board.legal_moves)
+    desired_count = min(3, len(legal_moves))
+
+    try:
+        raw = engine.analyse(
+            board,
+            limit,
+            multipv=max(1, desired_count),
+        )
+    except Exception:
+        raw = []
+
+    if isinstance(raw, dict):
+        raw = [raw]
+    raw = list(raw or [])
+
+    if desired_count == 0:
+        # Terminal positions can still carry a useful mate/score but have no PV.
+        return raw[:1]
+
+    candidates = {}
+
+    def collect(infos):
+        if isinstance(infos, dict):
+            infos = [infos]
+        for info in infos or []:
+            if not isinstance(info, dict) or info.get("score") is None:
+                continue
+            pv = info.get("pv") or []
+            if not pv or pv[0] not in legal_moves:
+                continue
+            key = pv[0].uci()
+            previous = candidates.get(key)
+            if (
+                previous is None
+                or _info_score_sort_value(info, board.turn)
+                > _info_score_sort_value(previous, board.turn)
+            ):
+                candidates[key] = info
+
+    collect(raw)
+
+    if len(candidates) < desired_count:
+        try:
+            collect(engine.analyse(
+                board,
+                limit,
+                multipv=desired_count,
+                root_moves=legal_moves,
+            ))
+        except Exception:
+            pass
+
+    if len(candidates) < desired_count:
+        fallback_depth = max(8, min(11, int(ANALYSIS_DEPTH or 11)))
+        fallback_time = max(0.045, min(0.10, float(ANALYSIS_TIME or 1.0) / 14.0))
+        fallback_limit = chess.engine.Limit(
+            depth=fallback_depth,
+            time=fallback_time,
+        )
+        for move in legal_moves:
+            if move.uci() in candidates:
+                continue
+            try:
+                collect(engine.analyse(
+                    board,
+                    fallback_limit,
+                    root_moves=[move],
+                ))
+            except Exception:
+                continue
+            if len(candidates) >= desired_count:
+                break
+
+    result = sorted(
+        candidates.values(),
+        key=lambda info: _info_score_sort_value(info, board.turn),
+        reverse=True,
+    )[:desired_count]
+
+    # Preserve a score-only response if the engine did not produce a legal PV.
+    return result or [info for info in raw if info.get("score") is not None][:1]
+
+
+def format_multipv_infos(board, infos):
+    """Format previously computed MultiPV infos without running Stockfish again."""
     if isinstance(infos, dict):
         infos = [infos]
 
-    return infos
+    lines = []
+    for info in infos or []:
+        pv = info.get("pv") or []
+        score_obj = info.get("score")
+        if not pv or score_obj is None:
+            continue
+        first_move = pv[0]
+        if first_move not in board.legal_moves:
+            continue
+        parsed = parse_score(score_obj.white())
+        lines.append({
+            "rank": len(lines) + 1,
+            "san": board.san(first_move),
+            "uci": first_move.uci(),
+            "pv": format_pv(board, pv),
+            "eval": parsed["eval"],
+            "is_mate": parsed["is_mate"],
+            "mate_in": parsed["mate_in"],
+        })
+    return lines[:3]
 
 
 def get_best_move_info(infos):
