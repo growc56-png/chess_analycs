@@ -230,7 +230,7 @@ function buildSavedGamePgn(result) {
   const whiteName = playerColor === 'w' ? 'Player' : 'Stockfish level ' + botLevel;
   const blackName = playerColor === 'b' ? 'Player' : 'Stockfish level ' + botLevel;
   const pgnTimeControl = timeControlMode === 'unlimited' ? '-' : String(baseTime) + '+' + String(increment);
-  const moveText = game.pgn().replace(/\\s*\\*$/, '').trim();
+  const moveText = game.pgn().replace(/\s*\*$/, '').trim();
   const headers = [
     '[Event "Chess Trainer - Bot Game"]',
     '[Site "Chess Trainer"]',
@@ -240,7 +240,7 @@ function buildSavedGamePgn(result) {
     '[Result "' + token + '"]',
     '[TimeControl "' + pgnTimeControl + '"]'
   ];
-  return headers.join('\\n') + '\\n\\n' + (moveText ? moveText + ' ' : '') + token + '\\n';
+  return headers.join('\n') + '\n\n' + (moveText ? moveText + ' ' : '') + token + '\n';
 }
 
 function setGameSaveNotice(message, state) {
