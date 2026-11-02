@@ -2837,6 +2837,12 @@ function renderAnalysisMoveInsight(moveData) {
       + '. Возможное взятие: ' + sacrifice.recapture_san
       + '. Глубокая проверка Stockfish подтвердила, что ход сохраняет оценку.'
     );
+  } else if (moveData.is_sacrifice && moveData.sacrifice_details) {
+    const sacrifice = moveData.sacrifice_details;
+    messages.push(
+      'Ты предложил сопернику взять ' + sacrifice.piece
+      + ' (' + sacrifice.recapture_san + '), но движок не подтвердил достаточную компенсацию, чтобы назвать ход бриллиантовым.'
+    );
   } else if (moveData.missed_tactic) {
     messages.push('Ты пропустил тактическую возможность в этой позиции.');
   } else if (moveData.classification === 'blunder') {
