@@ -1,0 +1,23 @@
+name: Chess analysis tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  move-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install analysis test dependencies
+        run: python -m pip install --upgrade pip python-chess python-dotenv fastapi
+      - name: Run analysis regression tests
+        working-directory: backend
+        run: python -m unittest discover -s tests -v
