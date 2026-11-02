@@ -7,7 +7,14 @@ import chess.engine
 
 from fastapi import HTTPException
 
-from config import STOCKFISH_PATH, ANALYSIS_DEPTH, ANALYSIS_TIME
+from config import (
+    STOCKFISH_PATH,
+    ANALYSIS_DEPTH,
+    ANALYSIS_TIME,
+    DEEP_ANALYSIS_DEPTH,
+    DEEP_ANALYSIS_TIME,
+    MAX_DEEP_ANALYSIS_MOVES,
+)
 
 from services.stockfish import (
     ENGINE_LOCK,
@@ -183,6 +190,77 @@ def get_tactical_motifs(board, move, mate_in=None):
     # Сохраняем порядок и удаляем дубликаты.
     return list(dict.fromkeys(motifs))
 
+def _normalise_engine_infos(infos):
+    if isinstance(infos, dict):
+        return [infos]
+    return list(infos or [])
+
+
+def _calculate_loss_metrics(before_score, after_score, mover):
+    """Return expected-points loss (0..1), centipawn loss and both scores."""
+    if before_score is None or after_score is None:
+        return 0.0, 0, 0, 0
+
+    before_cp = score_to_cp(before_score, mover)
+    after_cp = score_to_cp(after_score, mover)
+    before_points = expected_points_from_score(before_score, mover)
+    after_points = expected_points_from_score(after_score, mover)
+
+    return (
+        max(0.0, before_points - after_points),
+        max(0, before_cp - after_cp),
+        before_cp,
+        after_cp,
+    )
+
+
+def _classify_game_phase(board):
+    """Approximate phase from remaining non-pawn material."""
+    phase_weights = {
+        chess.KNIGHT: 1,
+        chess.BISHOP: 1,
+        chess.ROOK: 2,
+        chess.QUEEN: 4,
+    }
+    phase_score = sum(
+        phase_weights.get(piece.piece_type, 0)
+        for piece in board.piece_map().values()
+    )
+    if phase_score <= 8:
+        return "endgame"
+    if board.fullmove_number <= 12 and phase_score >= 16:
+        return "opening"
+    return "middlegame"
+
+
+def _is_time_pressure(clock_before, initial_clock, time_spent):
+    if clock_before is None:
+        return False
+    try:
+        remaining = max(0.0, float(clock_before))
+    except (TypeError, ValueError):
+        return False
+
+    if initial_clock is None or initial_clock <= 0:
+        return remaining <= 20.0
+    return (
+        remaining <= max(15.0, initial_clock * 0.12)
+        or (
+            time_spent is not None
+            and time_spent >= max(20.0, initial_clock * 0.20)
+        )
+    )
+
+
+TACTICAL_MISS_MOTIFS = {
+    "mate",
+    "mate_in_2",
+    "fork",
+    "pin",
+    "discovered_check",
+}
+
+
 def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
     with ENGINE_LOCK:
@@ -236,6 +314,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
             moves_data = []
             history_san = []
             evals = []
+            deep_positions_checked = 0
 
             total_moves = len(list(game.mainline_moves()))
 
@@ -275,25 +354,21 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     break
 
                 mover = board.turn
+                before_board = board.copy(stack=False)
+                phase = _classify_game_phase(before_board)
 
                 before_infos = prev_infos
                 best_info = get_best_move_info(before_infos)
-
                 if best_info is None:
                     break
 
                 best_pv = best_info.get("pv") or []
-
-                best_move_uci = (
-                    best_pv[0].uci()
-                    if best_pv
-                    else None
-                )
+                best_move_uci = best_pv[0].uci() if best_pv else None
 
                 acceptable_move_candidates = get_acceptable_move_candidates(
-                    board,
+                    before_board,
                     before_infos,
-                    mover
+                    mover,
                 )
                 acceptable_moves_uci = [
                     item["uci"] for item in acceptable_move_candidates
@@ -306,152 +381,227 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 is_accepted_winning_mate = bool(
                     accepted_candidate and accepted_candidate["winning_mate"]
                 )
-                is_forced = board.legal_moves.count() == 1
+                is_forced = before_board.legal_moves.count() == 1
 
-                san_move = board.san(move)
-                # Сохраняем позицию до хода и лучший ход Stockfish:
-                # эти данные нужны персональной тренировке ошибок.
-                before_fen = board.fen()
-                best_move_san = board.san(best_pv[0]) if best_pv and best_pv[0] in board.legal_moves else None
+                san_move = before_board.san(move)
+                before_fen = before_board.fen()
+                best_move_san = (
+                    before_board.san(best_pv[0])
+                    if best_pv and best_pv[0] in before_board.legal_moves
+                    else None
+                )
                 best_line_san = []
                 if best_pv:
-                    best_line_board = board.copy(stack=False)
+                    best_line_board = before_board.copy(stack=False)
                     for pv_move in best_pv[:6]:
                         if pv_move not in best_line_board.legal_moves:
                             break
                         best_line_san.append(best_line_board.san(pv_move))
                         best_line_board.push(pv_move)
-                history_san.append(san_move)
 
+                best_move_motifs = (
+                    acceptable_move_by_uci.get(best_move_uci, {}).get("motifs", [])
+                    if best_move_uci else []
+                )
+
+                history_san.append(san_move)
                 is_book = (
                     book_move_checker(history_san)
-                    if book_move_checker
-                    else False
+                    if book_move_checker else False
                 )
 
-                sacrifice_details = get_sacrifice_details(board, move)
+                sacrifice_details = get_sacrifice_details(before_board, move)
                 is_sacrifice = sacrifice_details is not None
-
-                second_best_gap = get_second_best_gap(
-                    before_infos,
-                    mover
-                )
+                second_best_gap = get_second_best_gap(before_infos, mover)
 
                 clock_before = node.clock() if node else None
-
                 board.push(move)
-
                 clock_after = node.clock() if node else None
-
                 time_spent = None
-
-                if (
-                    clock_before is not None
-                    and clock_after is not None
-                ):
-                    time_spent = max(
-                        0,
-                        clock_before - clock_after
-                    )
+                if clock_before is not None and clock_after is not None:
+                    time_spent = max(0, clock_before - clock_after)
 
                 after_info = engine.analyse(
                     board,
                     get_engine_limit(),
-                    multipv=1
+                    multipv=1,
+                )
+                after_info = _normalise_engine_infos(after_info)
+                after_info = after_info[0] if after_info else {}
+                after_score = after_info.get("score")
+                before_score = best_info.get("score")
+
+                win_points_loss, centipawn_loss, before_cp, after_cp = (
+                    _calculate_loss_metrics(before_score, after_score, mover)
                 )
 
-                if isinstance(after_info, list):
-                    after_info = after_info[0]
+                # The fast pass identifies positions worth a more expensive
+                # check. We always recheck sacrifices, missed tactical chances,
+                # mate positions and clear evaluation swings.
+                preliminary_tactical = bool(
+                    set(best_move_motifs) & TACTICAL_MISS_MOTIFS
+                )
+                preliminary_mate = bool(
+                    before_score is not None and before_score.is_mate()
+                ) or bool(after_score is not None and after_score.is_mate())
+                deep_reason = None
+                if is_sacrifice:
+                    deep_reason = "sacrifice"
+                elif win_points_loss >= 0.025:
+                    deep_reason = "evaluation_drop"
+                elif preliminary_tactical and move.uci() != best_move_uci:
+                    deep_reason = "missed_tactic"
+                elif preliminary_mate:
+                    deep_reason = "mate_position"
 
-                after_score = after_info.get("score")
+                deep_analysis_performed = False
+                if (
+                    deep_reason
+                    and deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES
+                    and before_board.legal_moves.count() > 0
+                ):
+                    deep_positions_checked += 1
+                    try:
+                        deep_limit = get_engine_limit(
+                            depth=DEEP_ANALYSIS_DEPTH,
+                            time_limit=DEEP_ANALYSIS_TIME,
+                        )
+                        deep_before_infos = engine.analyse(
+                            before_board,
+                            deep_limit,
+                            multipv=min(3, before_board.legal_moves.count()),
+                        )
+                        deep_before_infos = _normalise_engine_infos(deep_before_infos)
+                        deep_best_info = get_best_move_info(deep_before_infos)
+                        deep_after_info = engine.analyse(
+                            board,
+                            deep_limit,
+                            multipv=1,
+                        )
+                        deep_after_infos = _normalise_engine_infos(deep_after_info)
+                        deep_after_info = deep_after_infos[0] if deep_after_infos else {}
+
+                        if deep_best_info and deep_after_info.get("score") is not None:
+                            deep_best_pv = deep_best_info.get("pv") or []
+                            deep_best_score = deep_best_info.get("score")
+                            deep_after_score = deep_after_info.get("score")
+
+                            (
+                                deep_loss,
+                                deep_cp_loss,
+                                deep_before_cp,
+                                deep_after_cp,
+                            ) = _calculate_loss_metrics(
+                                deep_best_score,
+                                deep_after_score,
+                                mover,
+                            )
+
+                            deep_candidates = get_acceptable_move_candidates(
+                                before_board,
+                                deep_before_infos,
+                                mover,
+                            )
+                            deep_candidate_map = {
+                                item["uci"]: item for item in deep_candidates
+                            }
+                            deep_acceptable_uci = [
+                                item["uci"] for item in deep_candidates
+                            ]
+
+                            best_info = deep_best_info
+                            best_pv = deep_best_pv
+                            before_score = deep_best_score
+                            after_score = deep_after_score
+                            best_move_uci = (
+                                deep_best_pv[0].uci() if deep_best_pv else None
+                            )
+                            best_move_san = (
+                                before_board.san(deep_best_pv[0])
+                                if deep_best_pv and deep_best_pv[0] in before_board.legal_moves
+                                else None
+                            )
+                            best_line_san = []
+                            if deep_best_pv:
+                                deep_line_board = before_board.copy(stack=False)
+                                for pv_move in deep_best_pv[:6]:
+                                    if pv_move not in deep_line_board.legal_moves:
+                                        break
+                                    best_line_san.append(deep_line_board.san(pv_move))
+                                    deep_line_board.push(pv_move)
+
+                            acceptable_move_candidates = deep_candidates
+                            acceptable_move_by_uci = deep_candidate_map
+                            acceptable_moves_uci = deep_acceptable_uci
+                            is_best = move.uci() in deep_acceptable_uci
+                            accepted_candidate = deep_candidate_map.get(move.uci())
+                            is_accepted_winning_mate = bool(
+                                accepted_candidate and accepted_candidate["winning_mate"]
+                            )
+                            best_move_motifs = (
+                                deep_candidate_map.get(best_move_uci, {}).get("motifs", [])
+                                if best_move_uci else []
+                            )
+                            second_best_gap = get_second_best_gap(
+                                deep_before_infos,
+                                mover,
+                            )
+                            win_points_loss = deep_loss
+                            centipawn_loss = deep_cp_loss
+                            before_cp = deep_before_cp
+                            after_cp = deep_after_cp
+                            deep_analysis_performed = True
+                    except Exception:
+                        # A deep-pass failure must not discard the valid fast
+                        # analysis for the rest of the game.
+                        deep_analysis_performed = False
+
+                if is_accepted_winning_mate:
+                    win_points_loss = 0.0
+                    centipawn_loss = 0
 
                 if after_score is None:
                     curr_parsed = {
                         "eval": 0,
                         "is_mate": False,
-                        "mate_in": 0
+                        "mate_in": 0,
                     }
                 else:
                     curr_parsed = parse_score(after_score.white())
-
                 curr_eval = curr_parsed["eval"]
-                before_score = best_info.get("score")
 
-                if before_score is not None and after_score is not None:
+                missed_tactic = (
+                    not is_best
+                    and move.uci() != best_move_uci
+                    and bool(set(best_move_motifs) & TACTICAL_MISS_MOTIFS)
+                )
 
-                    before_ep = expected_points_from_score(
-                        before_score,
-                        mover
-                    )
+                mate_won = True
+                if after_score is not None and after_score.is_mate():
+                    mate_distance = after_score.pov(mover).mate()
+                    mate_won = mate_distance is not None and mate_distance > 0
 
-                    after_ep = expected_points_from_score(
-                        after_score,
-                        mover
-                    )
-
-                    win_percent_loss = max(
-                        0.0,
-                        before_ep - after_ep
-                    )
-
-                    before_cp = score_to_cp(
-                        before_score,
-                        mover
-                    )
-
-                    after_cp = score_to_cp(
-                        after_score,
-                        mover
-                    )
-
-                    centipawn_loss = max(
-                        0,
-                        before_cp - after_cp
-                    )
-
-                else:
-                    win_percent_loss = 0.0
-                    centipawn_loss = 0
-
-                # Если сыгран один из равноценных вариантов MultiPV, не
-                # наказываем его из-за небольшого разброса оценок движка.
-                if is_best and not is_accepted_winning_mate:
-                    win_percent_loss = min(win_percent_loss, 0.02)
-                elif is_accepted_winning_mate:
-                    win_percent_loss = 0.0
-                    centipawn_loss = 0
-
-                if is_book:
+                if is_book and win_points_loss <= 0.015:
                     classification = "book"
                 else:
-                    mate_won = True
-
-                    if after_score is not None and after_score.is_mate():
-                        mate_distance = after_score.pov(mover).mate()
-
-                        mate_won = (
-                            mate_distance is not None
-                            and mate_distance > 0
-                        )
-
                     classification = classify_move(
-                        win_percent_loss=win_percent_loss,
+                        win_percent_loss=win_points_loss,
                         is_best=is_best,
                         is_sacrifice=is_sacrifice,
                         is_forced=is_forced,
-                        prev_eval=(
-                            score_to_cp(before_score, mover) / 100
-                            if before_score else 0
-                        ),
-                        curr_eval=(
-                            score_to_cp(after_score, mover) / 100
-                            if after_score else 0
-                        ),
+                        prev_eval=(before_cp / 100.0),
+                        curr_eval=(after_cp / 100.0),
                         second_best_gap=second_best_gap,
                         is_mate=curr_parsed["is_mate"],
-                        mate_won=mate_won
+                        mate_won=mate_won,
+                        missed_tactic=missed_tactic,
                     )
 
+                time_pressure = _is_time_pressure(
+                    clock_before,
+                    initial_clock,
+                    time_spent,
+                )
                 next_top_moves = get_multipv_lines(
                     engine,
                     board
@@ -467,10 +617,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "best_move_san": best_move_san,
                     "best_line_san": best_line_san,
                     "best_line_uci": [item.uci() for item in best_pv[:4]],
-                    "best_move_motifs": (
-                        acceptable_move_by_uci.get(best_move_uci, {}).get("motifs", [])
-                        if best_move_uci else []
-                    ),
+                    "best_move_motifs": best_move_motifs,
+                    "missed_tactic": missed_tactic,
                     "acceptable_moves": [
                         {
                             "uci": item["uci"],
@@ -490,10 +638,20 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "cp_loss": int(centipawn_loss),
                     "centipawn_loss": centipawn_loss,
                     "win_percent_loss": round(
-                        win_percent_loss * 100,
+                        win_points_loss * 100,
                         2
                     ),
+                    "move_accuracy": round(
+                        max(0.0, min(100.0, 100.0 - win_points_loss * 100.0)),
+                        1
+                    ),
                     "classification": classification,
+                    "phase": phase,
+                    "deep_analysis": deep_analysis_performed,
+                    "deep_analysis_reason": deep_reason if deep_analysis_performed else None,
+                    "analysis_depth_used": DEEP_ANALYSIS_DEPTH if deep_analysis_performed else ANALYSIS_DEPTH,
+                    "is_time_pressure": time_pressure,
+                    "clock_before": clock_before,
                     "is_sacrifice": is_sacrifice,
                     "sacrifice_details": sacrifice_details,
                     "fen": board.fen(),
@@ -531,7 +689,11 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 "initial_clock": initial_clock,
                 "evals": evals,
                 "analysis_depth": ANALYSIS_DEPTH,
-                "analysis_time": ANALYSIS_TIME
+                "analysis_time": ANALYSIS_TIME,
+                "deep_analysis_depth": DEEP_ANALYSIS_DEPTH,
+                "deep_analysis_time": DEEP_ANALYSIS_TIME,
+                "deep_positions_checked": deep_positions_checked,
+                "analysis_profile": "two_pass_expected_points"
             }
 
         except HTTPException:
