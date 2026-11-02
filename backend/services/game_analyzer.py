@@ -28,6 +28,86 @@ from services.move_classifier import (
 )
 
 
+
+
+def get_acceptable_move_candidates(board, infos, mover, expected_points_tolerance=0.02):
+    """
+    Возвращает несколько практически равноценных лучших ходов Stockfish.
+
+    MultiPV может находить несколько форсированных матов. Все найденные
+    выигрывающие матовые ходы считаются корректными альтернативами.
+    В обычных позициях принимаем варианты, теряющие не более 2 п.п.
+    ожидаемого результата относительно лучшего варианта.
+    """
+    if isinstance(infos, dict):
+        infos = [infos]
+
+    candidates = []
+    seen = set()
+
+    for info in infos or []:
+        pv = info.get("pv") or []
+        score_obj = info.get("score")
+        if not pv or score_obj is None:
+            continue
+
+        first_move = pv[0]
+        if first_move not in board.legal_moves or first_move.uci() in seen:
+            continue
+
+        try:
+            side_score = score_obj.pov(mover)
+            mate_distance = side_score.mate() if side_score.is_mate() else None
+            winning_mate = (
+                side_score.is_mate()
+                and mate_distance is not None
+                and mate_distance > 0
+            )
+            expected_points = expected_points_from_score(score_obj, mover)
+
+            line_board = board.copy(stack=False)
+            line_san = []
+            for line_move in pv[:6]:
+                if line_move not in line_board.legal_moves:
+                    break
+                line_san.append(line_board.san(line_move))
+                line_board.push(line_move)
+
+            candidates.append({
+                "uci": first_move.uci(),
+                "san": board.san(first_move),
+                "line_san": line_san,
+                "expected_points": expected_points,
+                "winning_mate": bool(winning_mate),
+                "mate_in": mate_distance if winning_mate else None,
+            })
+            seen.add(first_move.uci())
+        except (ValueError, AssertionError, AttributeError):
+            continue
+
+    if not candidates:
+        return []
+
+    best_expected_points = max(item["expected_points"] for item in candidates)
+    best_has_forced_mate = any(
+        item["winning_mate"]
+        and item["expected_points"] >= best_expected_points - 1e-6
+        for item in candidates
+    )
+
+    if best_has_forced_mate:
+        accepted = [
+            item for item in candidates
+            if item["winning_mate"]
+        ]
+    else:
+        accepted = [
+            item for item in candidates
+            if item["expected_points"] >= best_expected_points - expected_points_tolerance
+        ]
+
+    return accepted or [max(candidates, key=lambda item: item["expected_points"])]
+
 def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
     with ENGINE_LOCK:
@@ -135,7 +215,22 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     else None
                 )
 
-                is_best = best_move_uci == move.uci()
+                acceptable_move_candidates = get_acceptable_move_candidates(
+                    board,
+                    before_infos,
+                    mover
+                )
+                acceptable_moves_uci = [
+                    item["uci"] for item in acceptable_move_candidates
+                ]
+                acceptable_move_by_uci = {
+                    item["uci"]: item for item in acceptable_move_candidates
+                }
+                is_best = move.uci() in acceptable_moves_uci
+                accepted_candidate = acceptable_move_by_uci.get(move.uci())
+                is_accepted_winning_mate = bool(
+                    accepted_candidate and accepted_candidate["winning_mate"]
+                )
                 is_forced = board.legal_moves.count() == 1
 
                 san_move = board.san(move)
@@ -242,6 +337,14 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     win_percent_loss = 0.0
                     centipawn_loss = 0
 
+                # Если сыгран один из равноценных вариантов MultiPV, не
+                # наказываем его из-за небольшого разброса оценок движка.
+                if is_best and not is_accepted_winning_mate:
+                    win_percent_loss = min(win_percent_loss, 0.02)
+                elif is_accepted_winning_mate:
+                    win_percent_loss = 0.0
+                    centipawn_loss = 0
+
                 if is_book:
                     classification = "book"
                 else:
@@ -287,6 +390,17 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "best_move_uci": best_move_uci,
                     "best_move_san": best_move_san,
                     "best_line_san": best_line_san,
+                    "acceptable_moves_uci": acceptable_moves_uci,
+                    "acceptable_moves": [
+                        {
+                            "uci": item["uci"],
+                            "san": item["san"],
+                            "line_san": item["line_san"],
+                            "winning_mate": item["winning_mate"],
+                            "mate_in": item["mate_in"],
+                        }
+                        for item in acceptable_move_candidates
+                    ],
                     "mover": "white" if mover == chess.WHITE else "black",
                     "is_mate": curr_parsed["is_mate"],
                     "mate_in": curr_parsed["mate_in"],
