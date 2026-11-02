@@ -10,13 +10,13 @@
 <link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261102-analysis-layout-v10">
 <link rel="stylesheet" href="/css/coach.css?v=20261102-compact-v1">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
-<link rel="stylesheet" href="/css/site-refinement.css?v=20261102-ui-v1">
+<link rel="stylesheet" href="/css/site-refinement.css?v=20261102-endgame-practice-v1">
 <script src="/js/board-interactions.js?v=20261102-clickmove-v2" defer></script>
 <script src="/js/jquery.min.js"></script>
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
 <script src="/js/chess.min.js"></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261102-personal-endgames-v1" defer></script>
+<script src="/js/index.js?v=20261102-endgame-practice-v1" defer></script>
 <script src="/js/diary-ui.js" defer></script>
 <script src="/js/coach.js?v=20261102-compact-v1" defer></script>
 <script src="/js/errors.js?v=20261102-compact-v1" defer></script>
@@ -262,7 +262,23 @@
             <div class="board-wrap my-endgame-viewer">
               <div class="my-endgame-heading"><h3 id="myEndgameTitle">Твои эндшпили</h3><span id="myEndgameMeta">Позиции из твоих партий</span></div>
               <div id="myEndgamesBoard"></div>
-              <div class="my-endgame-controls"><button type="button" class="action-btn" id="myEndgamePrev" disabled>← Назад</button><span id="myEndgameMoveLabel">Начальная позиция</span><button type="button" class="action-btn" id="myEndgameNext" disabled>Следующий ход →</button></div>
+              <svg id="userDraw_myEndgamesBoard" class="user-draw-overlay"></svg>
+              <div class="my-endgame-practice-settings" id="myEndgamePracticeSettings">
+                <label class="my-endgame-time-field" for="myEndgameTimeControl">Время на партию</label>
+                <div class="my-endgame-practice-row">
+                  <select id="myEndgameTimeControl" aria-label="Время на партию">
+                    <option value="300" selected>5 минут</option>
+                    <option value="600">10 минут</option>
+                    <option value="custom">Своё время</option>
+                  </select>
+                  <input id="myEndgameCustomMinutes" type="number" min="1" max="180" step="1" value="15" inputmode="numeric" aria-label="Свое время в минутах" hidden>
+                  <button type="button" class="action-btn my-endgame-practice-start" id="myEndgamePracticeStart" disabled>▶ Практика</button>
+                  <button type="button" class="action-btn" id="myEndgamePracticeReset" disabled>↺ Заново</button>
+                </div>
+                <div class="my-endgame-practice-clock" id="myEndgamePracticeClock">05:00</div>
+                <div class="my-endgame-practice-feedback" id="myEndgamePracticeFeedback" role="status">Выбери свой эндшпиль и нажми «Практика».</div>
+              </div>
+              <div class="my-endgame-controls" id="myEndgameReviewControls"><button type="button" class="action-btn" id="myEndgamePrev" disabled>← Назад</button><span id="myEndgameMoveLabel">Начальная позиция</span><button type="button" class="action-btn" id="myEndgameNext" disabled>Следующий ход →</button></div>
             </div>
           </div>
         </div>
