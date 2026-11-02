@@ -1954,7 +1954,7 @@ if (isAnalysisBoardFlipped()) {
   let text = ''; let cls = '';
 
   const classMap = {
-    'brilliant': { t: '!!', c: 'badge-brilliant' }, 'critical': { t: '‼', c: 'badge-critical' }, 'great': { t: '!', c: 'badge-great' },
+    'brilliant': { t: '!!', c: 'badge-brilliant' }, 'critical': { t: '⚠', c: 'badge-critical' }, 'great': { t: '!', c: 'badge-great' },
     'best': { t: '★', c: 'badge-best' }, 'excellent': { t: '✓', c: 'badge-excellent' },
     'good': { t: '✓', c: 'badge-good' }, 'inaccuracy': { t: '?!', c: 'badge-inaccuracy' },
     'mistake': { t: '?', c: 'badge-mistake' }, 'miss': { t: '✗', c: 'badge-miss' },
@@ -2073,7 +2073,7 @@ async function analyzePGN(pgn, gameUrl) {
   updateAnalysisProgress(-1, 'running');
   stopAnalysisPlayback();
 
-  const ANALYSIS_VERSION = 'v7-equivalent-moves-book-transpositions';
+  const ANALYSIS_VERSION = 'v8-sound-sacrifice-classification';
   const cacheKey = `analysis_${ANALYSIS_VERSION}_${gameUrl || pgn.slice(0, 50)}`;
   const cachedData = localStorage.getItem(cacheKey);
   if (cachedData) {
@@ -2127,7 +2127,7 @@ function formatSpentTime(seconds) {
 
 const ANALYSIS_CLASS_ROWS = [
   { key: 'brilliant', label: 'Бриллиантовый', icon: '!!', className: 'brilliant' },
-  { key: 'critical', label: 'Критический', icon: '‼', className: 'critical' },
+  { key: 'critical', label: 'Критический момент', icon: '⚠', className: 'critical' },
   { key: 'great', label: 'Замечательный', icon: '!', className: 'great' },
   { key: 'best', label: 'Лучший', icon: '★', className: 'best' },
   { key: 'excellent', label: 'Отличный', icon: '👍', className: 'excellent' },
@@ -2636,7 +2636,7 @@ function renderMoveTable() {
   
   const classSymbols = {
     'brilliant': { text: '!!', title: 'Бриллиантовый ход' },
-    'critical': { text: '‼', title: 'Критический ход' },
+    'critical': { text: '⚠', title: 'Критический момент' },
     'great': { text: '!', title: 'Замечательный ход' },
     'best': { text: '★', title: 'Лучший ход' },
     'excellent': { text: '✓', title: 'Отличный ход' },
