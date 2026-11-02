@@ -5,9 +5,8 @@ from services.stockfish import PIECE_VALUES
 
 def get_sacrifice_details(board_before, move):
     """
-    Описывает реальную немедленную жертву: небесплатный ход фигурой,
-    после которого соперник может легально забрать эту фигуру фигурой
-    меньшей ценности или пешкой.
+    Описывает тихую жертву: ход фигурой без взятия,
+    после которого соперник может легально забрать эту фигуру.
 
     Сам факт жертвы ещё не делает ход хорошим. Его качество подтверждается
     отдельно: Stockfish должен оценить сыгранный ход почти наравне с лучшим.
@@ -17,15 +16,15 @@ def get_sacrifice_details(board_before, move):
         return None
 
     captured = board_before.piece_at(move.to_square)
-    captured_value = (
-        PIECE_VALUES.get(captured.piece_type, 0)
-        if captured else 0
-    )
-    moving_value = PIECE_VALUES.get(piece.piece_type, 0)
 
-    # Если взята равноценная или более дорогая фигура, это обычный размен,
-    # а не жертва переместившейся фигуры.
-    if moving_value <= captured_value:
+    # Взятие с последующим разменом — это не жертва.
+    # Бриллиантовый ход должен быть тихим предложением материала,
+    # а не обычной последовательностью «взял — меня взяли».
+    if captured is not None or board_before.is_en_passant(move):
+        return None
+
+    moving_value = PIECE_VALUES.get(piece.piece_type, 0)
+    if moving_value <= 0:
         return None
 
     after = board_before.copy(stack=True)
@@ -57,10 +56,8 @@ def get_sacrifice_details(board_before, move):
         return {
             "piece": chess.piece_name(piece.piece_type),
             "piece_symbol": piece.symbol(),
-            "captured_piece": (
-                chess.piece_name(captured.piece_type) if captured else None
-            ),
-            "captured_symbol": captured.symbol() if captured else None,
+            "captured_piece": None,
+            "captured_symbol": None,
             "recapture_san": after.san(reply),
             "attacker": chess.piece_name(attacker.piece_type),
             "material_difference": moving_value - captured_value,
