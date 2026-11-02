@@ -2211,21 +2211,26 @@ const ANALYSIS_CLASS_ROWS = [
 function getMoveAccuracy(move) {
   if (!move) return 0;
 
-  // Backend now reports per-move expected-points accuracy directly.
   const storedAccuracy = move.move_accuracy == null ? NaN : Number(move.move_accuracy);
+  const accuracyVersion = Number(move.move_accuracy_version || 0);
+  if (accuracyVersion >= 2 && Number.isFinite(storedAccuracy)) {
+    return Math.max(0, Math.min(100, storedAccuracy));
+  }
+
+  // Для старых отчётов пересчитываем точность по потере в сантипешках,
+  // а не по изменению ожидаемого результата в уже выигранной/проигранной позиции.
+  const rawCpLoss = move.cp_loss == null ? NaN : Number(move.cp_loss);
+  if (Number.isFinite(rawCpLoss)) {
+    return Math.max(0, Math.min(100, 100 * Math.exp(-0.004 * Math.max(0, rawCpLoss))));
+  }
+
   if (Number.isFinite(storedAccuracy)) {
     return Math.max(0, Math.min(100, storedAccuracy));
   }
 
-  // Compatibility for analysis data created before the v11 backend.
   const expectedPointsLoss = move.win_percent_loss == null ? NaN : Number(move.win_percent_loss);
   if (Number.isFinite(expectedPointsLoss)) {
     return Math.max(0, Math.min(100, 100 - expectedPointsLoss));
-  }
-
-  const rawCpLoss = move.cp_loss == null ? NaN : Number(move.cp_loss);
-  if (Number.isFinite(rawCpLoss)) {
-    return Math.max(0, Math.min(100, 100 - Math.max(0, rawCpLoss) / 10));
   }
 
   const fallbackLoss = {
@@ -2240,8 +2245,9 @@ function renderAnalysisSummary() {
   const rowsContainer = document.getElementById('analysisCategoryRows');
   if (!rowsContainer) return;
 
-  const whiteMoves = analysisMoves.filter((_, index) => index % 2 === 0);
-  const blackMoves = analysisMoves.filter((_, index) => index % 2 === 1);
+  const moveColor = (move, index) => move?.mover === 'white' || move?.mover === 'black' ? move.mover : (index % 2 === 0 ? 'white' : 'black');
+  const whiteMoves = analysisMoves.filter((move, index) => moveColor(move, index) === 'white');
+  const blackMoves = analysisMoves.filter((move, index) => moveColor(move, index) === 'black');
   const averageAccuracy = moves => {
     const ratedMoves = moves.filter(move => move?.classification !== 'forced');
     if (!ratedMoves.length) return null;
@@ -2268,7 +2274,7 @@ function renderAnalysisSummary() {
     const key = move?.classification || '';
     if (!counts.has(key)) return;
     const count = counts.get(key);
-    if (index % 2 === 0) count.white += 1;
+    if (moveColor(move, index) === 'white') count.white += 1;
     else count.black += 1;
   });
 
