@@ -7,13 +7,13 @@
     <title>Игра с ботом — Chess Trainer</title>
 
     <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css?v=2">
-    <link rel="stylesheet" href="/css/bots.css?v=2">
+    <link rel="stylesheet" href="/css/bots.css?v=3">
 
     <script src="/js/jquery.min.js?v=2"></script>
     <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1?v=2"></script>
     <script src="/js/chess.min.js?v=2"></script>
     <script src="/js/shared.js?v=2"></script>
-    <script src="/js/bots.js?v=3" defer></script>
+    <script src="/js/bots.js?v=4" defer></script>
 </head>
 
 <body>
@@ -243,6 +243,8 @@
                         <span>Поражения</span>
                     </div>
                 </div>
+
+                <div id="gameSaveNotice" class="game-save-notice" aria-live="polite"></div>
 
                 <div id="savedGamesList" class="saved-games-list">
                     <div class="empty-state">Загрузка партий...</div>
