@@ -93,17 +93,17 @@ def expected_points_from_score(score_obj, color):
 
 
 def accuracy_from_centipawn_loss(cp_loss):
-    """Chess.com-style, transparent accuracy estimate based on centipawn loss.
+    """Return a stricter, transparent accuracy estimate from centipawn loss.
 
     This is an approximation, not Chess.com's proprietary CAPS2 calculation.
-    A smooth exponential curve avoids the near-100 scores produced by
-    subtracting tiny expected-score changes in already-won/lost positions.
+    Version 3 uses a steeper decay because the previous curve overstated
+    accuracy for games containing several small and medium inaccuracies.
     """
     try:
         loss = max(0.0, float(cp_loss or 0.0))
     except (TypeError, ValueError):
         loss = 0.0
-    return round(max(0.0, min(100.0, 100.0 * math.exp(-0.004 * min(loss, 2500.0)))), 1)
+    return round(max(0.0, min(100.0, 100.0 * math.exp(-0.006 * min(loss, 2500.0)))), 1)
 
 
 def format_pv(board, pv):
