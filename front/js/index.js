@@ -1341,6 +1341,7 @@ function renderGoalSummary(goal) {
       <div class="goal-summary-meta"><span>Срок</span><strong>${goal.goal_days} дней</strong></div>
       <div class="goal-summary-meta"><span>Тренировка в день</span><strong>${formatTrainingTime(goal.daily_minutes)}</strong></div>
       <div class="goal-summary-meta"><span>Ориентир нагрузки</span><strong>${formatTrainingTime(goal.recommended_minutes)}</strong></div>
+      <div class="goal-summary-meta"><span>Ориентир срока</span><strong>${goal.estimated_days ? goal.estimated_days + ' дней' : 'Цель достигнута'}</strong></div>
     </div>
     ${warning}
   `;
@@ -1352,11 +1353,31 @@ function renderGoalSummary(goal) {
 
 function renderPlan(todayName) {
   const firstOpen = PLAN.find(d => !d.completed);
-  const currentWeek = firstOpen ? firstOpen.week : 1;
-  let todayTraining = PLAN.find(d => d.week === currentWeek && d.weekday === todayName);
-  if (!todayTraining || todayTraining.completed) todayTraining = firstOpen || PLAN[0];
+  let todayTraining = null;
+
+  if (GOAL_PROFILE && GOAL_PROFILE.start_date) {
+    const now = new Date();
+    const todayKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    const startMs = Date.parse(GOAL_PROFILE.start_date + 'T00:00:00Z');
+    const todayMs = Date.parse(todayKey + 'T00:00:00Z');
+    const elapsedDay = Math.floor((todayMs - startMs) / 86400000) + 1;
+    if (elapsedDay >= 1 && elapsedDay <= totalDays) {
+      todayTraining = PLAN.find(day => day.day === elapsedDay) || null;
+    }
+  }
+
+  if (!todayTraining) {
+    const currentWeek = firstOpen ? firstOpen.week : 1;
+    todayTraining = PLAN.find(d => d.week === currentWeek && d.weekday === todayName);
+  }
+  if (!todayTraining) todayTraining = firstOpen || PLAN[0];
+  if (!todayTraining) return;
+
   currentDay = todayTraining.day;
-  renderPhases(); renderWeeks(); showDay(currentDay); updateProgress();
+  renderPhases();
+  renderWeeks();
+  showDay(currentDay);
+  updateProgress();
 }
 function updateProgress() {
   const done = PLAN.filter(d => d.completed).length;
