@@ -139,6 +139,10 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 is_forced = board.legal_moves.count() == 1
 
                 san_move = board.san(move)
+                # Сохраняем позицию до хода и лучший ход Stockfish:
+                # эти данные нужны персональной тренировке ошибок.
+                before_fen = board.fen()
+                best_move_san = board.san(best_pv[0]) if best_pv and best_pv[0] in board.legal_moves else None
                 history_san.append(san_move)
 
                 is_book = (
@@ -271,6 +275,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "san": san_move,
                     "eval": curr_eval,
                     "uci": move.uci(),
+                    "before_fen": before_fen,
+                    "best_move_uci": best_move_uci,
+                    "best_move_san": best_move_san,
                     "mover": "white" if mover == chess.WHITE else "black",
                     "is_mate": curr_parsed["is_mate"],
                     "mate_in": curr_parsed["mate_in"],
