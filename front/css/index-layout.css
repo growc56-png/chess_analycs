@@ -364,3 +364,139 @@ canvas#evalGraph { display: block; width: 100%; height: 100px; border-radius: 5p
 #endgameBoard .premove-to::before {
   background: rgba(239, 68, 68, 0.72);
 }
+
+
+/* Analysis: readable full-width move list below the board and engine panels */
+.analysis-container > .right-panel {
+  max-height: none;
+  align-self: start;
+}
+.analysis-container > .move-list-container {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 220px;
+  max-height: min(420px, 68vh);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.analysis-container > .move-list-container .move-headers {
+  grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr);
+}
+.analysis-container > .move-list-container .move-table {
+  table-layout: fixed;
+  font-size: 13px;
+}
+.analysis-container > .move-list-container .move-table td {
+  padding: 9px 8px;
+}
+.analysis-container > .move-list-container .move-table .col-num {
+  width: 56px;
+}
+.analysis-container > .move-list-container .move-cell {
+  display: inline-flex;
+  width: min(100%, 210px);
+  min-height: 31px;
+  justify-content: center;
+  font-size: 13px;
+}
+.analysis-container > .move-list-container .move-class-badge {
+  vertical-align: middle;
+  margin-left: 5px;
+}
+.eval-advantage-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 13px;
+  margin-top: 7px;
+  color: #9aabb6;
+  font-size: 9px;
+}
+.eval-advantage-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.eval-advantage-swatch {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.eval-advantage-swatch.white { background: #559cf2; }
+.eval-advantage-swatch.equal { background: #9aa7b1; }
+.eval-advantage-swatch.black { background: #e36b66; }
+.eval-advantage-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 21px;
+  overflow-x: auto;
+  padding: 5px 1px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #566976 transparent;
+}
+.eval-advantage-dot {
+  display: block;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  opacity: .86;
+  cursor: pointer;
+  transition: transform .12s ease, opacity .12s ease, box-shadow .12s ease;
+}
+.eval-advantage-dot:hover {
+  opacity: 1;
+  transform: scale(1.35);
+}
+.eval-advantage-dot.white { background: #559cf2; }
+.eval-advantage-dot.white-strong { background: #176de0; width: 10px; height: 10px; flex-basis: 10px; }
+.eval-advantage-dot.equal { background: #9aa7b1; }
+.eval-advantage-dot.black { background: #e36b66; }
+.eval-advantage-dot.black-strong { background: #d52f3d; width: 10px; height: 10px; flex-basis: 10px; }
+.eval-advantage-dot.current {
+  outline: 2px solid #f4e6a5;
+  outline-offset: 2px;
+  opacity: 1;
+}
+.eval-dots-empty {
+  color: #718591;
+  font-size: 9px;
+}
+.board-badge {
+  top: 3px;
+  right: 3px;
+  left: auto;
+  transform: none;
+}
+@media (max-width: 900px) {
+  .analysis-container > .move-list-container {
+    grid-column: 1;
+    max-height: 360px;
+  }
+}
+@media (max-width: 560px) {
+  .analysis-container > .move-list-container .move-table {
+    font-size: 11px;
+  }
+  .analysis-container > .move-list-container .move-table td {
+    padding: 7px 3px;
+  }
+  .analysis-container > .move-list-container .move-cell {
+    width: min(100%, 125px);
+    min-height: 28px;
+    font-size: 11px;
+  }
+  .analysis-container > .move-list-container .move-headers {
+    grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .analysis-container > .move-list-container .move-table .col-num {
+    width: 34px;
+  }
+}
