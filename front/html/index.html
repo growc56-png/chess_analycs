@@ -412,12 +412,10 @@
       <p class="auth-intro">Расскажи, где ты сейчас и сколько времени готов уделять шахматам. Мы составим индивидуальный план.</p>
       <form id="goalSetupForm" class="auth-form goal-setup-form">
         <div class="goal-input-grid">
-          <label><span>Текущий рейтинг Elo</span><input type="number" id="goalCurrentElo" min="800" max="2000" step="25" value="800" required><small>От 800 до 2000</small></label>
-          <label><span>Желаемый рейтинг Elo</span><input type="number" id="goalTargetElo" min="800" max="2000" step="25" value="1200" required><small>От 800 до 2000</small></label>
+          <label><span>Текущий рейтинг Elo</span><input type="number" id="goalCurrentElo" min="800" max="2000" step="1" value="800" required><small>От 800 до 2000</small></label>
+          <label><span>Желаемый рейтинг Elo</span><input type="number" id="goalTargetElo" min="800" max="2000" step="1" value="1200" required><small>От 800 до 2000</small></label>
         </div>
-        <label><span>За сколько дней хочешь достичь цели?</span><select id="goalDays" required>
-          <option value="14">14 дней</option><option value="30">30 дней</option><option value="60">60 дней</option><option value="90">90 дней</option><option value="120" selected>120 дней</option><option value="180">180 дней</option><option value="365">1 год</option><option value="730">2 года</option><option value="1095">3 года</option>
-        </select></label>
+        <label><span>За сколько дней хочешь достичь цели?</span><input type="number" id="goalDays" min="7" max="1095" step="1" value="120" required><small>От 7 дней до 1095 дней (3 года). Можешь указать свой срок.</small></label>
         <label><span>Сколько времени можешь тренироваться ежедневно?</span><select id="goalDailyMinutes" required>
           <option value="30">30 минут</option><option value="60">1 час</option><option value="90" selected>1,5 часа</option><option value="120">2 часа</option><option value="180">3 часа</option><option value="240">4 часа</option><option value="360">6 часов</option><option value="480">8 часов</option>
         </select></label>
