@@ -1972,7 +1972,58 @@ function drawBoardBadge(moveData) {
   squareEl.style.position = 'relative';
   squareEl.appendChild(badge);
 }
+function renderEvalAdvantageDots(evals, currentIndex = -1) {
+  const container = document.getElementById('evalAdvantageDots');
+  if (!container) return;
+
+  if (!container.dataset.bound) {
+    container.addEventListener('click', event => {
+      const dot = event.target.closest('button[data-move-index]');
+      if (!dot) return;
+      const index = Number(dot.dataset.moveIndex);
+      if (Number.isInteger(index) && typeof window.showAnalysisMove === 'function') {
+        window.showAnalysisMove(index);
+      }
+    });
+    container.dataset.bound = '1';
+  }
+
+  if (!Array.isArray(evals) || !evals.length) {
+    container.innerHTML = '<span class="eval-dots-empty">Маркеры преимущества появятся после анализа</span>';
+    return;
+  }
+
+  container.innerHTML = evals.map((rawValue, index) => {
+    const value = Number(rawValue) || 0;
+    let sideClass = 'equal';
+    let sideLabel = 'Равная позиция';
+    if (value >= 2) {
+      sideClass = 'white-strong';
+      sideLabel = 'Большое преимущество белых';
+    } else if (value > 0.25) {
+      sideClass = 'white';
+      sideLabel = 'Преимущество белых';
+    } else if (value <= -2) {
+      sideClass = 'black-strong';
+      sideLabel = 'Большое преимущество чёрных';
+    } else if (value < -0.25) {
+      sideClass = 'black';
+      sideLabel = 'Преимущество чёрных';
+    }
+
+    const moveNumber = Math.floor(index / 2) + 1;
+    const sideToMove = index % 2 === 0 ? 'белые' : 'чёрные';
+    const scoreText = (value > 0 ? '+' : '') + value.toFixed(1);
+    return `<button type="button"
+      class="eval-advantage-dot ${sideClass}${index === currentIndex ? ' current' : ''}"
+      data-move-index="${index}"
+      aria-label="Ход ${moveNumber}, ${sideToMove}: ${sideLabel}, оценка ${scoreText}"
+      title="Ход ${moveNumber} · ${sideToMove} · ${sideLabel} · ${scoreText}"></button>`;
+  }).join('');
+}
+
 function drawGraph(evals, currentIndex = -1) {
+  renderEvalAdvantageDots(evals, currentIndex);
   const canvas = document.getElementById('evalGraph');
   const ctx = canvas.getContext('2d');
   const w = canvas.width; const h = canvas.height;
