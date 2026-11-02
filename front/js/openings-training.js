@@ -385,6 +385,22 @@
       onSnapEnd: () => updateBoard()
     });
     installRightClickArrows('openingTrainerBoard');
+    if (window.initBoardClickToMove) {
+      window.initBoardClickToMove(
+        'openingTrainerBoard',
+        () => state.game,
+        handleUserDrop,
+        {
+          canSelect: piece => Boolean(
+            ['practice', 'engine'].includes(state.mode) &&
+            !state.botThinking &&
+            !state.game.game_over() &&
+            piece &&
+            piece.color === userColor()
+          )
+        }
+      );
+    }
     const boardElement = byId('openingTrainerBoard');
     if (boardElement) boardElement.dataset.orientation = state.side;
   }
