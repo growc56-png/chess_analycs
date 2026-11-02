@@ -26,3 +26,5 @@ jobs:
         run: |
           node --check front/js/index.js
           node --check front/js/bots.js
+          node --check front/js/coach.js
+          node --check front/js/errors.js
