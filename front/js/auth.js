@@ -6,6 +6,7 @@
   let resolveAuth = null;
   let authPromise = null;
   let currentUser = null;
+  let editingProfile = false;
 
   function setMessage(targetId, message, type) {
     const target = $(targetId);
@@ -70,7 +71,8 @@
     return data;
   }
 
-  function showGoalForm(user) {
+  function showGoalForm(user, editing) {
+    editingProfile = Boolean(editing);
     $('goalCurrentElo').value = user && user.profile && user.profile.current_elo
       ? user.profile.current_elo
       : 800;
@@ -90,7 +92,7 @@
   async function continueWithUser(user) {
     currentUser = user;
     if (user && user.needs_setup) {
-      showGoalForm(user);
+      showGoalForm(user, false);
       return;
     }
     finishAuth(true);
@@ -147,7 +149,13 @@
       });
       const data = await parseResponse(response);
       currentUser = data.user;
-      finishAuth(true);
+      if (editingProfile) {
+        editingProfile = false;
+        hideGate();
+        setAccount(currentUser);
+      } else {
+        finishAuth(true);
+      }
     } catch (error) {
       setMessage('goalMessage', error.message, 'error');
     } finally {
@@ -210,6 +218,11 @@
     });
 
     $('goalSetupForm').addEventListener('submit', submitGoal);
+
+    $('accountEditGoalBtn').addEventListener('click', () => {
+      if (!currentUser) return;
+      showGoalForm(currentUser, true);
+    });
 
     $('accountLogoutBtn').addEventListener('click', async () => {
       $('accountLogoutBtn').disabled = true;
