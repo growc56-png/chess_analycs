@@ -2859,6 +2859,7 @@ function getAnalysisTrainingOpportunities() {
   }
   return analysisMoves.map((move, index) => {
     if (!move || !retryable.has(String(move.classification || ''))) return null;
+    if (move.missed_tactic !== true) return null;
     if (playerColor && move.mover !== playerColor) return null;
     if (!move.before_fen || !/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(String(move.best_move_uci || ''))) return null;
     const accepted = Array.isArray(move.acceptable_moves_uci)
