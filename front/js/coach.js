@@ -313,6 +313,7 @@
             playedUci: move.uci,
             bestMoveUci: move.best_move_uci,
             bestMoveSan: move.best_move_san || move.best_move_uci,
+            bestLineSan: Array.isArray(move.best_line_san) ? move.best_line_san : [],
             beforeFen: move.before_fen,
             phase,
             classification,
@@ -659,7 +660,8 @@
       return;
     }
     drillBoard.position(drillGame.fen());
-    setDrillFeedback('Лучший ход Stockfish: ' + (drill.bestMoveSan || drill.bestMoveUci) + '. Попробуй запомнить идею.', 'success');
+    const line = drill.bestLineSan && drill.bestLineSan.length ? ' Продолжение: ' + drill.bestLineSan.join(' ') + '.' : '';
+    setDrillFeedback('Лучший ход Stockfish: ' + (drill.bestMoveSan || drill.bestMoveUci) + '.' + line + ' Попробуй запомнить идею.', 'success');
   }
 
   function getOpeningSchedule() {
