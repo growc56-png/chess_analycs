@@ -8,13 +8,14 @@
 <link rel="stylesheet" href="/css/index.css">
 <link rel="stylesheet" href="/css/index-layout.css?v=20261101-endgame-premove-v1">
 <link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261101-arrow-visual-mate-v7">
-<link rel="stylesheet" href="/css/coach.css?v=20261102-coach-v3">
+<link rel="stylesheet" href="/css/coach.css?v=20261102-errors-v1">
+<script src="/js/board-interactions.js?v=20261102-clickmove-v1" defer></script>
 <script src="/js/jquery.min.js"></script>
 <script src="/js/chessboard-1.0.0.min.js"></script>
 <script src="/js/chess.min.js"></script>
-<script src="/js/index.js?v=20261102-analysis-v3" defer></script>
+<script src="/js/index.js?v=20261102-clickmove-v1" defer></script>
 <script src="/js/diary-ui.js" defer></script>
-<script src="/js/coach.js?v=20261102-coach-v4" defer></script>
+<script src="/js/coach.js?v=20261102-clickmove-v2" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -37,6 +38,7 @@
       <button class="side-link tab-btn" data-tab="endgames"><span class="side-icon">♜</span><span>Эндшпили</span></button>
       <a href="/openings" class="side-link"><span class="side-icon">♘</span><span>Дебюты</span><span class="side-arrow">↗</span></a>
       <button class="side-link tab-btn" data-tab="analysis"><span class="side-icon">⌕</span><span>Анализ партий</span></button>
+      <button class="side-link tab-btn" data-tab="errors"><span class="side-icon">⚡</span><span>Ошибки и тактика</span></button>
       <button class="side-link tab-btn" data-tab="blindfold"><span class="side-icon">◉</span><span>Слепая игра</span></button>
     </nav>
 
@@ -79,6 +81,62 @@
         </div>
       </section>
 
+
+
+      <section id="tab-errors" class="tab-content">
+        <div class="section-heading">
+          <div><div class="section-kicker">ТАКТИЧЕСКАЯ ДИАГНОСТИКА</div><h2>Ошибки и тактика</h2><p>Найди упущенные вилки, связки, шахи, маты и выигрыш материала в своих последних партиях</p></div>
+          <div class="section-badge">10 последних партий</div>
+        </div>
+        <div class="errors-hero">
+          <div><div class="coach-label">CHESS TRAINER · TACTICS LAB</div><h3>Увидь тактические шансы, которые пропустил за доской</h3><p>Stockfish разберёт десять последних партий, покажет критические ошибки и лучший короткий вариант — максимум два полных хода в подсказке.</p></div>
+          <div class="errors-hero-symbol" aria-hidden="true">⚡</div>
+        </div>
+        <section class="coach-panel errors-import-panel">
+          <div class="coach-panel-heading"><div><div class="coach-label">ИСТОЧНИК ПАРТИЙ</div><h3>Проанализировать последние 10 партий</h3><p>Введи ник на Chess.com или Lichess. Партии будут загружены автоматически.</p></div><span class="coach-panel-icon">⌕</span></div>
+          <div class="errors-import-row">
+            <label class="coach-field"><span>Платформа</span><select id="errorsSource"><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option></select></label>
+            <label class="coach-field errors-username-field"><span>Твой ник</span><input type="text" id="errorsUsername" placeholder="Ник на Chess.com / Lichess" autocomplete="off" spellcheck="false"></label>
+            <label class="coach-field"><span>Моя сторона</span><select id="errorsColor"><option value="auto">Определить автоматически</option><option value="white">Белыми</option><option value="black">Чёрными</option></select></label>
+            <button class="action-btn coach-primary-btn" type="button" id="errorsAnalyzeBtn">⚡ Анализировать 10 партий</button>
+          </div>
+          <div id="errorsStatus" class="coach-status" role="status">Нажми «Анализировать 10 партий», чтобы начать.</div>
+          <div class="coach-progress errors-progress" id="errorsProgress" hidden><div class="coach-progress-track"><i id="errorsProgressFill"></i></div><span id="errorsProgressText">0%</span></div>
+        </section>
+        <div class="errors-metrics-grid">
+          <article class="coach-metric"><span>Партий разобрано</span><strong id="errorsMetricGames">—</strong><small>Из последних десяти</small></article>
+          <article class="coach-metric"><span>Твои ходы</span><strong id="errorsMetricMoves">—</strong><small>Всего проверено</small></article>
+          <article class="coach-metric"><span>Критические ошибки</span><strong id="errorsMetricBlunders">—</strong><small>Ошибки и зевки</small></article>
+          <article class="coach-metric"><span>Тактические шансы</span><strong id="errorsMetricTactics">—</strong><small>Что можно было найти</small></article>
+        </div>
+        <section class="coach-panel errors-results-panel">
+          <div class="coach-panel-heading"><div><div class="coach-label">ТВОИ УПУЩЕННЫЕ ВОЗМОЖНОСТИ</div><h3>Тактические темы</h3><p>Выбери тему, чтобы отфильтровать позиции. Комбинации ограничены короткими вариантами.</p></div></div>
+          <div class="errors-filters" id="errorsFilters">
+            <button type="button" class="active" data-motif="all">Все</button>
+            <button type="button" data-motif="fork">Вилки</button>
+            <button type="button" data-motif="pin">Связки</button>
+            <button type="button" data-motif="check">Шахи</button>
+            <button type="button" data-motif="mate">Маты</button>
+            <button type="button" data-motif="capture">Выигрыш материала</button>
+          </div>
+          <div class="errors-drill-layout">
+            <div class="errors-drill-board-column">
+              <div class="coach-board-caption"><span id="errorsDrillTitle">Сначала проанализируй партии</span><span id="errorsDrillSide" class="coach-board-side">—</span></div>
+              <div class="coach-board-shell errors-board-shell"><div id="errorsBoard"></div></div>
+              <div id="errorsDrillFeedback" class="coach-drill-feedback">Здесь появится позиция, в которой можно было найти тактический ход.</div>
+              <div class="coach-drill-actions"><button class="action-btn" type="button" id="errorsShowLine" disabled>Показать короткий вариант</button><button class="action-btn" type="button" id="errorsResetDrill" disabled>↺ Сбросить</button></div>
+            </div>
+            <div class="errors-opportunities-column">
+              <div class="errors-list-heading"><strong>Найденные моменты</strong><span id="errorsListCount">0</span></div>
+              <div class="errors-opportunities-list" id="errorsOpportunitiesList"><div class="coach-empty">После анализа здесь появятся ошибки и лучшие продолжения Stockfish.</div></div>
+            </div>
+          </div>
+        </section>
+        <section class="coach-panel errors-summary-panel">
+          <div class="coach-panel-heading"><div><div class="coach-label">ОТЧЁТ</div><h3>Что стоит исправить</h3><p>Краткая сводка по последним десяти партиям.</p></div></div>
+          <div class="errors-summary" id="errorsSummary">После анализа появится сводка слабых мест и идей, которые можно было реализовать.</div>
+        </section>
+      </section>
 
       <section id="tab-coach" class="tab-content">
         <div class="section-heading">
