@@ -3,6 +3,7 @@
   const $ = id => document.getElementById(id);
   const COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v1';
   const OPENING_SRS_KEY = 'chessTrainer.openingSrs.v1';
+  const COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v1';
   const BAD_CLASSES = new Set(['blunder', 'mistake', 'inaccuracy', 'miss']);
   const CLASS_LABELS = { blunder: 'Зевок', mistake: 'Ошибка', inaccuracy: 'Неточность', miss: 'Промах' };
   const PHASE_LABELS = { opening: 'Дебют', middlegame: 'Миттельшпиль', endgame: 'Эндшпиль' };
@@ -124,7 +125,14 @@
       meta.textContent = game.dateLabel + ' · ' + game.result + ' · ' + game.event + ' · ' + game.source;
       copy.append(title, meta);
       row.append(checkbox, copy);
-      checkbox.addEventListener('change', updateSelectionCount);
+      checkbox.addEventListener('change', () => {
+        const selectedCount = document.querySelectorAll('#coachGamesList input[type="checkbox"]:checked').length;
+        if (checkbox.checked && selectedCount > 5) {
+          checkbox.checked = false;
+          setStatus('За один запуск можно выбрать не больше пяти партий.', 'error');
+        }
+        updateSelectionCount();
+      });
       list.appendChild(row);
     });
     updateSelectionCount();
@@ -371,8 +379,12 @@
         return (severity[b.classification] - severity[a.classification]) || (b.cpLoss - a.cpLoss);
       });
       summary.drills = summary.drills.slice(0, 24);
+      const createdAt = new Date().toISOString();
+      const history = readStorage(COACH_HISTORY_KEY, []);
+      history.push({ date: createdAt, accuracy: summary.accuracy, errors: summary.totalErrors, games: summary.games });
+      writeStorage(COACH_HISTORY_KEY, history.slice(-12));
       report = {
-        createdAt: new Date().toISOString(),
+        createdAt,
         username: $('coachChesscomUsername').value.trim() || $('coachLichessUsername').value.trim() || '',
         games: analyses,
         summary
@@ -391,6 +403,38 @@
     }
   }
 
+
+  function renderCoachHistory() {
+    const history = readStorage(COACH_HISTORY_KEY, []);
+    const container = $('coachHistoryTrend');
+    if (!container) return;
+    if (history.length < 2) {
+      container.innerHTML = '<span>После следующего анализа здесь появится сравнение с предыдущим отчётом.</span>';
+      return;
+    }
+    const values = history.slice(-8);
+    const min = Math.min(40, ...values.map(item => Number(item.accuracy || 0)));
+    const max = Math.max(100, ...values.map(item => Number(item.accuracy || 0)));
+    const range = Math.max(1, max - min);
+    container.innerHTML = values.map((item, index) => {
+      const accuracy = Number(item.accuracy || 0);
+      const height = 18 + ((accuracy - min) / range) * 62;
+      const date = new Date(item.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+      return '<div class="coach-history-point" title="' + date + ': ' + accuracy.toFixed(1) + '% · ошибок: ' + item.errors + '">' +
+        '<strong>' + accuracy.toFixed(0) + '%</strong><i style="height:' + height + 'px"></i><small>' + date + '</small></div>';
+    }).join('');
+    const previous = Number(values[values.length - 2].accuracy || 0);
+    const current = Number(values[values.length - 1].accuracy || 0);
+    const delta = current - previous;
+    const phrase = delta > 0.05 ? 'Точность выросла на ' + delta.toFixed(1) + ' п.п. относительно прошлого отчёта.' :
+      delta < -0.05 ? 'Точность снизилась на ' + Math.abs(delta).toFixed(1) + ' п.п. относительно прошлого отчёта.' :
+      'Точность почти не изменилась относительно прошлого отчёта.';
+    const note = document.createElement('span');
+    note.className = 'coach-history-note';
+    note.textContent = phrase;
+    container.appendChild(note);
+  }
+
   function renderReport() {
     if (!report || !report.summary) return;
     const s = report.summary;
@@ -402,9 +446,20 @@
 
     const phases = Object.keys(s.phaseErrors).map(key => ({ key, label: PHASE_LABELS[key], count: s.phaseErrors[key] }));
     const maxPhase = Math.max(1, ...phases.map(item => item.count));
-    $('coachWeaknessList').innerHTML = phases.map(item =>
+    const phaseRows = phases.map(item =>
       '<div class="coach-weakness-row"><span class="coach-weakness-label">' + item.label + '</span><span class="coach-weakness-track"><i style="width:' + (item.count / maxPhase * 100) + '%"></i></span><strong class="coach-weakness-value">' + item.count + '</strong></div>'
-    ).join('');
+    );
+    const classRows = Object.entries(s.errors).map(([key, count]) => ({
+      label: CLASS_LABELS[key],
+      count
+    })).filter(item => item.count > 0);
+    const maxClass = Math.max(1, ...classRows.map(item => item.count));
+    $('coachWeaknessList').innerHTML = '<div class="coach-weakness-subtitle">По этапам партии</div>' + phaseRows.join('') +
+      '<div class="coach-weakness-subtitle">По типу ошибки</div>' +
+      (classRows.length ? classRows.map(item =>
+        '<div class="coach-weakness-row"><span class="coach-weakness-label">' + item.label + '</span><span class="coach-weakness-track"><i style="width:' + (item.count / maxClass * 100) + '%"></i></span><strong class="coach-weakness-value">' + item.count + '</strong></div>'
+      ).join('') : '<div class="coach-empty">Серьёзных ошибок в выборке не найдено.</div>');
+    renderCoachHistory();
 
     const entries = Object.entries(s.errors).sort((a, b) => b[1] - a[1]);
     const topError = entries.find(item => item[1] > 0);
