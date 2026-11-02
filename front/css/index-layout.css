@@ -424,9 +424,10 @@ canvas#evalGraph { display: block; width: 100%; height: 100px; border-radius: 5p
   height: 7px;
   border-radius: 50%;
 }
-.eval-advantage-swatch.white { background: #559cf2; }
-.eval-advantage-swatch.equal { background: #9aa7b1; }
-.eval-advantage-swatch.black { background: #e36b66; }
+.eval-advantage-swatch.brilliant { background: #25c477; }
+.eval-advantage-swatch.great { background: #438fe8; }
+.eval-advantage-swatch.good { background: #71b84c; }
+.eval-advantage-swatch.mistake { background: #e0bd52; }
 .eval-advantage-dots {
   display: flex;
   align-items: center;
@@ -455,11 +456,19 @@ canvas#evalGraph { display: block; width: 100%; height: 100px; border-radius: 5p
   opacity: 1;
   transform: scale(1.35);
 }
-.eval-advantage-dot.white { background: #559cf2; }
-.eval-advantage-dot.white-strong { background: #176de0; width: 10px; height: 10px; flex-basis: 10px; }
-.eval-advantage-dot.equal { background: #9aa7b1; }
-.eval-advantage-dot.black { background: #e36b66; }
-.eval-advantage-dot.black-strong { background: #d52f3d; width: 10px; height: 10px; flex-basis: 10px; }
+/* Точки показывают оценку качества сыгранного хода, не цвет стороны. */
+.eval-advantage-dot.quality-brilliant { background: #25c477; width: 10px; height: 10px; flex-basis: 10px; }
+.eval-advantage-dot.quality-great { background: #438fe8; width: 10px; height: 10px; flex-basis: 10px; }
+.eval-advantage-dot.quality-best { background: #c4d66f; }
+.eval-advantage-dot.quality-excellent { background: #8fc75c; }
+.eval-advantage-dot.quality-good { background: #71b84c; }
+.eval-advantage-dot.quality-inaccuracy { background: #e0bd52; }
+.eval-advantage-dot.quality-mistake { background: #e99a42; }
+.eval-advantage-dot.quality-miss { background: #e77b4e; }
+.eval-advantage-dot.quality-blunder { background: #e34e55; width: 10px; height: 10px; flex-basis: 10px; }
+.eval-advantage-dot.quality-book { background: #b89a78; }
+.eval-advantage-dot.quality-forced { background: #8996a0; }
+.eval-advantage-dot.quality-unclassified { background: #9aa7b1; }
 .eval-advantage-dot.current {
   outline: 2px solid #f4e6a5;
   outline-offset: 2px;
