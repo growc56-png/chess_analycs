@@ -1969,7 +1969,7 @@ async function analyzePGN(pgn, gameUrl) {
   updateAnalysisProgress(-1, 'running');
   stopAnalysisPlayback();
 
-  const ANALYSIS_VERSION = 'v6-explicit-orientation-full-multipv-mate-fix';
+  const ANALYSIS_VERSION = 'v7-equivalent-moves-book-transpositions';
   const cacheKey = `analysis_${ANALYSIS_VERSION}_${gameUrl || pgn.slice(0, 50)}`;
   const cachedData = localStorage.getItem(cacheKey);
   if (cachedData) {
