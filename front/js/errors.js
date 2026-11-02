@@ -16,7 +16,7 @@
     mate: { label: 'Мат', filter: 'mate' },
     mate_in_2: { label: 'Мат в 2', filter: 'mate' },
     discovered_check: { label: 'Вскрытый шах', filter: 'check' },
-    capture: { label: 'Выигрыш материала', filter: 'capture' }
+    capture: { label: 'Взятие', filter: 'capture' }
   };
 
   let sourceGames = [];
