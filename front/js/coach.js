@@ -1,9 +1,9 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v2';
-  const OPENING_SRS_KEY = 'chessTrainer.openingSrs.v1';
-  const COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2';
+  let COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v2.guest';
+  let OPENING_SRS_KEY = 'chessTrainer.openingSrs.v1.guest';
+  let COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2.guest';
   const BAD_CLASSES = new Set(['blunder', 'mistake', 'inaccuracy', 'miss']);
   const CLASS_LABELS = { blunder: 'Зевок', mistake: 'Ошибка', inaccuracy: 'Неточность', miss: 'Промах' };
   const PHASE_LABELS = { opening: 'Дебют', middlegame: 'Миттельшпиль', endgame: 'Эндшпиль' };
@@ -975,17 +975,17 @@
       return;
     }
 
-    // Старый отчёт оставляем в localStorage, но не показываем как пересчитанный:
-    // новая версия учитывает альтернативные лучшие ходы и транспозиции дебютов.
-    const previousReport = readStorage('chessTrainer.personalCoach.report.v1', null);
-    if (previousReport && previousReport.summary) {
-      setStatus('Обновилась система оценки ходов. Старый отчёт сохранён, но для корректной диагностики заново загрузи и проанализируй свои партии.');
-    }
+    setStatus('Загрузи свои партии, чтобы создать персональный отчёт для этого аккаунта.');
   }
 
   function init() {
     if (!$('tab-coach') || $('tab-coach').dataset.ready === '1') return;
     $('tab-coach').dataset.ready = '1';
+    const account = window.getChessTrainerUser ? window.getChessTrainerUser() : null;
+    const accountScope = account && account.id ? String(account.id) : 'guest';
+    COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v2.user.' + accountScope;
+    COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2.user.' + accountScope;
+    OPENING_SRS_KEY = 'chessTrainer.openingSrs.v1.user.' + accountScope;
 
     $('coachSource').addEventListener('change', updateSourcePanels);
     $('coachGameLimit').addEventListener('change', () => {
