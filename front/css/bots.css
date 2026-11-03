@@ -338,12 +338,6 @@ button:disabled {
     );
 }
 
-#botBoard .premove-from,
-#botBoard .premove-to {
-    outline: 3px solid rgba(80, 150, 220, 0.8);
-    outline-offset: -3px;
-}
-
 .board-hint {
     width: min(100%, 690px);
     margin: 11px auto 0;
