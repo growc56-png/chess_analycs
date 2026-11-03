@@ -578,7 +578,7 @@
       renderPracticeBoard();
       setMessage('Премув ' + source + ' → ' + target + ' поставлен. Выполнится после ответа соперника, если останется легальным.', 'info');
       byId('openingPracticeStatus').textContent = 'Премув ожидает ответа соперника.';
-      return 'snapback';
+      return;
     }
 
     if (state.game.turn() !== userColor()) return 'snapback';
