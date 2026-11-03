@@ -752,6 +752,8 @@
     let move = null;
     try { move = state.game.move({from: source, to: target, promotion: 'q'}); } catch (_) {}
     if (!move) return 'snapback';
+    const oldAdvice = byId('openingDeviationAdvice');
+    if (oldAdvice) oldAdvice.hidden = true;
 
     if (state.mode === 'practice') {
       if (!expected || toUci(move) !== toUci(expected)) {
