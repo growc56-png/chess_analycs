@@ -255,7 +255,6 @@
       setProgress(overall, 'Анализ партии ' + (gameIndex + 1) + ' из ' + gameTotal + ' · ' + Math.round(inner) + '%');
       if (status.status === 'completed') {
         if (!status.result || !Array.isArray(status.result.moves)) throw new Error('Сервер вернул неполный результат анализа.');
-        if (typeof window.saveMyEndgameFromPgn === 'function') window.saveMyEndgameFromPgn(pgn);
         return status.result;
       }
       if (status.status === 'failed') throw new Error(status.error || 'Анализ завершился с ошибкой.');
@@ -367,8 +366,11 @@
     try {
       for (let index = 0; index < games.length; index++) {
         const game = games[index];
-        const analysis = await startAndWaitAnalysis(game.pgn, index, games.length);
         const playerColor = determinePlayerColor(game, sideMode);
+        const analysis = await startAndWaitAnalysis(game.pgn, index, games.length);
+        if (typeof window.saveMyEndgameFromPgn === 'function') {
+          window.saveMyEndgameFromPgn(game.pgn, game.url || game.site || '', analysis, playerColor);
+        }
         const playerReport = resultForReport(game, analysis, playerColor);
         if (!playerReport.moveCount) throw new Error('Не удалось определить твои ходы в партии ' + (index + 1) + '. Проверь выбранный цвет.');
         analyses.push(playerReport);
