@@ -480,6 +480,7 @@
 
     if (!errorBoard) errorBoard = Chessboard('errorsBoard', config);
     else errorBoard.position(item.beforeFen, false);
+    if (window.initRightClickDrawing) window.initRightClickDrawing('errorsBoard');
     if (typeof errorBoard.orientation === 'function') errorBoard.orientation(color === 'w' ? 'white' : 'black');
     errorBoard.resize();
 
