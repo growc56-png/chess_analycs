@@ -24,6 +24,8 @@ let endgamePlayerColor = 'w';
 let openingBoard = null, currentOpening = null, currentMoveIndex = 0;
 let openingGame = new Chess();
 let isOpponentMoving = false;
+let openingPremoveQueue = [];
+let openingVirtualGame = null;
 let blindfoldBoard = null, blindfoldGame = new Chess();
 let analysisBoard = null;
 let puzzlesData = [], endgamesData = [], openingsData = [];
@@ -2093,28 +2095,145 @@ function renderOpeningsList() {
   }
 }
 
+function getMainOpeningPlayerColor() {
+  return currentOpening && currentOpening.side === 'black' ? 'b' : 'w';
+}
+
+function getMainOpeningPremoveBase() {
+  const base = new Chess(openingGame.fen());
+  const playerColor = getMainOpeningPlayerColor();
+
+  // В этой вкладке ответ соперника заранее известен из выбранной линии.
+  // Проигрываем его в виртуальной позиции, чтобы ставить премув на ожидаемую
+  // клеточную конфигурацию, а не на доску до ответа.
+  if (base.turn() !== playerColor && currentOpening && currentMoveIndex < currentOpening.moves.length) {
+    try { base.move(currentOpening.moves[currentMoveIndex]); } catch (_) {}
+  }
+  return base;
+}
+
+function rebuildMainOpeningPremove() {
+  if (!window.ChessPremove || !openingGame || !currentOpening) {
+    openingVirtualGame = openingGame ? new Chess(openingGame.fen()) : null;
+    return;
+  }
+  const result = window.ChessPremove.rebuild(
+    getMainOpeningPremoveBase(),
+    getMainOpeningPlayerColor(),
+    openingPremoveQueue
+  );
+  openingPremoveQueue = result.queue;
+  openingVirtualGame = result.virtualGame;
+}
+
+function updateMainOpeningPremoveHighlights() {
+  const host = document.getElementById('openingBoard');
+  if (!host) return;
+  host.querySelectorAll('.premove-from, .premove-to').forEach(el => {
+    el.classList.remove('premove-from', 'premove-to');
+  });
+  openingPremoveQueue.forEach(move => {
+    host.querySelector('.square-' + move.from)?.classList.add('premove-from');
+    host.querySelector('.square-' + move.to)?.classList.add('premove-to');
+  });
+}
+
+function renderMainOpeningBoard() {
+  if (!openingBoard || !openingGame) return;
+  rebuildMainOpeningPremove();
+  openingBoard.position((openingVirtualGame || openingGame).fen(), false);
+  updateMainOpeningPremoveHighlights();
+}
+
+function playMainOpeningOpponentMove() {
+  if (!currentOpening || isOpponentMoving || currentMoveIndex >= currentOpening.moves.length) return;
+  const playerColor = getMainOpeningPlayerColor();
+  if (openingGame.turn() === playerColor) return;
+
+  isOpponentMoving = true;
+  renderMainOpeningBoard();
+  setTimeout(() => {
+    if (!currentOpening || !isOpponentMoving) return;
+    const san = currentOpening.moves[currentMoveIndex];
+    let move = null;
+    try { move = openingGame.move(san); } catch (_) {}
+    isOpponentMoving = false;
+    if (!move) {
+      document.getElementById('openingDesc').insertAdjacentText('afterbegin', ' Не удалось выполнить ход из линии: ' + san + '.');
+      renderMainOpeningBoard();
+      return;
+    }
+
+    currentMoveIndex++;
+    updateOpeningView();
+    moveSound.currentTime = 0;
+    moveSound.play().catch(() => {});
+    if (openingPremoveQueue.length) executeMainOpeningPremove();
+  }, 400);
+}
+
+function executeMainOpeningPremove() {
+  if (!openingPremoveQueue.length || !currentOpening) {
+    renderMainOpeningBoard();
+    return;
+  }
+  const playerColor = getMainOpeningPlayerColor();
+  if (openingGame.turn() !== playerColor) return;
+
+  rebuildMainOpeningPremove();
+  const expectedGame = new Chess(openingGame.fen());
+  let expected = null;
+  try { expected = expectedGame.move(currentOpening.moves[currentMoveIndex]); } catch (_) {}
+  const planned = openingPremoveQueue[0];
+  if (!expected || !planned ||
+      expected.from !== planned.from ||
+      expected.to !== planned.to ||
+      (expected.promotion || '') !== (planned.promotion || '')) {
+    openingPremoveQueue = [];
+    renderMainOpeningBoard();
+    return;
+  }
+
+  const executed = window.ChessPremove.execute(openingGame, playerColor, openingPremoveQueue);
+  openingPremoveQueue = executed.queue;
+  if (!executed.move) {
+    openingPremoveQueue = [];
+    renderMainOpeningBoard();
+    return;
+  }
+
+  currentMoveIndex++;
+  moveSound.currentTime = 0;
+  moveSound.play().catch(() => {});
+  updateOpeningView();
+  if (openingPremoveQueue.length || openingGame.turn() !== playerColor) {
+    playMainOpeningOpponentMove();
+  }
+}
+
 function selectOpening(opening) {
-  currentOpening = opening; 
+  currentOpening = opening;
   currentMoveIndex = 0;
   isOpponentMoving = false;
+  openingPremoveQueue = [];
+  openingVirtualGame = null;
   openingGame = new Chess();
   clearUserDrawings('openingBoard');
 
   if (!openingBoard) {
     openingBoard = Chessboard('openingBoard', {
-      position: 'start', 
+      position: 'start',
       draggable: true,
       onDragStart: (source, piece) => {
-        if (isOpponentMoving || currentMoveIndex >= currentOpening.moves.length) return false;
-        const turn = openingGame.turn() === 'w' ? 'w' : 'b';
-        const userSide = currentOpening.side === 'white' ? 'w' : 'b';
-        if (turn !== userSide) return false;
-        if ((turn === 'w' && piece.search(/^b/) !== -1) || (turn === 'b' && piece.search(/^w/) !== -1)) return false;
-        highlightMoves(openingGame, source);
-        return true;
+        if (!currentOpening || !piece || piece[0] !== getMainOpeningPlayerColor() ||
+            currentMoveIndex >= currentOpening.moves.length || openingGame.game_over()) return false;
+        rebuildMainOpeningPremove();
+        const activeGame = (isOpponentMoving || openingGame.turn() !== getMainOpeningPlayerColor() || openingPremoveQueue.length)
+          ? openingVirtualGame : openingGame;
+        return Boolean(activeGame && activeGame.moves({ square: source }).length);
       },
       onDrop: handleOpeningDrop,
-      onSnapEnd: () => { clearHighlights(); openingBoard.position(openingGame.fen()); },
+      onSnapEnd: () => { clearHighlights(); renderMainOpeningBoard(); },
       pieceTheme: PIECE_THEME
     });
   } else {
@@ -2122,60 +2241,78 @@ function selectOpening(opening) {
   }
   initRightClickDrawing('openingBoard');
   if (window.initBoardClickToMove) {
-    window.initBoardClickToMove('openingBoard', () => openingGame, handleOpeningDrop, {
+    window.initBoardClickToMove('openingBoard', () => {
+      if (isOpponentMoving || openingGame.turn() !== getMainOpeningPlayerColor() || openingPremoveQueue.length) {
+        rebuildMainOpeningPremove();
+        return openingVirtualGame || openingGame;
+      }
+      return openingGame;
+    }, handleOpeningDrop, {
       canSelect: piece => Boolean(
-        !isOpponentMoving &&
         currentOpening &&
         piece &&
-        piece.color === (currentOpening.side === 'white' ? 'w' : 'b')
+        piece.color === getMainOpeningPlayerColor() &&
+        !openingGame.game_over() &&
+        currentMoveIndex < currentOpening.moves.length
       )
     });
   }
-  
-  // Ждем 100мс, пока вкладка прогрузится, и выравниваем доску
-  setTimeout(() => { if (openingBoard) openingBoard.resize(); }, 100);
 
-  document.getElementById('openingNav').style.display = 'flex'; 
+  setTimeout(() => { if (openingBoard) openingBoard.resize(); }, 100);
+  document.getElementById('openingNav').style.display = 'flex';
   updateOpeningView();
+  if (openingGame.turn() !== getMainOpeningPlayerColor()) playMainOpeningOpponentMove();
 }
 
 function handleOpeningDrop(source, target) {
-  if (currentMoveIndex >= currentOpening.moves.length) return 'snapback';
-  
-  let move = null;
-  try { move = openingGame.move({ from: source, to: target, promotion: 'q' }); } catch(e) {}
-  if (!move) return 'snapback';
+  if (!currentOpening || openingGame.game_over()) return 'snapback';
+  const playerColor = getMainOpeningPlayerColor();
+  const planningMode =
+    isOpponentMoving ||
+    openingGame.turn() !== playerColor ||
+    openingPremoveQueue.length > 0;
 
-  const expectedMoveStr = currentOpening.moves[currentMoveIndex];
-  
-  if (move.san !== expectedMoveStr) {
-    openingGame.undo();
-    errorSound.currentTime = 0;
-    errorSound.play().catch(e => {});
+  if (planningMode) {
+    const planned = window.ChessPremove
+      ? window.ChessPremove.add(getMainOpeningPremoveBase(), playerColor, openingPremoveQueue, {
+          from: source, to: target, promotion: 'q'
+        })
+      : { ok: false };
+    if (!planned.ok) return 'snapback';
+    openingPremoveQueue = planned.queue;
+    openingVirtualGame = planned.virtualGame;
+    renderMainOpeningBoard();
     return 'snapback';
   }
-  
+
+  if (currentMoveIndex >= currentOpening.moves.length) return 'snapback';
+  let move = null;
+  try { move = openingGame.move({ from: source, to: target, promotion: 'q' }); } catch (_) {}
+  if (!move) return 'snapback';
+
+  const expectedMove = new Chess();
+  for (let i = 0; i < currentMoveIndex; i++) {
+    try { expectedMove.move(currentOpening.moves[i]); } catch (_) {}
+  }
+  let expected = null;
+  try { expected = expectedMove.move(currentOpening.moves[currentMoveIndex]); } catch (_) {}
+  if (!expected || move.from !== expected.from || move.to !== expected.to ||
+      (move.promotion || '') !== (expected.promotion || '')) {
+    openingGame.undo();
+    errorSound.currentTime = 0;
+    errorSound.play().catch(() => {});
+    return 'snapback';
+  }
+
   moveSound.currentTime = 0;
-  moveSound.play().catch(e => {});
-  
+  moveSound.play().catch(() => {});
   currentMoveIndex++;
   updateOpeningView();
-  clearHighlights();
 
-  if (currentMoveIndex < currentOpening.moves.length) {
-    isOpponentMoving = true;
-    setTimeout(() => {
-      openingGame.move(currentOpening.moves[currentMoveIndex]);
-      currentMoveIndex++;
-      openingBoard.position(openingGame.fen());
-      updateOpeningView();
-      isOpponentMoving = false;
-      moveSound.currentTime = 0;
-      moveSound.play().catch(e => {});
-    }, 400);
+  if (openingGame.turn() !== playerColor && currentMoveIndex < currentOpening.moves.length) {
+    playMainOpeningOpponentMove();
   }
-  
-  return; 
+  return undefined;
 }
 
 function updateOpeningView() {
@@ -2185,7 +2322,7 @@ function updateOpeningView() {
   for (let i = 0; i < currentMoveIndex; i++) {
     openingGame.move(currentOpening.moves[i]);
   }
-  openingBoard.position(openingGame.fen());
+  renderMainOpeningBoard();
   
   const movesHTML = currentOpening.moves.map((m, i) => {
     const cls = i < currentMoveIndex ? 'current' : '';
