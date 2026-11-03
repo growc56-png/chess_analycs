@@ -2277,7 +2277,7 @@ function handleOpeningDrop(source, target) {
     openingPremoveQueue = planned.queue;
     openingVirtualGame = planned.virtualGame;
     renderMainOpeningBoard();
-    return 'snapback';
+    return;
   }
 
   if (currentMoveIndex >= currentOpening.moves.length) return 'snapback';
