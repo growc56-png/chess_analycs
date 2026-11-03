@@ -2,6 +2,26 @@
 (() => {
   'use strict';
 
+  if (!document.getElementById('chess-premove-highlight-style')) {
+    const style = document.createElement('style');
+    style.id = 'chess-premove-highlight-style';
+    style.textContent = `
+      .square-55d63.premove-from,
+      .square-55d63.premove-to { position: relative !important; }
+      .square-55d63.premove-from::before,
+      .square-55d63.premove-to::before {
+        content: '' !important;
+        position: absolute !important;
+        inset: 0 !important;
+        z-index: 1 !important;
+        pointer-events: none !important;
+      }
+      .square-55d63.premove-from::before { background: rgba(239,68,68,.42) !important; }
+      .square-55d63.premove-to::before { background: rgba(239,68,68,.72) !important; }
+    `;
+    document.head.appendChild(style);
+  }
+
   function copyGame(game) {
     if (!game || typeof game.fen !== 'function' || typeof window.Chess !== 'function') {
       return null;
