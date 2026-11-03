@@ -26,6 +26,7 @@ let openingGame = new Chess();
 let isOpponentMoving = false;
 let openingPremoveQueue = [];
 let openingVirtualGame = null;
+let openingBotMoveVersion = 0;
 let blindfoldBoard = null, blindfoldGame = new Chess();
 let analysisBoard = null;
 let puzzlesData = [], endgamesData = [], openingsData = [];
@@ -2144,8 +2145,9 @@ function playMainOpeningOpponentMove() {
 
   isOpponentMoving = true;
   renderMainOpeningBoard();
+  const run = ++openingBotMoveVersion;
   setTimeout(() => {
-    if (!currentOpening || !isOpponentMoving) return;
+    if (!currentOpening || !isOpponentMoving || run !== openingBotMoveVersion) return;
     const san = currentOpening.moves[currentMoveIndex];
     let move = null;
     try { move = openingGame.move(san); } catch (_) {}
@@ -2204,6 +2206,7 @@ function executeMainOpeningPremove() {
 }
 
 function selectOpening(opening) {
+  openingBotMoveVersion++;
   currentOpening = opening;
   currentMoveIndex = 0;
   isOpponentMoving = false;
@@ -2338,15 +2341,23 @@ function updateOpeningView() {
   });
 }
 
-document.getElementById('openingStart').onclick = () => { currentMoveIndex = 0; updateOpeningView(); };
-document.getElementById('openingPrev').onclick = () => { if (currentMoveIndex > 0) { currentMoveIndex--; updateOpeningView(); } };
-document.getElementById('openingNext').onclick = () => { 
-  if (currentOpening && currentMoveIndex < currentOpening.moves.length) { 
-    currentMoveIndex++; 
-    updateOpeningView(); 
-  } 
+function stopMainOpeningPendingMove() {
+  openingBotMoveVersion++;
+  isOpponentMoving = false;
+  openingPremoveQueue = [];
+  openingVirtualGame = null;
+}
+
+document.getElementById('openingStart').onclick = () => { stopMainOpeningPendingMove(); currentMoveIndex = 0; updateOpeningView(); };
+document.getElementById('openingPrev').onclick = () => { if (currentMoveIndex > 0) { stopMainOpeningPendingMove(); currentMoveIndex--; updateOpeningView(); } };
+document.getElementById('openingNext').onclick = () => {
+  if (currentOpening && currentMoveIndex < currentOpening.moves.length) {
+    stopMainOpeningPendingMove();
+    currentMoveIndex++;
+    updateOpeningView();
+  }
 };
-document.getElementById('openingEnd').onclick = () => { if (currentOpening) { currentMoveIndex = currentOpening.moves.length; updateOpeningView(); } };
+document.getElementById('openingEnd').onclick = () => { if (currentOpening) { stopMainOpeningPendingMove(); currentMoveIndex = currentOpening.moves.length; updateOpeningView(); } };
 
 // --- АНАЛИЗ (ВСПОМОГАТЕЛЬНЫЕ) ---
 function initAnalysis() {
