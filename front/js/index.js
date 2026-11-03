@@ -2335,7 +2335,8 @@ function updateOpeningView() {
   
   document.querySelectorAll('#openingDesc .move-chip').forEach(chip => {
     chip.onclick = () => {
-      currentMoveIndex = +chip.dataset.idx; 
+      stopMainOpeningPendingMove();
+      currentMoveIndex = +chip.dataset.idx;
       updateOpeningView();
     };
   });
