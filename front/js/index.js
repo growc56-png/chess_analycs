@@ -751,7 +751,7 @@ function renderMyEndgamesList() {
   if (!items.length) {
     const empty = document.createElement('div');
     empty.className = 'coach-empty';
-    empty.textContent = 'Здесь появятся эндшпили из твоих партий после анализа.';
+    empty.textContent = 'Здесь появятся позиции из проигранных партий, где Stockfish видел выигрыш в твою пользу (+2.0 и выше).';
     list.appendChild(empty);
     return;
   }
