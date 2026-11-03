@@ -815,9 +815,9 @@
     byId('openingStudyStartBtn').addEventListener('click', startStudy);
     byId('openingStudyPrev').addEventListener('click', studyPrev);
     byId('openingStudyNext').addEventListener('click', studyNext);
-    byId('openingStartPractice').addEventListener('click', startPractice);
+    byId('openingStartPractice').addEventListener('click', () => startPractice(false));
     byId('openingDeviationStart').addEventListener('click', () => startPractice(true));
-    byId('openingPracticeRestart').addEventListener('click', startPractice);
+    byId('openingPracticeRestart').addEventListener('click', () => startPractice(false));
     byId('openingTrainerReset').addEventListener('click', resetTraining);
   }
 
