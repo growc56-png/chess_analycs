@@ -463,7 +463,7 @@
       state.botThinking = false;
       updateBoard();
       updateProgress();
-      if (state.premoveQueue.length) executeOpeningPremove(run);
+      if (state.game.turn() === userColor() && state.premoveQueue.length) executeOpeningPremove(run);
       else if (state.moveIndex >= state.opening.moves.length) enterEngineMode(run);
       else maybePlayBookMove(run);
     }, 360);
@@ -515,7 +515,9 @@
       if (run === state.runId) {
         state.botThinking = false;
         updateBoard();
-        if (!state.game.game_over() && state.premoveQueue.length) executeOpeningPremove(run);
+        if (!state.game.game_over() && state.game.turn() === userColor() && state.premoveQueue.length) {
+          executeOpeningPremove(run);
+        }
       }
     }
   }
