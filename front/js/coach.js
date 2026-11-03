@@ -630,6 +630,7 @@
     };
     if (!drillBoard) drillBoard = Chessboard('coachDrillBoard', config);
     else drillBoard.position(drill.beforeFen, false);
+    if (window.initRightClickDrawing) window.initRightClickDrawing('coachDrillBoard');
     if (typeof drillBoard.orientation === 'function') drillBoard.orientation(color === 'w' ? 'white' : 'black');
     drillBoard.resize();
     if (window.initBoardClickToMove) {
@@ -865,6 +866,7 @@
     };
     if (!openingBoard) openingBoard = Chessboard('coachOpeningBoard', config);
     else openingBoard.position(card.beforeFen, false);
+    if (window.initRightClickDrawing) window.initRightClickDrawing('coachOpeningBoard');
     if (typeof openingBoard.orientation === 'function') openingBoard.orientation(card.side === 'w' ? 'white' : 'black');
     openingBoard.resize();
     if (window.initBoardClickToMove) {
