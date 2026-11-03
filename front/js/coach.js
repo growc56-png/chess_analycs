@@ -275,6 +275,19 @@
     return 'white';
   }
 
+  function getKnownPlayerColor(game, sideMode) {
+    if (sideMode === 'white') return 'white';
+    if (sideMode === 'black') return 'black';
+    const username = String(game.username || '').trim().toLowerCase();
+    const white = String(game.white || pgnHeader(game.pgn, 'White', '')).trim().toLowerCase();
+    const black = String(game.black || pgnHeader(game.pgn, 'Black', '')).trim().toLowerCase();
+    if (username && white === username) return 'white';
+    if (username && black === username) return 'black';
+    if (game.suggestedColor === 'w') return 'white';
+    if (game.suggestedColor === 'b') return 'black';
+    return '';
+  }
+
   function moveAccuracy(move) {
     const stored = Number(move && move.move_accuracy);
     const version = Number(move && move.move_accuracy_version || 0);
@@ -367,9 +380,10 @@
       for (let index = 0; index < games.length; index++) {
         const game = games[index];
         const playerColor = determinePlayerColor(game, sideMode);
+        const knownPlayerColor = getKnownPlayerColor(game, sideMode);
         const analysis = await startAndWaitAnalysis(game.pgn, index, games.length);
-        if (typeof window.saveMyEndgameFromPgn === 'function') {
-          window.saveMyEndgameFromPgn(game.pgn, game.url || game.site || '', analysis, playerColor);
+        if (knownPlayerColor && typeof window.saveMyEndgameFromPgn === 'function') {
+          window.saveMyEndgameFromPgn(game.pgn, game.url || game.site || '', analysis, knownPlayerColor);
         }
         const playerReport = resultForReport(game, analysis, playerColor);
         if (!playerReport.moveCount) throw new Error('Не удалось определить твои ходы в партии ' + (index + 1) + '. Проверь выбранный цвет.');
