@@ -2048,6 +2048,7 @@ function selectPuzzle(puzzle) {
   } else {
     puzzleBoard.position(puzzle.fen); puzzleBoard.resize();
   }
+  initRightClickDrawing('puzzleBoard');
   if (window.initBoardClickToMove) {
     window.initBoardClickToMove('puzzleBoard', () => puzzleGame, handlePuzzleDrop);
   }
@@ -2153,6 +2154,7 @@ function selectOpening(opening) {
   } else {
     openingBoard.position('start');
   }
+  initRightClickDrawing('openingBoard');
   if (window.initBoardClickToMove) {
     window.initBoardClickToMove('openingBoard', () => openingGame, handleOpeningDrop, {
       canSelect: piece => Boolean(
