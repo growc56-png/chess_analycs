@@ -191,7 +191,6 @@
       const overall = ((gameIndex + percent / 100) / gameTotal) * 100;
       setProgress(overall, 'Stockfish: партия ' + (gameIndex + 1) + ' из ' + gameTotal + ' · ' + Math.round(percent) + '%');
       if (status.status === 'completed') {
-        if (typeof window.saveMyEndgameFromPgn === 'function') window.saveMyEndgameFromPgn(pgn);
         return status.result;
       }
       if (status.status === 'failed') throw new Error(status.error || 'Stockfish не смог разобрать партию.');
@@ -310,6 +309,9 @@
         const playerColor = getPlayerColor(game, selectedSide);
         if (!playerColor) {
           throw new Error('Не удалось автоматически определить твой цвет в партии ' + (index + 1) + '. Выбери «Белыми» или «Чёрными» и запусти анализ снова.');
+        }
+        if (typeof window.saveMyEndgameFromPgn === 'function') {
+          window.saveMyEndgameFromPgn(game.pgn, game.url || game.site || '', analysis, playerColor);
         }
         const ownMoves = (analysis.moves || []).filter(move => move.mover === playerColor);
         allOwnMoves += ownMoves.length;
