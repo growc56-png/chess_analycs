@@ -585,7 +585,16 @@ function readMyEndgames() {
   try {
     const raw = localStorage.getItem(getMyEndgamesStorageKey());
     const items = raw ? JSON.parse(raw) : [];
-    return Array.isArray(items) ? items.filter(item => item && item.id && item.fen && Array.isArray(item.moves)) : [];
+    if (!Array.isArray(items)) return [];
+    // Показываем только позиции, подтверждённые анализом Stockfish:
+    // партия проиграна игроком, а оценка сохранённой позиции >= +2.0 в его пользу.
+    return items.filter(item => {
+      if (!item || !item.id || !item.fen || !Array.isArray(item.moves)) return false;
+      if (item.stockfishQualified !== true || item.playerLost !== true) return false;
+      const playerEval = Number(item.stockfishPlayerEval);
+      const winningMate = item.stockfishIsMate === true && Number(item.stockfishMateInPlayer) > 0;
+      return (Number.isFinite(playerEval) && playerEval >= 2.0) || winningMate;
+    });
   } catch (error) {
     console.warn('Не удалось загрузить личные эндшпили:', error);
     return [];
@@ -611,22 +620,85 @@ function hashPersonalEndgame(value) {
   return (hash >>> 0).toString(36);
 }
 
-function saveMyEndgameFromPgn(pgn, gameUrl) {
+function getPersonalEndgamePlayerColor(pgn, override) {
+  const requested = String(override || '').trim().toLowerCase();
+  if (requested === 'w' || requested === 'white') return 'w';
+  if (requested === 'b' || requested === 'black') return 'b';
+
+  const username = String(myUsername || '').trim().toLowerCase();
+  const white = getPgnHeader(pgn, 'White', '').trim().toLowerCase();
+  const black = getPgnHeader(pgn, 'Black', '').trim().toLowerCase();
+  if (username && white === username) return 'w';
+  if (username && black === username) return 'b';
+  return '';
+}
+
+function isPlayerLostPgnResult(result, playerColor) {
+  if (playerColor === 'w') return result === '0-1';
+  if (playerColor === 'b') return result === '1-0';
+  return false;
+}
+
+function formatPersonalEndgameStockfishEval(item) {
+  if (item && item.stockfishIsMate === true && Number(item.stockfishMateInPlayer) > 0) {
+    const mateIn = Number(item.stockfishMateInPlayer);
+    return mateIn ? 'мат в ' + mateIn : 'форсированный мат';
+  }
+  const score = Number(item && item.stockfishPlayerEval);
+  return (score >= 0 ? '+' : '') + score.toFixed(1);
+}
+
+function saveMyEndgameFromPgn(pgn, gameUrl, analysisData, playerColorOverride) {
   try {
     if (!pgn || typeof Chess !== 'function') return false;
+    const analysisMoves = analysisData && Array.isArray(analysisData.moves) ? analysisData.moves : [];
+    if (!analysisMoves.length) return false;
+
+    const white = getPgnHeader(pgn, 'White', 'Белые');
+    const black = getPgnHeader(pgn, 'Black', 'Чёрные');
+    const result = getPgnHeader(pgn, 'Result', '*');
+    const playerColor = getPersonalEndgamePlayerColor(pgn, playerColorOverride);
+
+    // Нужна именно проигранная игроком партия. Ничьи и неизвестный результат пропускаем.
+    if (!playerColor || !isPlayerLostPgnResult(result, playerColor)) return false;
+
     const parsed = new Chess();
     parsed.load_pgn(String(pgn));
     const sanMoves = parsed.history();
     if (!Array.isArray(sanMoves) || sanMoves.length < 4) return false;
+
     const startFen = getPgnHeader(pgn, 'FEN', '');
     const replay = startFen ? new Chess(startFen) : new Chess();
+    const playerSign = playerColor === 'w' ? 1 : -1;
+    const MIN_WINNING_EVAL = 2.0;
     let startIndex = -1;
+    let selectedPlayerEval = null;
+    let selectedWhiteEval = null;
+    let selectedMateInPlayer = 0;
+    let selectedIsMate = false;
+    let selectedDepth = null;
 
     for (let index = 0; index < sanMoves.length; index++) {
-      if (sanMoves.length - index >= 4 && isPersonalEndgamePosition(replay)) {
-        startIndex = index;
-        break;
+      if (sanMoves.length - index >= 4 && index > 0 && isPersonalEndgamePosition(replay)) {
+        // Оценка предыдущего полухода относится к текущей позиции (после предыдущего хода).
+        const positionAnalysis = analysisMoves[index - 1];
+        const whiteEval = Number(positionAnalysis && positionAnalysis.eval);
+        if (Number.isFinite(whiteEval)) {
+          const playerEval = whiteEval * playerSign;
+          const mateInPlayer = Number(positionAnalysis && positionAnalysis.mate_in || 0) * playerSign;
+          const winningMate = Boolean(positionAnalysis && positionAnalysis.is_mate === true) && mateInPlayer > 0;
+          if (playerEval >= MIN_WINNING_EVAL || winningMate) {
+            startIndex = index;
+            selectedPlayerEval = playerEval;
+            selectedWhiteEval = whiteEval;
+            selectedMateInPlayer = mateInPlayer;
+            selectedIsMate = Boolean(positionAnalysis && positionAnalysis.is_mate === true);
+            selectedDepth = Number(positionAnalysis && positionAnalysis.analysis_depth_used) || null;
+            break;
+          }
+        }
       }
+
       try {
         if (!replay.move(sanMoves[index])) break;
       } catch (error) {
@@ -635,21 +707,23 @@ function saveMyEndgameFromPgn(pgn, gameUrl) {
     }
     if (startIndex < 0) return false;
 
-    const white = getPgnHeader(pgn, 'White', 'Белые');
-    const black = getPgnHeader(pgn, 'Black', 'Чёрные');
-    const playerColor = myUsername && myUsername.toLowerCase() === white.toLowerCase()
-      ? 'w'
-      : (myUsername && myUsername.toLowerCase() === black.toLowerCase() ? 'b' : '');
     const item = {
       id: 'my-endgame-' + hashPersonalEndgame(String(gameUrl || '') + '|' + String(pgn)),
       fen: replay.fen(),
       moves: sanMoves.slice(startIndex),
       white,
       black,
-      result: getPgnHeader(pgn, 'Result', '*'),
+      result,
       date: getPgnHeader(pgn, 'Date', 'Дата неизвестна'),
       event: getPgnHeader(pgn, 'Event', 'Партия'),
       playerColor,
+      playerLost: true,
+      stockfishQualified: true,
+      stockfishPlayerEval: Number(selectedPlayerEval.toFixed(2)),
+      stockfishWhiteEval: Number(selectedWhiteEval.toFixed(2)),
+      stockfishIsMate: selectedIsMate,
+      stockfishMateInPlayer: selectedMateInPlayer,
+      stockfishDepth: selectedDepth,
       sourceUrl: String(gameUrl || ''),
       startPly: startIndex
     };
@@ -690,7 +764,7 @@ function renderMyEndgamesList() {
       ? 'Белые: ты · Чёрные: ' + item.black
       : (item.playerColor === 'b' ? 'Белые: ' + item.white + ' · Чёрные: ты' : item.white + ' — ' + item.black);
     const meta = document.createElement('small');
-    meta.textContent = item.date + ' · ' + item.moves.length + ' ходов';
+    meta.textContent = item.date + ' · ' + item.moves.length + ' ходов · Stockfish ' + formatPersonalEndgameStockfishEval(item);
     button.append(title, meta);
     button.addEventListener('click', () => selectMyEndgame(item));
     list.appendChild(button);
@@ -755,7 +829,7 @@ function selectMyEndgame(item) {
   const title = document.getElementById('myEndgameTitle');
   const meta = document.getElementById('myEndgameMeta');
   if (title) title.textContent = item.white + ' — ' + item.black;
-  if (meta) meta.textContent = item.date + (item.result && item.result !== '*' ? ' · ' + item.result : '') + ' · позиция из эндшпиля';
+  if (meta) meta.textContent = item.date + (item.result && item.result !== '*' ? ' · ' + item.result : '') + ' · Stockfish ' + formatPersonalEndgameStockfishEval(item) + ' в твою пользу';
   updateMyEndgameViewer();
   updateMyEndgamePracticeControls();
   setMyEndgamePracticeClock();
@@ -2836,7 +2910,7 @@ async function analyzePGN(pgn, gameUrl) {
     try {
       const data = JSON.parse(cachedData);
       if (data && Array.isArray(data.moves) && data.moves.every(move => Object.prototype.hasOwnProperty.call(move, 'next_top_moves'))) {
-        saveMyEndgameFromPgn(pgn, gameUrl);
+        saveMyEndgameFromPgn(pgn, gameUrl, data);
         loadAnalysisData(data);
         isAnalyzing = false;
         return;
@@ -2854,7 +2928,7 @@ async function analyzePGN(pgn, gameUrl) {
     if (!res.ok) throw new Error(data.detail || 'Ошибка анализа');
     if (!data || !Array.isArray(data.moves)) throw new Error('Сервер вернул некорректный результат анализа');
     localStorage.setItem(cacheKey, JSON.stringify(data));
-    saveMyEndgameFromPgn(pgn, gameUrl);
+    saveMyEndgameFromPgn(pgn, gameUrl, data);
     loadAnalysisData(data);
   } catch (e) {
     alert('Ошибка: ' + e.message);
