@@ -163,22 +163,9 @@
   }
 
   function getPremoveBaseGame() {
-    const base = new Chess(state.game.fen());
-
-    // В режиме повторения следующая известная реплика соперника уже известна.
-    // Включаем её в виртуальную позицию, чтобы можно было заранее выбрать ответ
-    // именно на ожидаемую позицию из дебютной линии.
-    if (
-      state.mode === 'practice' &&
-      state.botThinking &&
-      base.turn() !== userColor()
-    ) {
-      const reply = state.opening && state.opening.moves[state.moveIndex];
-      if (reply) {
-        try { base.move(reply); } catch (_) {}
-      }
-    }
-    return base;
+    // Точно как в матах: мысленно передаём очередь хода игроку,
+    // не меняя реальные фигуры до ответа соперника.
+    return new Chess(state.game.fen());
   }
 
   function rebuildOpeningPremoveState() {
