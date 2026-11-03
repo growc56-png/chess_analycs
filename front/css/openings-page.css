@@ -155,3 +155,25 @@ body.openings-page-body {
 /* Стрелки и слой пометок полностью управляются общим модулем досок. */
 
 .opening-board-help{margin-top:8px;text-align:center;color:#91a5b6;font-size:12px;letter-spacing:.01em}
+
+
+/* Тренировка выхода соперника из дебютной теории. */
+.opening-start-block .opening-btn + .opening-btn { margin-top: 8px; }
+.opening-deviation-advice {
+  margin: 10px 0 12px;
+  padding: 13px;
+  border: 1px solid rgba(214, 183, 123, .28);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(95, 75, 39, .22), rgba(9, 20, 31, .72));
+  color: #d7e2eb;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.opening-deviation-advice h3 { margin: 5px 0 8px; color: #f0d49a; font-size: 14px; }
+.opening-deviation-advice p { margin: 6px 0; }
+.opening-deviation-eval { color: #9ee0bf; font-weight: 800; }
+.opening-deviation-best { color: #f5d89f; font-weight: 800; }
+.opening-deviation-line { color: #c7d6e2; }
+.opening-deviation-options { margin: 8px 0; padding-left: 20px; color: #afc5d5; }
+.opening-deviation-options li { margin: 4px 0; }
+.opening-deviation-plan { padding-top: 7px; border-top: 1px solid rgba(151,180,202,.12); color: #8fd1b4; }
