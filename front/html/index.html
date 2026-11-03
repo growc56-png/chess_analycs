@@ -16,10 +16,10 @@
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
 <script src="/js/chess.min.js"></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261102-endgame-practice-v2" defer></script>
+<script src="/js/index.js?v=20261103-qualified-endgames-v1" defer></script>
 <script src="/js/diary-ui.js" defer></script>
-<script src="/js/coach.js?v=20261102-compact-v1" defer></script>
-<script src="/js/errors.js?v=20261102-compact-v1" defer></script>
+<script src="/js/coach.js?v=20261103-qualified-endgames-v1" defer></script>
+<script src="/js/errors.js?v=20261103-qualified-endgames-v1" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -258,9 +258,9 @@
         </div>
         <div id="myEndgamesView" class="my-endgames-view" hidden>
           <div class="my-endgames-layout">
-            <div class="list-box my-endgames-list" id="myEndgamesList"><div class="coach-empty">Здесь появятся эндшпили после анализа партий.</div></div>
+            <div class="list-box my-endgames-list" id="myEndgamesList"><div class="coach-empty">Здесь появятся позиции из проигранных партий, где Stockfish оценивал позицию как выигранную для тебя (от +2.0).</div></div>
             <div class="board-wrap my-endgame-viewer">
-              <div class="my-endgame-heading"><h3 id="myEndgameTitle">Твои эндшпили</h3><span id="myEndgameMeta">Позиции из твоих партий</span></div>
+              <div class="my-endgame-heading"><h3 id="myEndgameTitle">Твои эндшпили</h3><span id="myEndgameMeta">Только проигранные партии с упущенным выигрышем по Stockfish</span></div>
               <div class="my-endgame-board-area">
                 <div id="myEndgamesBoard"></div>
                 <svg id="userDraw_myEndgamesBoard" class="user-draw-overlay"></svg>
