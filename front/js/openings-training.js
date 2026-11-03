@@ -450,9 +450,16 @@
       state.botThinking = false;
       updateBoard();
       updateProgress();
-      if (state.game.turn() === userColor() && state.premoveQueue.length) executeOpeningPremove(run);
-      else if (state.moveIndex >= state.opening.moves.length) enterEngineMode(run);
-      else maybePlayBookMove(run);
+      if (state.game.turn() === userColor() && state.premoveQueue.length) {
+        // Если линия уже закончилась ходом соперника, переходим к игре
+        // против движка и выполняем очередь как обычный легальный премув.
+        if (state.moveIndex >= state.opening.moves.length) enterEngineMode(run);
+        executeOpeningPremove(run);
+      } else if (state.moveIndex >= state.opening.moves.length) {
+        enterEngineMode(run);
+      } else {
+        maybePlayBookMove(run);
+      }
     }, 360);
   }
 
@@ -517,7 +524,7 @@
 
     const rebuilt = window.ChessPremove.rebuild(state.game, userColor(), state.premoveQueue);
     state.premoveQueue = rebuilt.queue;
-    if (state.mode === 'practice') {
+    if (state.mode === 'practice' && state.moveIndex < state.opening.moves.length) {
       const expected = lineMoveAt(state.moveIndex);
       const planned = state.premoveQueue[0];
       if (!expected || !planned || toUci(expected) !== planned.from + planned.to + (planned.promotion || '')) {
