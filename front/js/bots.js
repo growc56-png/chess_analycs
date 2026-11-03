@@ -430,7 +430,7 @@ function playUserMoveOrQueue(source,target) {
     if(!planned.ok){playSound('error');return 'snapback';}
     premoveQueue=planned.queue;selectedSquare=null;clearHighlights();updateBoardVisuals();
     updateStatus(`Премув ${source} → ${target} поставлен. Можно добавить следующий ход в очередь.`,'thinking');
-    return 'snapback';
+    return undefined;
   }
   let move=null;try{move=game.move({from:source,to:target,promotion:'q'});}catch(_){}
   if(!move){playSound('error');return 'snapback';}
