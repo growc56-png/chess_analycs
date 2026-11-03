@@ -492,7 +492,7 @@
       const mateForUser = Number(data.mate_in || 0) * factor;
       return mateForUser > 0
         ? 'Stockfish видит мат в твою пользу' + (Math.abs(mateForUser) ? ' в ' + Math.abs(mateForUser) : '')
-        : 'Stockfish предупреждает о форсированном мате в твою сторону';
+        : 'Stockfish видит форсированный мат в пользу соперника';
     }
     const whiteEval = Number(data && data.eval);
     if (!Number.isFinite(whiteEval)) return 'Оценка Stockfish получена';
