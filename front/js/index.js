@@ -741,12 +741,9 @@ function tickMyEndgamePracticeTimer() {
 }
 
 function forceMyEndgamePracticeTurn(chessGame) {
-  const fields = chessGame.fen().split(' ');
-  if (fields[1] !== myEndgamePracticeColor) {
-    fields[1] = myEndgamePracticeColor;
-    fields[3] = '-';
-  }
-  return new Chess(fields.join(' '));
+  return window.ChessPremove
+    ? window.ChessPremove.forceTurn(chessGame, myEndgamePracticeColor)
+    : new Chess(chessGame.fen());
 }
 
 function rebuildMyEndgamePracticeVirtualBoard() {
@@ -754,31 +751,17 @@ function rebuildMyEndgamePracticeVirtualBoard() {
     myEndgamePracticeVirtualGame = null;
     return;
   }
-  myEndgamePracticeVirtualGame = new Chess(myEndgamePracticeGame.fen());
-  if (myEndgamePracticeVirtualGame.turn() !== myEndgamePracticeColor) {
-    myEndgamePracticeVirtualGame = forceMyEndgamePracticeTurn(myEndgamePracticeVirtualGame);
+  if (window.ChessPremove) {
+    const result = window.ChessPremove.rebuild(
+      myEndgamePracticeGame,
+      myEndgamePracticeColor,
+      myEndgamePracticeQueue
+    );
+    myEndgamePracticeVirtualGame = result.virtualGame;
+    myEndgamePracticeQueue = result.queue;
+  } else {
+    myEndgamePracticeVirtualGame = forceMyEndgamePracticeTurn(new Chess(myEndgamePracticeGame.fen()));
   }
-
-  const validQueue = [];
-  for (const planned of myEndgamePracticeQueue) {
-    if (myEndgamePracticeVirtualGame.turn() !== myEndgamePracticeColor) {
-      myEndgamePracticeVirtualGame = forceMyEndgamePracticeTurn(myEndgamePracticeVirtualGame);
-    }
-    let applied = null;
-    try {
-      applied = myEndgamePracticeVirtualGame.move({
-        from: planned.from,
-        to: planned.to,
-        promotion: planned.promotion || 'q'
-      });
-    } catch (error) {
-      applied = null;
-    }
-    if (!applied) break;
-    validQueue.push(planned);
-    myEndgamePracticeVirtualGame = forceMyEndgamePracticeTurn(myEndgamePracticeVirtualGame);
-  }
-  myEndgamePracticeQueue = validQueue;
 }
 
 function updateMyEndgamePracticePremoveHighlights() {
@@ -842,17 +825,17 @@ function handleMyEndgamePracticeDrop(source, target) {
     || myEndgamePracticeBotActive || myEndgamePracticeQueue.length > 0;
 
   if (planning) {
-    if (!myEndgamePracticeVirtualGame) return 'snapback';
-    let planned = null;
-    try {
-      planned = myEndgamePracticeVirtualGame.move({ from: source, to: target, promotion: 'q' });
-    } catch (error) {
-      planned = null;
-    }
-    if (!planned) return 'snapback';
-    myEndgamePracticeQueue.push({ from: source, to: target, promotion: 'q' });
+    rebuildMyEndgamePracticeVirtualBoard();
+    const planned = window.ChessPremove
+      ? window.ChessPremove.add(myEndgamePracticeGame, myEndgamePracticeColor, myEndgamePracticeQueue, {
+          from: source, to: target, promotion: 'q'
+        })
+      : { ok: false };
+    if (!planned.ok) return 'snapback';
+    myEndgamePracticeQueue = planned.queue;
+    myEndgamePracticeVirtualGame = planned.virtualGame;
     renderMyEndgamePracticeBoard();
-    setMyEndgamePracticeFeedback('Премув ' + source + ' → ' + target + ' поставлен. Он выполнится, если ход останется легальным.', '');
+    setMyEndgamePracticeFeedback('Премув ' + source + ' → ' + target + ' поставлен. Можно добавить следующий ход в очередь.', '');
     return;
   }
 
@@ -949,17 +932,11 @@ function executeMyEndgamePracticePremove() {
     renderMyEndgamePracticeBoard();
     return;
   }
-  const planned = myEndgamePracticeQueue.shift();
-  let move = null;
-  try {
-    move = myEndgamePracticeGame.move({
-      from: planned.from,
-      to: planned.to,
-      promotion: planned.promotion || 'q'
-    });
-  } catch (error) {
-    move = null;
-  }
+  const executed = window.ChessPremove
+    ? window.ChessPremove.execute(myEndgamePracticeGame, myEndgamePracticeColor, myEndgamePracticeQueue)
+    : { move: null, queue: [] };
+  const move = executed.move;
+  myEndgamePracticeQueue = executed.queue;
   if (!move) {
     myEndgamePracticeQueue = [];
     renderMyEndgamePracticeBoard();
