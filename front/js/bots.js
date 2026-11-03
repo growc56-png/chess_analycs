@@ -386,41 +386,50 @@ function highlightLegalMoves(position,source) {
   });
 }
 function getPremoveGame() {
+  if (window.ChessPremove) {
+    const result = window.ChessPremove.rebuild(game, playerColor, premoveQueue);
+    premoveQueue = result.queue;
+    return result.virtualGame;
+  }
   const fields=game.fen().split(' ');fields[1]=playerColor;fields[3]='-';
   try{return new Chess(fields.join(' '));}catch(_){return new Chess(game.fen());}
 }
 function getSimulatedFen(baseFen,queue) {
-  const fields=baseFen.split(' ');fields[1]=playerColor;fields[3]='-';
-  const sim=new Chess(fields.join(' '));
-  for(const pm of(queue||[])){const move=sim.move({from:pm.from,to:pm.to,promotion:pm.promotion||'q'});if(!move)break;}
-  return sim.fen();
+  const base = new Chess(baseFen);
+  return window.ChessPremove
+    ? window.ChessPremove.rebuild(base, playerColor, queue).virtualGame.fen()
+    : baseFen;
 }
 function drawPremoveHighlights() {
-  document.querySelectorAll('.premove-from,.premove-to').forEach(el=>el.classList.remove('premove-from','premove-to'));
-  if(!premoveQueue.length)return;
-  const pm=premoveQueue[0],fromEl=document.querySelector(`#botBoard .square-${pm.from}`),toEl=document.querySelector(`#botBoard .square-${pm.to}`);
-  if(fromEl)fromEl.classList.add('premove-from');if(toEl)toEl.classList.add('premove-to');
+  document.querySelectorAll('#botBoard .premove-from,#botBoard .premove-to').forEach(el=>el.classList.remove('premove-from','premove-to'));
+  premoveQueue.forEach(pm=>{
+    const fromEl=document.querySelector(`#botBoard .square-${pm.from}`),toEl=document.querySelector(`#botBoard .square-${pm.to}`);
+    if(fromEl)fromEl.classList.add('premove-from');
+    if(toEl)toEl.classList.add('premove-to');
+  });
 }
 function updateBoardVisuals() {
   if(!board)return;
-  board.position(game.fen(),false);
+  const virtual = getPremoveGame();
+  board.position(virtual ? virtual.fen() : game.fen(),false);
   clearHighlights();
-  if(selectedSquare)highlightLegalMoves(game.turn()===playerColor?game:getPremoveGame(),selectedSquare);
+  if(selectedSquare)highlightLegalMoves(game.turn()===playerColor&&!isBotThinking&&!premoveQueue.length?game:virtual,selectedSquare);
   renderMoveHistory();
   updateTurnIndicator();
   requestAnimationFrame(drawPremoveHighlights);
 }
-function validationPosition(){return game.turn()===playerColor&&!isBotThinking?game:getPremoveGame();}
+function validationPosition(){return game.turn()===playerColor&&!isBotThinking&&!premoveQueue.length?game:getPremoveGame();}
 function isPlayerPiece(square){const piece=game.get(square);return !!piece&&piece.color===playerColor;}
 function playUserMoveOrQueue(source,target) {
   if(!gameActive||game.game_over())return 'snapback';
   const isPremove=game.turn()!==playerColor||isBotThinking;
   if(isPremove){
-    const sim=getPremoveGame();let planned=null;
-    try{planned=sim.move({from:source,to:target,promotion:'q'});}catch(_){}
-    if(!planned){playSound('error');return 'snapback';}
-    premoveQueue=[{from:source,to:target,promotion:'q'}];selectedSquare=null;clearHighlights();updateBoardVisuals();
-    updateStatus(`Премув ${source} → ${target} поставлен. Выполнится после хода бота, если останется легальным.`,'thinking');
+    const planned = window.ChessPremove
+      ? window.ChessPremove.add(game,playerColor,premoveQueue,{from:source,to:target,promotion:'q'})
+      : {ok:false};
+    if(!planned.ok){playSound('error');return 'snapback';}
+    premoveQueue=planned.queue;selectedSquare=null;clearHighlights();updateBoardVisuals();
+    updateStatus(`Премув ${source} → ${target} поставлен. Можно добавить следующий ход в очередь.`,'thinking');
     return 'snapback';
   }
   let move=null;try{move=game.move({from:source,to:target,promotion:'q'});}catch(_){}
@@ -455,8 +464,10 @@ function handleBoardClick(event) {
 function onSnapEnd(){ignoreBoardClickUntil=Date.now()+180;updateBoardVisuals();}
 function executePremoves() {
   if(!premoveQueue.length||game.game_over()||!gameActive||game.turn()!==playerColor)return;
-  const pm=premoveQueue.shift();let move=null;
-  try{move=game.move({from:pm.from,to:pm.to,promotion:pm.promotion||'q'});}catch(_){}
+  const executed = window.ChessPremove
+    ? window.ChessPremove.execute(game,playerColor,premoveQueue)
+    : {move:null,queue:[]};
+  const move=executed.move;premoveQueue=executed.queue;
   if(!move){premoveQueue=[];updateBoardVisuals();updateStatus('Премув отменён: ответ бота изменил позицию, ход больше не легален.','error');return;}
   playSound(move.flags.includes('c')||move.flags.includes('e')?'capture':'move');selectedSquare=null;
   updateBoardVisuals();updateMaterial();if(checkGameOver())return;
