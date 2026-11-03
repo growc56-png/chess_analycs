@@ -317,12 +317,15 @@
       });
     }, true);
 
-    // ЛКМ, как на Chess.com, очищает все временные пометки на этой доске.
-    board.addEventListener('click', event => {
+    // ЛКМ сразу убирает стрелки — в том числе перед drag-and-drop ходом,
+    // где браузер может вообще не создать click event.
+    const clearOnLeftPress = event => {
       if (event.button !== 0 || !state.arrows.length) return;
       state.arrows = [];
       render(state);
-    }, true);
+    };
+    board.addEventListener('pointerdown', clearOnLeftPress, true);
+    board.addEventListener('click', clearOnLeftPress, true);
 
     return true;
   }
