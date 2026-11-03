@@ -31,7 +31,7 @@ function clearBoardArrows(boardId) {
 function installBotBoardStyles() {
   if(document.getElementById('bot-board-interaction-styles'))return;
   const style=document.createElement('style');style.id='bot-board-interaction-styles';
-  style.textContent=`#botBoard .square-55d63.premove-from{box-shadow:inset 0 0 0 4px rgba(249,115,22,.88)!important}#botBoard .square-55d63.premove-to{box-shadow:inset 0 0 0 4px rgba(16,185,129,.92)!important}#botBoard .square-55d63.bot-selected-square{box-shadow:inset 0 0 0 4px rgba(250,204,21,.95)!important}`;
+  style.textContent=`#botBoard .square-55d63.bot-selected-square{box-shadow:inset 0 0 0 4px rgba(250,204,21,.95)!important}`;
   document.head.appendChild(style);
 }
 
