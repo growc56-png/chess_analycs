@@ -1124,25 +1124,28 @@ function renderEndgamesList() {
 }
 
 function forceEndgamePlayerTurn(chessGame) {
-  const fields = chessGame.fen().split(' ');
-  if (fields[1] !== endgamePlayerColor) {
-    fields[1] = endgamePlayerColor;
-    // Соперник пропускается в виртуальной позиции, поэтому право на взятие en passant сгорает.
-    fields[3] = '-';
-  }
-  return new Chess(fields.join(' '));
+  return window.ChessPremove
+    ? window.ChessPremove.forceTurn(chessGame, endgamePlayerColor)
+    : new Chess(chessGame.fen());
 }
 
-// Для premove моделируем только текущий ответ игрока.
-// Нельзя строить цепочку из нескольких ходов без реальных ответов соперника:
-// такая виртуальная позиция ломает проверку шахов, матов и легальности короля.
+// Виртуальная доска проигрывает очередь премувов, пропуская ответы соперника.
 function rebuildEndgameVirtualBoard() {
   if (!endgameGame) {
     endgameVirtualGame = null;
-    return 0;
+    return;
   }
-  endgameVirtualGame = forceEndgamePlayerTurn(new Chess(endgameGame.fen()));
-  return 0;
+  if (window.ChessPremove) {
+    const result = window.ChessPremove.rebuild(
+      endgameGame,
+      endgamePlayerColor,
+      endgamePremoveQueue
+    );
+    endgameVirtualGame = result.virtualGame;
+    endgamePremoveQueue = result.queue;
+  } else {
+    endgameVirtualGame = forceEndgamePlayerTurn(new Chess(endgameGame.fen()));
+  }
 }
 
 function updateEndgamePremoveHighlights() {
@@ -1160,9 +1163,9 @@ function updateEndgamePremoveHighlights() {
 function renderEndgameBoard() {
   if (!endgameBoard || !endgameGame) return;
   rebuildEndgameVirtualBoard();
-  // На доске всегда остаётся настоящая позиция. Запланированный ход
-  // показываем подсветкой, а фигура перемещается только после ответа соперника.
-  endgameBoard.position(endgameGame.fen(), false);
+  // Показываем виртуальную позицию, как в тренировке матов:
+  // пользователь видит всю очередь заранее запланированных ходов.
+  endgameBoard.position((endgameVirtualGame || endgameGame).fen(), false);
   updateEndgamePremoveHighlights();
 }
 
@@ -1226,10 +1229,13 @@ function selectEndgame(eg) {
   if (window.initBoardClickToMove) {
     window.initBoardClickToMove(
       'endgameBoard',
-      () => (
-        endgameGame.turn() !== endgamePlayerColor ||
-        endgameBotRequestActive
-      ) ? forceEndgamePlayerTurn(new Chess(endgameGame.fen())) : endgameGame,
+      () => {
+        rebuildEndgameVirtualBoard();
+        return endgameGame.turn() !== endgamePlayerColor ||
+          endgameBotRequestActive || endgamePremoveQueue.length
+          ? endgameVirtualGame
+          : endgameGame;
+      },
       handleEndgameDrop,
       { canSelect: piece => Boolean(piece && piece.color === endgamePlayerColor) }
     );
@@ -1248,8 +1254,9 @@ function onEndgameDragStart(source, piece) {
 
   const planningMode =
     endgameGame.turn() !== endgamePlayerColor ||
-    endgameBotRequestActive;
+    endgameBotRequestActive || endgamePremoveQueue.length > 0;
 
+  rebuildEndgameVirtualBoard();
   const activeGame = planningMode ? endgameVirtualGame : endgameGame;
   if (!activeGame || activeGame.moves({ square: source }).length === 0) {
     return false;
@@ -1268,34 +1275,22 @@ function handleEndgameDrop(source, target) {
 
   const planningMode =
     endgameGame.turn() !== endgamePlayerColor ||
-    endgameBotRequestActive;
+    endgameBotRequestActive || endgamePremoveQueue.length > 0;
 
-  // На один ход соперника можно поставить только один premove.
-  // Если пользователь выбирает другой ход, он заменяет предыдущий.
   if (planningMode) {
-    const premovePosition = forceEndgamePlayerTurn(new Chess(endgameGame.fen()));
-    let plannedMove = null;
-    try {
-      plannedMove = premovePosition.move({
-        from: source,
-        to: target,
-        promotion: 'q'
-      });
-    } catch (error) {
-      plannedMove = null;
-    }
+    rebuildEndgameVirtualBoard();
+    const planned = window.ChessPremove
+      ? window.ChessPremove.add(endgameGame, endgamePlayerColor, endgamePremoveQueue, {
+          from: source, to: target, promotion: 'q'
+        })
+      : { ok: false };
+    if (!planned.ok) return 'snapback';
 
-    if (!plannedMove) return 'snapback';
-
-    endgamePremoveQueue = [{
-      from: source,
-      to: target,
-      promotion: 'q'
-    }];
-
+    endgamePremoveQueue = planned.queue;
+    endgameVirtualGame = planned.virtualGame;
     renderEndgameBoard();
     setEndgameFeedback(
-      'Премув ' + source + ' → ' + target + ' поставлен. Он выполнится после ответа соперника, если останется легальным.',
+      'Премув ' + source + ' → ' + target + ' поставлен. Можно добавить следующий ход в очередь.',
       'info'
     );
     return;
@@ -1401,17 +1396,11 @@ function executeEndgamePremove() {
     return;
   }
 
-  const plannedMove = endgamePremoveQueue.shift();
-  let move = null;
-  try {
-    move = endgameGame.move({
-      from: plannedMove.from,
-      to: plannedMove.to,
-      promotion: plannedMove.promotion || 'q'
-    });
-  } catch (error) {
-    move = null;
-  }
+  const executed = window.ChessPremove
+    ? window.ChessPremove.execute(endgameGame, endgamePlayerColor, endgamePremoveQueue)
+    : { move: null, queue: [] };
+  const move = executed.move;
+  endgamePremoveQueue = executed.queue;
 
   if (!move) {
     endgamePremoveQueue = [];
