@@ -379,6 +379,7 @@
     byId('openingStudyPrev').disabled = true;
     byId('openingStudyNext').disabled = false;
     byId('openingStartPractice').hidden = true;
+    byId('openingStartDeviation').hidden = true;
     setMessage('Просматривай линию ход за ходом. Обрати внимание на планы обеих сторон.', 'info');
     updateProgress();
   }
@@ -400,6 +401,7 @@
     const finished = state.moveIndex >= state.opening.moves.length;
     byId('openingStudyNext').disabled = finished;
     byId('openingStartPractice').hidden = !finished;
+    byId('openingStartDeviation').hidden = !finished;
     setMessage(finished ? 'Теория просмотрена. Теперь попробуй повторить дебют без подсказок.' : 'Посмотри, как изменилось положение фигур, и переходи к следующему ходу.', 'success');
   }
 
@@ -413,6 +415,7 @@
     byId('openingStudyPrev').disabled = state.moveIndex === 0;
     byId('openingStudyNext').disabled = false;
     byId('openingStartPractice').hidden = true;
+    byId('openingStartDeviation').hidden = true;
     setMessage('Можешь ещё раз просмотреть этот фрагмент теории.', 'info');
   }
 
@@ -818,6 +821,7 @@
     byId('openingStudyPrev').addEventListener('click', studyPrev);
     byId('openingStudyNext').addEventListener('click', studyNext);
     byId('openingStartPractice').addEventListener('click', () => startPractice(false));
+    byId('openingStartDeviation').addEventListener('click', () => startPractice(true));
     byId('openingDeviationStart').addEventListener('click', () => startPractice(true));
     byId('openingPracticeRestart').addEventListener('click', () => startPractice(false));
     byId('openingTrainerReset').addEventListener('click', resetTraining);
