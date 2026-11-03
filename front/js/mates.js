@@ -62,64 +62,21 @@ function renderMates() {
   }
 }
 
-// Создаёт виртуальную позицию, в которой снова ход белых.
-// Это позволяет планировать несколько белых ходов подряд,
-// не меняя настоящую партию.
+// Все тренировки используют общую очередь премувов.
 function forceWhiteTurn(chessGame) {
-  const fields = chessGame.fen().split(' ');
-
-  if (fields[1] === 'b') {
-    fields[1] = 'w';
-
-    // Чёрный ход пропускается в виртуальной позиции.
-    fields[3] = '-';
-  }
-
-  return new Chess(fields.join(' '));
+  return window.ChessPremove
+    ? window.ChessPremove.forceTurn(chessGame, 'w')
+    : new Chess(chessGame.fen());
 }
 
-// Перестраивает виртуальную доску:
-// настоящая позиция + все запланированные белые ходы.
 function rebuildVirtualBoard() {
-  virtualGame = new Chess(game.fen());
-
-  if (virtualGame.turn() === 'b') {
-    virtualGame = forceWhiteTurn(virtualGame);
+  if (!game || !window.ChessPremove) {
+    virtualGame = game ? new Chess(game.fen()) : null;
+    return;
   }
-
-  const validQueue = [];
-
-  for (let i = 0; i < premoveQueue.length; i++) {
-    if (virtualGame.turn() === 'b') {
-      virtualGame = forceWhiteTurn(virtualGame);
-    }
-
-    const planned = premoveQueue[i];
-
-    let move = null;
-
-    try {
-      move = virtualGame.move({
-        from: planned.from,
-        to: planned.to,
-        promotion: planned.promotion || 'q'
-      });
-    } catch (error) {
-      move = null;
-    }
-
-    if (!move) {
-      // Если ход больше невозможен, удаляем его
-      // и все последующие запланированные ходы.
-      break;
-    }
-
-    validQueue.push(planned);
-
-    virtualGame = forceWhiteTurn(virtualGame);
-  }
-
-  premoveQueue = validQueue;
+  const result = window.ChessPremove.rebuild(game, 'w', premoveQueue);
+  virtualGame = result.virtualGame;
+  premoveQueue = result.queue;
 }
 
 // Обновляет красные квадраты на доске.
@@ -297,31 +254,18 @@ function handleDrop(source, target) {
 
   // ПРЕМУВ: работаем с виртуальной доской.
   if (planningMode) {
-    if (virtualGame.turn() === 'b') {
-      virtualGame = forceWhiteTurn(virtualGame);
-    }
+    rebuildVirtualBoard();
+    const planned = window.ChessPremove
+      ? window.ChessPremove.add(game, 'w', premoveQueue, {
+          from: source,
+          to: target,
+          promotion: 'q'
+        })
+      : { ok: false };
 
-    let plannedMove = null;
-
-    try {
-      plannedMove = virtualGame.move({
-        from: source,
-        to: target,
-        promotion: 'q'
-      });
-    } catch (error) {
-      plannedMove = null;
-    }
-
-    if (!plannedMove) {
-      return 'snapback';
-    }
-
-    premoveQueue.push({
-      from: source,
-      to: target,
-      promotion: 'q'
-    });
+    if (!planned.ok) return 'snapback';
+    premoveQueue = planned.queue;
+    virtualGame = planned.virtualGame;
 
     // После каждого премува обновляем виртуальную позицию.
     // Фигура остаётся на новой клетке, можно планировать дальше.
@@ -456,19 +400,11 @@ function executePremove() {
     return;
   }
 
-  const plannedMove = premoveQueue.shift();
-
-  let move = null;
-
-  try {
-    move = game.move({
-      from: plannedMove.from,
-      to: plannedMove.to,
-      promotion: plannedMove.promotion || 'q'
-    });
-  } catch (error) {
-    move = null;
-  }
+  const executed = window.ChessPremove
+    ? window.ChessPremove.execute(game, 'w', premoveQueue)
+    : { move: null, queue: [] };
+  const move = executed.move;
+  premoveQueue = executed.queue;
 
   if (!move) {
     // Ход стал невозможен после ответа бота.
