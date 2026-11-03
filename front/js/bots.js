@@ -419,10 +419,10 @@ function updateBoardVisuals() {
   requestAnimationFrame(drawPremoveHighlights);
 }
 function validationPosition(){return game.turn()===playerColor&&!isBotThinking&&!premoveQueue.length?game:getPremoveGame();}
-function isPlayerPiece(square){const piece=game.get(square);return !!piece&&piece.color===playerColor;}
+function isPlayerPiece(square){const position=validationPosition();const piece=position&&position.get(square);return !!piece&&piece.color===playerColor;}
 function playUserMoveOrQueue(source,target) {
   if(!gameActive||game.game_over())return 'snapback';
-  const isPremove=game.turn()!==playerColor||isBotThinking;
+  const isPremove=game.turn()!==playerColor||isBotThinking||premoveQueue.length>0;
   if(isPremove){
     const planned = window.ChessPremove
       ? window.ChessPremove.add(game,playerColor,premoveQueue,{from:source,to:target,promotion:'q'})
