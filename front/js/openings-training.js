@@ -7,7 +7,7 @@
     openings: [], opening: null, side: 'white', catalogSide: 'white', level: 'medium',
     game: null, board: null, mode: 'idle', moveIndex: 0,
     botThinking: false, runId: 0, loadToken: 0, lastError: '',
-    premoveQueue: [], virtualGame: null,
+    premoveQueue: [], virtualGame: null, deviationTraining: false,
     detailCache: new Map()
   };
 
@@ -225,6 +225,9 @@
   function resetGame() {
     state.premoveQueue = [];
     state.virtualGame = null;
+    state.deviationTraining = false;
+    const advice = byId('openingDeviationAdvice');
+    if (advice) advice.hidden = true;
     state.game = new Chess();
     state.moveIndex = 0;
     updateBoard();
@@ -295,7 +298,9 @@
     });
 
     const startButton = byId('openingStudyStartBtn');
+    const deviationButton = byId('openingDeviationStart');
     if (startButton) startButton.disabled = true;
+    if (deviationButton) deviationButton.disabled = true;
     byId('openingTrainerMoves').innerHTML = '<div class="opening-catalog-empty">Подготавливаю линию выбранного дебюта…</div>';
     setMessage('Загружаю только выбранную дебютную линию…', 'info');
 
@@ -310,10 +315,12 @@
       updateProgress();
       renderCatalogList();
       if (startButton) startButton.disabled = false;
+      if (deviationButton) deviationButton.disabled = false;
       setMessage('Линия загружена. Выбери свою сторону и начни изучение.', 'success');
     } catch (error) {
       if (token !== state.loadToken) return;
       if (startButton) startButton.disabled = true;
+      if (deviationButton) deviationButton.disabled = true;
       setMessage(`Не удалось загрузить этот дебют: ${error.message}`, 'error');
     }
   }
@@ -409,28 +416,41 @@
     setMessage('Можешь ещё раз просмотреть этот фрагмент теории.', 'info');
   }
 
-  function startPractice() {
+  function startPractice(withDeviations = false) {
     if (!state.opening || !Array.isArray(state.opening.moves) || !state.opening.moves.length) return;
     state.runId++;
     const run = state.runId;
     state.botThinking = false;
     resetGame();
+    state.deviationTraining = Boolean(withDeviations);
     setMode('practice');
     refreshBoardClickToMove();
-    byId('openingPracticeStatus').textContent = 'Повторение: играй свою часть линии без подсказок.';
-    setMessage('Повтори изученную последовательность. Если ошибёшься, позиция останется прежней.', 'info');
+    byId('openingPracticeStatus').textContent = state.deviationTraining
+      ? 'Тренировка отклонений: соперник сыграет не по теории. Найди сильный ответ.'
+      : 'Повторение: играй свою часть линии без подсказок.';
+    setMessage(state.deviationTraining
+      ? 'Сначала играй свои ходы по репертуару. Затем Stockfish намеренно выберет сильный ход вне изученной линии.'
+      : 'Повтори изученную последовательность. Если ошибёшься, позиция останется прежней.', 'info');
     updateProgress();
     maybePlayBookMove(run);
   }
 
   function maybePlayBookMove(run) {
     if (run !== state.runId || state.mode !== 'practice' || state.botThinking) return;
-    if (state.moveIndex >= state.opening.moves.length) {
-      enterEngineMode(run);
+    if (state.game.turn() === userColor()) {
+      if (state.moveIndex >= state.opening.moves.length) {
+        enterEngineMode(run);
+        return;
+      }
+      byId('openingPracticeStatus').textContent = 'Твой ход. Вспомни продолжение из теории.';
       return;
     }
-    if (state.game.turn() === userColor()) {
-      byId('openingPracticeStatus').textContent = 'Твой ход. Вспомни продолжение из теории.';
+    if (state.deviationTraining) {
+      playDeviationMove(run);
+      return;
+    }
+    if (state.moveIndex >= state.opening.moves.length) {
+      enterEngineMode(run);
       return;
     }
     const san = state.opening.moves[state.moveIndex];
@@ -461,6 +481,145 @@
         maybePlayBookMove(run);
       }
     }, 360);
+  }
+
+  function formatDeviationEvaluation(data) {
+    const factor = userColor() === 'w' ? 1 : -1;
+    if (data && data.is_mate) {
+      const mateForUser = Number(data.mate_in || 0) * factor;
+      return mateForUser > 0
+        ? 'Stockfish видит мат в твою пользу' + (Math.abs(mateForUser) ? ' в ' + Math.abs(mateForUser) : '')
+        : 'Stockfish предупреждает о форсированном мате в твою сторону';
+    }
+    const whiteEval = Number(data && data.eval);
+    if (!Number.isFinite(whiteEval)) return 'Оценка Stockfish получена';
+    const playerEval = whiteEval * factor;
+    return 'Оценка для тебя: ' + (playerEval > 0 ? '+' : '') + playerEval.toFixed(2);
+  }
+
+  function renderDeviationAdvice(opponentMove, expectedSan, data) {
+    const card = byId('openingDeviationAdvice');
+    if (!card) return;
+    const lines = Array.isArray(data && data.top_moves)
+      ? data.top_moves.filter(line => line && line.uci && line.san)
+      : [];
+    const opponentEl = byId('openingDeviationOpponentMove');
+    const bestEl = byId('openingDeviationBest');
+    const lineEl = byId('openingDeviationLine');
+    const evalEl = byId('openingDeviationEval');
+    const planEl = byId('openingDeviationPlan');
+    const optionsEl = byId('openingDeviationOptions');
+
+    if (opponentEl) {
+      opponentEl.textContent = 'Вместо ' + (expectedSan || 'продолжения по теории')
+        + ' соперник сыграл ' + opponentMove.san + '. Это уже другая позиция — не пытайся механически повторять дебют.';
+    }
+    if (evalEl) evalEl.textContent = formatDeviationEvaluation(data || {});
+    if (bestEl) bestEl.textContent = lines.length
+      ? 'Лучший ответ: ' + lines[0].san
+      : 'Лучший ответ пока не получен. Оцени шахи, взятия и угрозы.';
+    if (lineEl) lineEl.textContent = lines.length && lines[0].pv
+      ? 'Основной вариант Stockfish: ' + lines[0].pv
+      : 'Сделай естественный развивающий ход и проверь его после партии.';
+    if (planEl) {
+      const plan = state.opening && state.opening[userColor() === 'w' ? 'plans_white' : 'plans_black'];
+      planEl.textContent = 'Твой общий план: ' + (plan || 'развивай фигуры, борись за центр и сначала проверь угрозу последнего хода соперника.');
+    }
+    if (optionsEl) {
+      optionsEl.replaceChildren();
+      lines.slice(0, 3).forEach((line, index) => {
+        const item = document.createElement('li');
+        item.textContent = (index + 1) + '. ' + line.san + (line.pv ? ' — ' + line.pv : '');
+        optionsEl.appendChild(item);
+      });
+    }
+    card.hidden = false;
+  }
+
+  async function playDeviationMove(run) {
+    if (run !== state.runId || state.mode !== 'practice' || state.botThinking) return;
+
+    const positionFen = state.game.fen();
+    const expected = lineMoveAt(state.moveIndex);
+    const expectedSan = state.opening.moves[state.moveIndex] || '';
+    const expectedUci = toUci(expected);
+    state.botThinking = true;
+    renderPracticeBoard();
+    byId('openingPracticeStatus').textContent = 'Stockfish готовит отклонение от теории…';
+    setMessage('Соперник выбирает сильный ход, который не входит в изученную линию.', 'info');
+
+    let chosen = null;
+    try {
+      const response = await fetch('/api/evaluate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({fen: positionFen})
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Ошибка движка');
+      if (run !== state.runId || state.mode !== 'practice') return;
+
+      const candidates = Array.isArray(data.top_moves)
+        ? data.top_moves.filter(line => line && line.uci && line.uci.length >= 4)
+        : [];
+      chosen = candidates.find(line => line.uci !== expectedUci) || null;
+      if (!chosen) throw new Error('Stockfish не нашёл подходящего альтернативного хода');
+    } catch (error) {
+      if (run !== state.runId || state.mode !== 'practice') return;
+      state.botThinking = false;
+      state.deviationTraining = false;
+      updateBoard();
+      setMessage('Не удалось смоделировать отклонение: ' + error.message + '. Продолжим по основной линии.', 'error');
+      byId('openingPracticeStatus').textContent = 'Продолжение по теории.';
+      maybePlayBookMove(run);
+      return;
+    }
+
+    const opponentMove = state.game.move({
+      from: chosen.uci.slice(0, 2),
+      to: chosen.uci.slice(2, 4),
+      promotion: chosen.uci[4] || 'q'
+    });
+    if (!opponentMove) {
+      state.botThinking = false;
+      state.deviationTraining = false;
+      updateBoard();
+      setMessage('Альтернативный ход Stockfish оказался нелегальным. Продолжим по основной линии.', 'error');
+      maybePlayBookMove(run);
+      return;
+    }
+
+    state.botThinking = false;
+    state.deviationTraining = false;
+    state.premoveQueue = [];
+    state.virtualGame = null;
+    state.mode = 'engine';
+    byId('openingTrainerModeLabel').textContent = 'ИГРА ПОСЛЕ ОТКЛОНЕНИЯ';
+    byId('openingPracticeStatus').textContent = 'Соперник отклонился от теории. Найди лучший ответ на доске.';
+    updateBoard();
+    setMessage('Отклонение соперника: ' + opponentMove.san + '. Теперь важно найти правильный план.', 'info');
+
+    const adviceFen = state.game.fen();
+    try {
+      const response = await fetch('/api/evaluate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({fen: adviceFen})
+      });
+      const advice = await response.json();
+      if (!response.ok) throw new Error(advice.detail || 'Ошибка анализа');
+      if (run !== state.runId || state.mode !== 'engine' || state.game.fen() !== adviceFen) return;
+      renderDeviationAdvice(opponentMove, expectedSan, advice);
+      const best = Array.isArray(advice.top_moves) && advice.top_moves[0];
+      setMessage(best && best.san
+        ? 'Соперник отклонился. Stockfish советует ' + best.san + ' — попробуй найти этот ход самостоятельно.'
+        : 'Соперник отклонился. Твой ход — оцени новую позицию.', 'success');
+    } catch (error) {
+      if (run === state.runId && state.mode === 'engine' && state.game.fen() === adviceFen) {
+        renderDeviationAdvice(opponentMove, expectedSan, {});
+        setMessage('Отклонение найдено, но подсказку Stockfish получить не удалось: ' + error.message, 'error');
+      }
+    }
   }
 
   function enterEngineMode(run) {
@@ -562,7 +721,7 @@
 
     setMessage('Премув выполнен: ' + executed.move.san + '.', 'success');
     byId('openingPracticeStatus').textContent = 'Премув выполнен. Бот отвечает…';
-    if (state.mode === 'practice' && state.moveIndex >= state.opening.moves.length) {
+    if (state.mode === 'practice' && state.moveIndex >= state.opening.moves.length && !state.deviationTraining) {
       enterEngineMode(run);
     } else if (state.mode === 'practice') {
       setTimeout(() => maybePlayBookMove(run), 160);
@@ -608,7 +767,7 @@
       const run = state.runId;
       setTimeout(() => {
         if (run !== state.runId) return;
-        if (state.moveIndex >= state.opening.moves.length) enterEngineMode(run);
+        if (state.moveIndex >= state.opening.moves.length && !state.deviationTraining) enterEngineMode(run);
         else maybePlayBookMove(run);
       }, 220);
     } else {
@@ -657,6 +816,7 @@
     byId('openingStudyPrev').addEventListener('click', studyPrev);
     byId('openingStudyNext').addEventListener('click', studyNext);
     byId('openingStartPractice').addEventListener('click', startPractice);
+    byId('openingDeviationStart').addEventListener('click', () => startPractice(true));
     byId('openingPracticeRestart').addEventListener('click', startPractice);
     byId('openingTrainerReset').addEventListener('click', resetTraining);
   }
