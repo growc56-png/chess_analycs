@@ -2100,16 +2100,8 @@ function getMainOpeningPlayerColor() {
 }
 
 function getMainOpeningPremoveBase() {
-  const base = new Chess(openingGame.fen());
-  const playerColor = getMainOpeningPlayerColor();
-
-  // В этой вкладке ответ соперника заранее известен из выбранной линии.
-  // Проигрываем его в виртуальной позиции, чтобы ставить премув на ожидаемую
-  // клеточную конфигурацию, а не на доску до ответа.
-  if (base.turn() !== playerColor && currentOpening && currentMoveIndex < currentOpening.moves.length) {
-    try { base.move(currentOpening.moves[currentMoveIndex]); } catch (_) {}
-  }
-  return base;
+  // Виртуально передаём очередь хода игроку, не меняя реальную позицию.
+  return new Chess(openingGame.fen());
 }
 
 function rebuildMainOpeningPremove() {
