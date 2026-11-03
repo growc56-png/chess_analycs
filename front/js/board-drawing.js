@@ -267,7 +267,21 @@
   function init(boardId) {
     const board = document.getElementById(boardId);
     if (!board) return false;
-    if (boards.has(boardId)) return true;
+
+    const existingState = boards.get(boardId);
+    if (existingState && existingState.board === board) {
+      // Chessboard.js может пересоздать внутреннюю разметку при первой
+      // инициализации. Если вместе с ней пропал SVG, возвращаем его на место.
+      if (!existingState.svg || !existingState.svg.isConnected || existingState.svg.parentElement !== board) {
+        existingState.svg = getOverlay(boardId, board);
+        render(existingState);
+      }
+      return true;
+    }
+    if (existingState) {
+      if (activeDrawing && activeDrawing.state === existingState) cancelActiveDrawing();
+      boards.delete(boardId);
+    }
 
     const svg = getOverlay(boardId, board);
     const state = { board, svg, arrows: [], preview: null };
