@@ -8,7 +8,7 @@
   <title>Изучение дебютов — Chess Trainer</title>
   <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
   <link rel="stylesheet" href="/css/index.css?v=20261102-clickmove-v2">
-  <link rel="stylesheet" href="/css/openings-page.css?v=20261103-unified-premove-v3">
+  <link rel="stylesheet" href="/css/openings-page.css?v=20261103-deviation-v1">
   <script src="/js/board-interactions.js?v=20261102-clickmove-v2" defer></script>
 <script src="/js/jquery.min.js"></script>
   <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
@@ -16,7 +16,7 @@
   <script src="/js/chess-premove.js?v=20261103-unified-premove-v3" defer></script>
   <script src="/js/board-drawing.js?v=20261103-unified-premove-v3" defer></script>
   <script src="/js/openings-data.js?v=20261101-2" defer></script>
-  <script src="/js/openings-training.js?v=20261103-unified-premove-v4" defer></script>
+  <script src="/js/openings-training.js?v=20261103-deviation-v1" defer></script>
 </head>
 <body class="openings-page-body">
   <div class="openings-app">
@@ -121,6 +121,16 @@
 
             <div id="openingTrainerPlay" class="opening-mode-controls" hidden>
               <p id="openingPracticeStatus" class="opening-step-description">Твой ход. Вспомни продолжение из теории.</p>
+              <section id="openingDeviationAdvice" class="opening-deviation-advice" hidden aria-live="polite">
+                <span class="opening-card-eyebrow">РАЗБОР ОТКЛОНЕНИЯ</span>
+                <h3>Соперник вышел из теории</h3>
+                <p id="openingDeviationOpponentMove"></p>
+                <p id="openingDeviationEval" class="opening-deviation-eval"></p>
+                <p id="openingDeviationBest" class="opening-deviation-best"></p>
+                <p id="openingDeviationLine" class="opening-deviation-line"></p>
+                <ol id="openingDeviationOptions" class="opening-deviation-options"></ol>
+                <p id="openingDeviationPlan" class="opening-deviation-plan"></p>
+              </section>
               <div class="opening-button-grid">
                 <button type="button" class="opening-btn secondary" id="openingPracticeRestart">Начать заново</button>
                 <button type="button" class="opening-btn secondary" id="openingTrainerReset">Сбросить этап</button>
@@ -130,7 +140,8 @@
             <div id="openingTrainerIdle" hidden></div>
             <div class="opening-start-block" id="openingStartBlock">
               <button type="button" class="opening-btn primary full" id="openingStudyStartBtn">▶ Начать изучение теории</button>
-              <p>Сначала смотри каждый ход, затем повтори свою часть линии самостоятельно.</p>
+              <button type="button" class="opening-btn accent full" id="openingDeviationStart" disabled>♟ Тренировать отклонения соперника</button>
+              <p>Отдельная тренировка: соперник сыграет не по теории, а Stockfish поможет найти правильный ответ.</p>
             </div>
           </section>
 
