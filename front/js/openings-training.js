@@ -7,6 +7,7 @@
     openings: [], opening: null, side: 'white', catalogSide: 'white', level: 'medium',
     game: null, board: null, mode: 'idle', moveIndex: 0,
     botThinking: false, runId: 0, loadToken: 0, lastError: '',
+    premoveQueue: [], virtualGame: null,
     detailCache: new Map()
   };
 
@@ -161,15 +162,82 @@
     host.innerHTML = chunks.join('');
   }
 
+  function getPremoveBaseGame() {
+    const base = new Chess(state.game.fen());
+
+    // В режиме повторения следующая известная реплика соперника уже известна.
+    // Включаем её в виртуальную позицию, чтобы можно было заранее выбрать ответ
+    // именно на ожидаемую позицию из дебютной линии.
+    if (
+      state.mode === 'practice' &&
+      state.botThinking &&
+      base.turn() !== userColor()
+    ) {
+      const reply = state.opening && state.opening.moves[state.moveIndex];
+      if (reply) {
+        try { base.move(reply); } catch (_) {}
+      }
+    }
+    return base;
+  }
+
+  function rebuildOpeningPremoveState() {
+    if (!state.game || !window.ChessPremove) {
+      state.virtualGame = state.game ? new Chess(state.game.fen()) : null;
+      state.premoveQueue = [];
+      return;
+    }
+    const base = getPremoveBaseGame();
+    const result = window.ChessPremove.rebuild(base, userColor(), state.premoveQueue);
+    state.premoveQueue = result.queue;
+    state.virtualGame = result.virtualGame;
+  }
+
+  function updateOpeningPremoveHighlights() {
+    const board = byId('openingTrainerBoard');
+    if (!board) return;
+    board.querySelectorAll('.premove-from, .premove-to').forEach(el => {
+      el.classList.remove('premove-from', 'premove-to');
+    });
+    state.premoveQueue.forEach(move => {
+      board.querySelector('.square-' + move.from)?.classList.add('premove-from');
+      board.querySelector('.square-' + move.to)?.classList.add('premove-to');
+    });
+  }
+
+  function renderPracticeBoard() {
+    if (!state.board || !state.game) return;
+    rebuildOpeningPremoveState();
+    const visible = state.virtualGame || state.game;
+    state.board.position(visible.fen(), false);
+    state.board.orientation(state.side);
+    const boardElement = byId('openingTrainerBoard');
+    if (boardElement) boardElement.dataset.orientation = state.side;
+    updateOpeningPremoveHighlights();
+  }
+
+  function isOpeningPlanningTurn() {
+    return Boolean(
+      state.botThinking ||
+      (state.game && state.game.turn() !== userColor()) ||
+      state.premoveQueue.length
+    );
+  }
+
   function updateBoard() {
     if (!state.board || !state.game) return;
-    state.board.position(state.game.fen(), false);
-    state.board.orientation(state.side);
+    if (['practice', 'engine'].includes(state.mode)) renderPracticeBoard();
+    else {
+      state.board.position(state.game.fen(), false);
+      state.board.orientation(state.side);
+    }
     const boardElement = byId('openingTrainerBoard');
     if (boardElement) boardElement.dataset.orientation = state.side;
   }
 
   function resetGame() {
+    state.premoveQueue = [];
+    state.virtualGame = null;
     state.game = new Chess();
     state.moveIndex = 0;
     updateBoard();
@@ -267,12 +335,17 @@
     if (!window.initBoardClickToMove) return;
     window.initBoardClickToMove(
       'openingTrainerBoard',
-      () => state.game,
+      () => {
+        if (['practice', 'engine'].includes(state.mode) && isOpeningPlanningTurn()) {
+          rebuildOpeningPremoveState();
+          return state.virtualGame || state.game;
+        }
+        return state.game;
+      },
       handleUserDrop,
       {
         canSelect: piece => Boolean(
           ['practice', 'engine'].includes(state.mode) &&
-          !state.botThinking &&
           !state.game.game_over() &&
           piece &&
           piece.color === userColor()
@@ -286,11 +359,11 @@
     state.board = Chessboard('openingTrainerBoard', {
       position: 'start', orientation: 'white', draggable: true, pieceTheme: PIECE_THEME,
       onDragStart: (source, piece) => {
-        if (!['practice', 'engine'].includes(state.mode) || state.botThinking || state.game.game_over()) return false;
-        const turn = state.game.turn();
-        if (turn !== userColor()) return false;
-        if ((turn === 'w' && piece.startsWith('b')) || (turn === 'b' && piece.startsWith('w'))) return false;
-        return true;
+        if (!['practice', 'engine'].includes(state.mode) || state.game.game_over()) return false;
+        rebuildOpeningPremoveState();
+        const activeGame = isOpeningPlanningTurn() ? state.virtualGame : state.game;
+        if (!piece || piece[0] !== userColor() || !activeGame) return false;
+        return activeGame.moves({ square: source }).length > 0;
       },
       onDrop: handleUserDrop,
       onSnapEnd: () => updateBoard()
@@ -375,7 +448,8 @@
     }
     const san = state.opening.moves[state.moveIndex];
     state.botThinking = true;
-    byId('openingPracticeStatus').textContent = 'Бот отвечает по изученной линии…';
+    renderPracticeBoard();
+    byId('openingPracticeStatus').textContent = 'Бот отвечает по изученной линии… Можно заранее поставить ход.';
     setTimeout(() => {
       if (run !== state.runId || state.mode !== 'practice') return;
       let move = null;
@@ -386,9 +460,11 @@
         return;
       }
       state.moveIndex++;
+      state.botThinking = false;
       updateBoard();
       updateProgress();
-      if (state.moveIndex >= state.opening.moves.length) enterEngineMode(run);
+      if (state.premoveQueue.length) executeOpeningPremove(run);
+      else if (state.moveIndex >= state.opening.moves.length) enterEngineMode(run);
       else maybePlayBookMove(run);
     }, 360);
   }
@@ -406,7 +482,8 @@
     if (run !== state.runId || state.mode !== 'engine' || state.botThinking || state.game.game_over()) return;
     if (state.game.turn() === userColor()) return;
     state.botThinking = true;
-    byId('openingPracticeStatus').textContent = 'Stockfish выбирает ход…';
+    renderPracticeBoard();
+    byId('openingPracticeStatus').textContent = 'Stockfish выбирает ход… Можно заранее поставить ход.';
     const positionFen = state.game.fen();
     try {
       const response = await fetch('/api/evaluate', {
@@ -435,12 +512,87 @@
         byId('openingPracticeStatus').textContent = 'Ожидается ход бота.';
       }
     } finally {
-      if (run === state.runId) state.botThinking = false;
+      if (run === state.runId) {
+        state.botThinking = false;
+        updateBoard();
+        if (!state.game.game_over() && state.premoveQueue.length) executeOpeningPremove(run);
+      }
+    }
+  }
+
+  function executeOpeningPremove(run) {
+    if (run !== state.runId || !['practice', 'engine'].includes(state.mode) || !state.premoveQueue.length) {
+      updateBoard();
+      return;
+    }
+
+    const rebuilt = window.ChessPremove.rebuild(state.game, userColor(), state.premoveQueue);
+    state.premoveQueue = rebuilt.queue;
+    if (state.mode === 'practice') {
+      const expected = lineMoveAt(state.moveIndex);
+      const planned = state.premoveQueue[0];
+      if (!expected || !planned || toUci(expected) !== planned.from + planned.to + (planned.promotion || '')) {
+        state.premoveQueue = [];
+        renderPracticeBoard();
+        setMessage('Премув отменён: этот ход не совпадает с изучаемой линией. Сделай правильный ход самостоятельно.', 'error');
+        byId('openingPracticeStatus').textContent = 'Твой ход. Премув не засчитан.';
+        return;
+      }
+    }
+
+    const executed = window.ChessPremove.execute(state.game, userColor(), state.premoveQueue);
+    state.premoveQueue = executed.queue;
+    if (!executed.move) {
+      state.premoveQueue = [];
+      renderPracticeBoard();
+      setMessage('Премув отменён: после ответа соперника ход больше не легален.', 'error');
+      byId('openingPracticeStatus').textContent = 'Твой ход. Выбери другой ход.';
+      return;
+    }
+
+    if (state.mode === 'practice') {
+      state.moveIndex++;
+      updateProgress();
+    }
+    renderPracticeBoard();
+    const gameOver = state.game.game_over();
+    if (gameOver) {
+      state.premoveQueue = [];
+      setMessage('Партия завершена: ' + (state.game.in_checkmate() ? 'мат' : 'ничья') + '.', 'success');
+      byId('openingPracticeStatus').textContent = 'Партия завершена.';
+      updateBoard();
+      return;
+    }
+
+    setMessage('Премув выполнен: ' + executed.move.san + '.', 'success');
+    byId('openingPracticeStatus').textContent = 'Премув выполнен. Бот отвечает…';
+    if (state.mode === 'practice' && state.moveIndex >= state.opening.moves.length) {
+      enterEngineMode(run);
+    } else if (state.mode === 'practice') {
+      setTimeout(() => maybePlayBookMove(run), 160);
+    } else {
+      setTimeout(() => playEngineMove(run), 160);
     }
   }
 
   function handleUserDrop(source, target) {
-    if (!['practice', 'engine'].includes(state.mode) || state.botThinking || state.game.turn() !== userColor()) return 'snapback';
+    if (!['practice', 'engine'].includes(state.mode) || state.game.game_over()) return 'snapback';
+    const planningMode = isOpeningPlanningTurn();
+    if (planningMode) {
+      const base = getPremoveBaseGame();
+      const planned = window.ChessPremove.add(base, userColor(), state.premoveQueue, {
+        from: source, to: target, promotion: 'q'
+      });
+      if (!planned.ok) return 'snapback';
+      state.premoveQueue = planned.queue;
+      state.virtualGame = planned.virtualGame;
+      renderPracticeBoard();
+      setMessage('Премув ' + source + ' → ' + target + ' поставлен. Выполнится после ответа соперника, если останется легальным.', 'info');
+      byId('openingPracticeStatus').textContent = 'Премув ожидает ответа соперника.';
+      return 'snapback';
+    }
+
+    if (state.game.turn() !== userColor()) return 'snapback';
     const expected = state.mode === 'practice' ? lineMoveAt(state.moveIndex) : null;
     let move = null;
     try { move = state.game.move({from: source, to: target, promotion: 'q'}); } catch (_) {}
