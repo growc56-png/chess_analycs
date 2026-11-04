@@ -329,7 +329,7 @@
       const playedMoveAccepted = acceptedMoves.includes(move.uci);
       accuracyTotal += moveAccuracy(move);
       const classification = playedMoveAccepted ? 'best' : String(move.classification || '');
-      const spent = Number(move.time_spent);
+      const spent = move.time_spent == null ? NaN : Number(move.time_spent);
       if (Number.isFinite(spent) && spent >= 0) timeSamples.push(spent);
       if (BAD_CLASSES.has(classification) && !playedMoveAccepted && Number.isFinite(spent) && spent <= 3) fastErrors += 1;
       if (move.missed_tactic) {
