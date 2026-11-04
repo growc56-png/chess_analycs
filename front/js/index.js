@@ -139,10 +139,6 @@ async function initApp() {
   try {
     const todayName = getTodayInfo();
     
-    const d = new Date();
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    fetch('/api/diary', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({day_date: dateStr}) });
-
     const [planRes, puzzlesRes, endgamesRes, openingsRes, recRes] = await Promise.all([
       fetch('/api/plan'), fetch('/api/puzzles'), fetch('/api/endgames'), fetch('/api/openings'), fetch('/api/recommendations')
     ]);
@@ -166,6 +162,7 @@ async function initApp() {
 
     updateRecommendationsUI(recData.recommendations);
     renderPlan(todayName);
+    window.dispatchEvent(new CustomEvent('chess-plan-updated'));
     renderPuzzlesList();
     renderEndgamesList();
     renderSideButtons();
@@ -1961,8 +1958,40 @@ function showDay(dayNum) {
   `;
   document.getElementById('noteArea').value = d.note || '';
   document.getElementById('dayCheck').onchange = async (e) => {
-    await fetch('/api/complete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({day: d.day, completed: e.target.checked}) });
-    d.completed = e.target.checked; document.querySelector('.day-card').classList.toggle('done', d.completed); updateProgress(); renderPhases();
+    const checkbox = e.target;
+    checkbox.disabled = true;
+    try {
+      const response = await fetch('/api/complete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({day: d.day, completed: checkbox.checked})
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.detail || 'Не удалось сохранить выполнение дня.');
+      }
+      d.completed = checkbox.checked;
+      document.querySelector('.day-card').classList.toggle('done', d.completed);
+      if (d.completed) {
+        const now = new Date();
+        const dateStr = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+        const diaryResponse = await fetch('/api/diary', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({day_date: dateStr})
+        });
+        if (!diaryResponse.ok) console.warn('Не удалось записать завершённую тренировку в дневник.');
+      }
+      updateProgress();
+      renderPhases();
+      window.dispatchEvent(new CustomEvent('chess-plan-updated'));
+      if (document.getElementById('tab-diary').classList.contains('active') && window.drawDiary) window.drawDiary();
+    } catch (error) {
+      checkbox.checked = !checkbox.checked;
+      showError('Не удалось сохранить прогресс: ' + error.message);
+    } finally {
+      checkbox.disabled = false;
+    }
   };
   let noteTimer;
   document.getElementById('noteArea').oninput = (e) => {
