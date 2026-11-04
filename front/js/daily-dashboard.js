@@ -58,6 +58,11 @@
 
     const done = plan.filter(item => item.completed).length;
     const percent = plan.length ? Math.round(done / plan.length * 100) : 0;
+    const goalLabel = snapshot.goal && snapshot.goal.current_elo && snapshot.goal.target_elo
+      ? snapshot.goal.current_elo + ' → ' + snapshot.goal.target_elo + ' ELO'
+      : 'Персональная цель';
+    const targetLabel = document.querySelector('.target-card small');
+    if (targetLabel) targetLabel.textContent = goalLabel;
     const tasks = Array.isArray(day.tasks) ? day.tasks : [];
     const minutes = getMinutes(tasks);
     const completed = Boolean(day.completed);
