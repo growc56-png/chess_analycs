@@ -198,7 +198,7 @@
     setStatus('Загружаю партии Lichess…');
     try {
       const limit = Number($('coachGameLimit').value || 50);
-      const response = await fetch('https://lichess.org/api/games/user/' + encodeURIComponent(username) + '?max=' + Math.max(1, Math.min(50, limit)), {
+      const response = await fetch('https://lichess.org/api/games/user/' + encodeURIComponent(username) + '?max=' + Math.max(1, Math.min(50, limit)) + '&clocks=true', {
         headers: { Accept: 'application/x-chess-pgn' }
       });
       if (!response.ok) throw new Error(response.status === 404 ? 'Пользователь не найден.' : 'Lichess вернул ошибку ' + response.status + '.');
