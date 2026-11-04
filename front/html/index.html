@@ -171,12 +171,12 @@
         </div>
 
         <section class="coach-panel coach-import-panel">
-          <div class="coach-panel-heading"><div><div class="coach-label">ШАГ 1</div><h3>Добавь свои партии</h3><p>Выбери источник и проанализируй от одной до пяти партий за запуск.</p></div><span class="coach-panel-icon">↥</span></div>
+          <div class="coach-panel-heading"><div><div class="coach-label">ШАГ 1</div><h3>Добавь свои партии</h3><p>Загрузи до 50 последних партий. Тренер найдёт повторяющиеся ошибки и составит план по твоим реальным позициям.</p></div><span class="coach-panel-icon">↥</span></div>
           <div class="coach-import-controls">
             <label class="coach-field"><span>Источник партий</span><select id="coachSource"><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option><option value="pgn">PGN-файл или текст</option></select></label>
             <details class="coach-extra-settings"><summary>Дополнительные настройки</summary><div class="coach-extra-fields">
               <label class="coach-field"><span>Твой цвет</span><select id="coachSide"><option value="auto">Определить по нику</option><option value="white">Белыми</option><option value="black">Чёрными</option></select></label>
-              <label class="coach-field"><span>Количество партий</span><select id="coachGameLimit"><option value="1">1 партия</option><option value="3" selected>3 партии</option><option value="5">5 партий</option></select></label>
+              <label class="coach-field"><span>Количество партий</span><select id="coachGameLimit"><option value="1">1 партия</option><option value="3">3 партии</option><option value="5">5 партий</option><option value="10">10 партий</option><option value="25">25 партий</option><option value="50" selected>50 партий</option></select></label>
             </div></details>
           </div>
           <div class="coach-source-row" id="coachChesscomFields">
@@ -194,7 +194,7 @@
           </div>
           <div id="coachImportStatus" class="coach-status" role="status">Загрузи партии, чтобы увидеть персональную диагностику.</div>
           <div id="coachGamesList" class="coach-games-list"></div>
-          <div class="coach-run-row"><span id="coachSelectionCount">Выбрано: 0</span><button class="action-btn coach-primary-btn" type="button" id="coachAnalyzeBtn" disabled>✦ Найти мои слабости</button></div>
+          <div class="coach-run-row"><span id="coachSelectionCount">Выбрано: 0</span><button class="action-btn coach-primary-btn" type="button" id="coachAnalyzeBtn" disabled>✦ Анализировать и собрать план</button></div>
           <div class="coach-progress" id="coachProgress" hidden><div class="coach-progress-track"><i id="coachProgressFill"></i></div><span id="coachProgressText">0%</span></div>
         </section>
 
@@ -204,6 +204,8 @@
           <article class="coach-metric"><span>Точность твоих ходов</span><strong id="coachMetricAccuracy">—</strong><small>Оценка по классификации Stockfish</small></article>
           <article class="coach-metric"><span>Ошибки и зевки</span><strong id="coachMetricErrors">—</strong><small>Неточности, ошибки и зевки</small></article>
           <article class="coach-metric"><span>Ходы под проверкой</span><strong id="coachMetricMoves">—</strong><small>Твои ходы в разобранных партиях</small></article>
+          <article class="coach-metric"><span>Среднее время на ход</span><strong id="coachMetricTime">—</strong><small>Если PGN содержит часы</small></article>
+          <article class="coach-metric"><span>Ошибки за 3 секунды и быстрее</span><strong id="coachMetricFastErrors">—</strong><small>Быстрые решения с потерей качества</small></article>
         </div>
 
         <details class="coach-advanced-details"><summary>Подробная диагностика и план</summary>
