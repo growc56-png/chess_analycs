@@ -629,7 +629,7 @@
     list.innerHTML = drills.map((drill, index) =>
       '<button type="button" class="coach-drill-option" data-drill-index="' + index + '">' +
         '<span class="coach-drill-tag">' + CLASS_LABELS[drill.classification] + '</span>' +
-        '<span><strong>' + escapeHtml(drill.gameLabel) + ' · ход ' + drill.moveNum + '</strong><small>' + PHASE_LABELS[drill.phase] + ' · сыграно ' + escapeHtml(drill.playedSan) + (drill.solved ? ' · решено ✓' : '') + '</small></span>' +
+        '<span><strong>' + escapeHtml(drill.gameLabel) + ' · ход ' + drill.moveNum + '</strong><small>' + PHASE_LABELS[drill.phase] + ' · сыграно ' + escapeHtml(drill.playedSan) + (drill.timeSpent != null ? ' · время: ' + drill.timeSpent.toFixed(1) + ' с' : '') + (drill.missedTactic ? ' · пропущена тактика' : '') + (drill.solved ? ' · решено ✓' : '') + '</small></span>' +
       '</button>'
     ).join('');
     list.querySelectorAll('button[data-drill-index]').forEach(button => {
