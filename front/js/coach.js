@@ -127,9 +127,9 @@
       row.append(checkbox, copy);
       checkbox.addEventListener('change', () => {
         const selectedCount = document.querySelectorAll('#coachGamesList input[type="checkbox"]:checked').length;
-        if (checkbox.checked && selectedCount > 5) {
+        if (checkbox.checked && selectedCount > 50) {
           checkbox.checked = false;
-          setStatus('За один запуск можно выбрать не больше пяти партий.', 'error');
+          setStatus('За один запуск можно выбрать не больше 50 партий.', 'error');
         }
         updateSelectionCount();
       });
@@ -172,11 +172,11 @@
       setStatus('Введи ник Chess.com.', 'error');
       return;
     }
-    const limit = Number($('coachGameLimit').value || 3);
+    const limit = Number($('coachGameLimit').value || 50);
     $('coachLoadChesscom').disabled = true;
     setStatus('Загружаю публичные партии Chess.com…');
     try {
-      const response = await fetch('/api/chesscom/' + encodeURIComponent(username) + '/games?limit=' + Math.max(1, Math.min(20, limit * 2)));
+      const response = await fetch('/api/chesscom/' + encodeURIComponent(username) + '/games?limit=' + Math.max(1, Math.min(50, limit)));
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Не удалось загрузить партии.');
       setImportedGames(data.games || [], data.username || username, 'Chess.com');
@@ -197,7 +197,8 @@
     $('coachLoadLichess').disabled = true;
     setStatus('Загружаю партии Lichess…');
     try {
-      const response = await fetch('https://lichess.org/api/games/user/' + encodeURIComponent(username) + '?max=10', {
+      const limit = Number($('coachGameLimit').value || 50);
+      const response = await fetch('https://lichess.org/api/games/user/' + encodeURIComponent(username) + '?max=' + Math.max(1, Math.min(50, limit)), {
         headers: { Accept: 'application/x-chess-pgn' }
       });
       if (!response.ok) throw new Error(response.status === 404 ? 'Пользователь не найден.' : 'Lichess вернул ошибку ' + response.status + '.');
@@ -232,7 +233,7 @@
     return Array.from(document.querySelectorAll('#coachGamesList input[type="checkbox"]:checked'))
       .map(input => importedGames[Number(input.dataset.gameIndex)])
       .filter(Boolean)
-      .slice(0, 5);
+      .slice(0, 50);
   }
 
   async function startAndWaitAnalysis(pgn, gameIndex, gameTotal) {
@@ -315,6 +316,10 @@
     const counts = { blunder: 0, mistake: 0, inaccuracy: 0, miss: 0 };
     const phaseErrors = { opening: 0, middlegame: 0, endgame: 0 };
     let accuracyTotal = 0;
+    let fastErrors = 0;
+    let missedTactics = 0;
+    const timeSamples = [];
+    const motifCounts = { fork: 0, pin: 0, discovered_check: 0, mate: 0, mate_in_2: 0 };
     const drills = [];
 
     ownMoves.forEach(move => {
@@ -324,6 +329,15 @@
       const playedMoveAccepted = acceptedMoves.includes(move.uci);
       accuracyTotal += moveAccuracy(move);
       const classification = playedMoveAccepted ? 'best' : String(move.classification || '');
+      const spent = Number(move.time_spent);
+      if (Number.isFinite(spent) && spent >= 0) timeSamples.push(spent);
+      if (BAD_CLASSES.has(classification) && !playedMoveAccepted && Number.isFinite(spent) && spent <= 3) fastErrors += 1;
+      if (move.missed_tactic) {
+        missedTactics += 1;
+        (Array.isArray(move.best_move_motifs) ? move.best_move_motifs : []).forEach(motif => {
+          if (Object.prototype.hasOwnProperty.call(motifCounts, motif)) motifCounts[motif] += 1;
+        });
+      }
       if (BAD_CLASSES.has(classification) && !playedMoveAccepted) {
         counts[classification] = (counts[classification] || 0) + 1;
         const phase = phaseForMove(move);
@@ -344,6 +358,9 @@
             phase,
             classification,
             cpLoss: Number(move.cp_loss || 0),
+            timeSpent: Number.isFinite(spent) ? spent : null,
+            missedTactic: Boolean(move.missed_tactic),
+            motifs: Array.isArray(move.best_move_motifs) ? move.best_move_motifs : [],
             solved: false
           });
         }
@@ -361,6 +378,11 @@
       accuracy: ownMoves.length ? accuracyTotal / ownMoves.length : null,
       counts,
       phaseErrors,
+      timeSamples,
+      averageMoveTime: timeSamples.length ? timeSamples.reduce((sum, value) => sum + value, 0) / timeSamples.length : null,
+      fastErrors,
+      missedTactics,
+      motifCounts,
       drills
     };
   }
@@ -396,14 +418,25 @@
         accuracyTotal: analyses.reduce((sum, item) => sum + (item.accuracy || 0) * item.moveCount, 0),
         errors: { blunder: 0, mistake: 0, inaccuracy: 0, miss: 0 },
         phaseErrors: { opening: 0, middlegame: 0, endgame: 0 },
+        timeSamples: [],
+        fastErrors: 0,
+        missedTactics: 0,
+        motifCounts: { fork: 0, pin: 0, discovered_check: 0, mate: 0, mate_in_2: 0 },
         drills: []
       };
       analyses.forEach(item => {
         Object.keys(summary.errors).forEach(key => summary.errors[key] += item.counts[key] || 0);
         Object.keys(summary.phaseErrors).forEach(key => summary.phaseErrors[key] += item.phaseErrors[key] || 0);
+        summary.timeSamples.push(...(item.timeSamples || []));
+        summary.fastErrors += item.fastErrors || 0;
+        summary.missedTactics += item.missedTactics || 0;
+        Object.keys(summary.motifCounts).forEach(key => summary.motifCounts[key] += (item.motifCounts || {})[key] || 0);
         summary.drills.push(...item.drills);
       });
       summary.accuracy = summary.moves ? summary.accuracyTotal / summary.moves : 0;
+      summary.averageMoveTime = summary.timeSamples.length ? summary.timeSamples.reduce((sum, value) => sum + value, 0) / summary.timeSamples.length : null;
+      summary.timedMoves = summary.timeSamples.length;
+      delete summary.timeSamples;
       summary.totalErrors = Object.values(summary.errors).reduce((a, b) => a + b, 0);
       summary.drills.sort((a, b) => {
         const severity = { blunder: 4, miss: 3, mistake: 2, inaccuracy: 1 };
@@ -473,6 +506,8 @@
     $('coachMetricAccuracy').textContent = s.accuracy.toFixed(1) + '%';
     $('coachMetricErrors').textContent = String(s.totalErrors);
     $('coachMetricMoves').textContent = String(s.moves);
+    $('coachMetricTime').textContent = s.averageMoveTime != null ? s.averageMoveTime.toFixed(1) + ' с' : 'Нет данных';
+    $('coachMetricFastErrors').textContent = String(s.fastErrors || 0);
     $('coachReportDate').textContent = 'Обновлено: ' + new Date(report.createdAt).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
 
     const phases = Object.keys(s.phaseErrors).map(key => ({ key, label: PHASE_LABELS[key], count: s.phaseErrors[key] }));
@@ -518,6 +553,12 @@
   function renderAdaptivePlan(summary) {
     const tasks = [];
     const phases = summary.phaseErrors || {};
+    if ((summary.missedTactics || 0) > 0) {
+      tasks.push({ title: 'Научись замечать тактические угрозы', detail: 'В партиях найдено ' + summary.missedTactics + ' пропущенных тактических возможностей. Тренируй вилки, связки и шахи-кандидаты, затем проверяй угрозу соперника перед каждым ходом.', action: 'К своим ошибкам', target: 'drills' });
+    }
+    if ((summary.fastErrors || 0) > 0) {
+      tasks.push({ title: 'Замедли решения в критических позициях', detail: summary.fastErrors + ' ошибок были сделаны за 3 секунды или быстрее. Перед ходом трать время на проверку шахов, взятий и угроз соперника.', action: 'К своим ошибкам', target: 'drills' });
+    }
     if (summary.errors.blunder + summary.errors.mistake >= 2) {
       tasks.push({
         title: 'Снизь количество грубых ошибок',
@@ -1015,7 +1056,7 @@
 
     $('coachSource').addEventListener('change', updateSourcePanels);
     $('coachGameLimit').addEventListener('change', () => {
-      const limit = Number($('coachGameLimit').value || 3);
+      const limit = Number($('coachGameLimit').value || 50);
       document.querySelectorAll('#coachGamesList input[type="checkbox"]').forEach((input, index) => {
         input.checked = index < limit;
       });
