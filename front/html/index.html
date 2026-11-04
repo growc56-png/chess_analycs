@@ -10,7 +10,8 @@
 <link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261102-analysis-layout-v10">
 <link rel="stylesheet" href="/css/coach.css?v=20261102-compact-v1">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
-<link rel="stylesheet" href="/css/site-refinement.css?v=20261102-endgame-practice-v2">
+<link rel="stylesheet" href="/css/site-refinement.css?v=20261104-daily-v1">
+<link rel="stylesheet" href="/css/daily-dashboard.css?v=20261104-daily-v1">
 <script src="/js/board-interactions.js?v=20261102-clickmove-v2" defer></script>
 <script src="/js/jquery.min.js"></script>
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
@@ -18,7 +19,8 @@
 <script src="/js/chess-premove.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/board-drawing.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261103-unified-premove-v3" defer></script>
+<script src="/js/index.js?v=20261104-daily-v1" defer></script>
+<script src="/js/daily-dashboard.js?v=20261104-daily-v1" defer></script>
 <script src="/js/diary-ui.js" defer></script>
 <script src="/js/coach.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/errors.js?v=20261103-unified-premove-v3" defer></script>
@@ -83,6 +85,20 @@
         <div class="section-heading"><div><div class="section-kicker">ТВОЙ МАРШРУТ</div><h2>План тренировок</h2><p id="planIntroText">Твой персональный маршрут к выбранному рейтингу</p></div><div class="section-badge" id="planDurationBadge">Персональный план</div></div>
         <div id="goalSummary" class="goal-summary" hidden></div>
         <div id="recommendations-banner"><h3>💡 Персональные рекомендации:</h3><ul id="recommendations-list"></ul></div>
+        <section class="daily-coach-card" id="dailyTrainingDashboard" aria-labelledby="dailyTrainingTitle">
+          <div class="daily-coach-topline"><span class="daily-coach-eyebrow">ТВОЙ СЛЕДУЮЩИЙ ШАГ</span><span class="daily-coach-date" id="dailyTrainingDate">СЕГОДНЯ</span></div>
+          <div class="daily-coach-heading">
+            <div><h3 id="dailyTrainingTitle">Собираем твою тренировку…</h3><p id="dailyTrainingSubtitle">Подбираем задания из персонального плана.</p></div>
+            <div class="daily-coach-total"><strong id="dailyTrainingMinutes">—</strong><span>минут</span></div>
+          </div>
+          <div class="daily-coach-progress"><div class="daily-coach-progress-track"><i id="dailyTrainingProgressFill"></i></div><span id="dailyTrainingProgressText">Загрузка плана</span></div>
+          <div class="daily-coach-tasks" id="dailyTrainingTasks" aria-live="polite"></div>
+          <div class="daily-coach-footer">
+            <button class="daily-coach-primary" id="dailyTrainingStart" type="button">Перейти к плану</button>
+            <button class="daily-coach-secondary" id="dailyTrainingComplete" type="button" disabled>Отметить день выполненным</button>
+          </div>
+          <p class="daily-coach-hint" id="dailyTrainingHint">Отмечай завершённый день после реальной тренировки — это попадёт в дневник активности.</p>
+        </section>
         <div class="progress-card"><div class="progress-heading"><strong>Общий прогресс</strong><span id="progressText"></span></div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div></div>
         <div class="layout">
           <aside class="plan-sidebar"><div id="phases"></div><div class="week-list" id="weeks"></div></aside>
