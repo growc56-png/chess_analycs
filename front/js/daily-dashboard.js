@@ -145,6 +145,9 @@
     if (typeof window.getChessTrainingSnapshot === 'function') render(window.getChessTrainingSnapshot());
   }
 
+  const analyzeButton = $('dailyTrainingAnalyze');
+  if (analyzeButton) analyzeButton.addEventListener('click', openPersonalAnalysis);
+
   window.addEventListener('chess-plan-updated', refresh);
   window.addEventListener('chess-auth-ready', refresh);
   window.addEventListener('load', refresh);
