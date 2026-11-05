@@ -31,6 +31,15 @@
     if (button) button.click();
   }
 
+  function openPersonalAnalysis() {
+    const coachTab = document.querySelector('.tab-btn[data-tab="coach"]');
+    if (coachTab) coachTab.click();
+    window.setTimeout(() => {
+      const panel = document.querySelector('#tab-coach .coach-import-panel');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
   function getMinutes(tasks) {
     return tasks.reduce((total, task) => {
       const parsed = Number(String(task.duration || '').match(/[\d.]+/)?.[0] || 0);
@@ -40,17 +49,29 @@
 
   function render(snapshot) {
     const root = $('dailyTrainingDashboard');
-    if (!root || !snapshot || !Array.isArray(snapshot.plan)) return;
+    if (!root) return;
+    const analyzeButton = $('dailyTrainingAnalyze');
+    if (analyzeButton) analyzeButton.onclick = openPersonalAnalysis;
+    if (!snapshot || !Array.isArray(snapshot.plan)) {
+      $('dailyTrainingTitle').textContent = 'Твоя тренировка ещё не собрана';
+      $('dailyTrainingSubtitle').textContent = 'Сначала проанализируй свои партии — тренер найдёт повторяющиеся ошибки и подготовит программу.';
+      $('dailyTrainingMinutes').textContent = '—';
+      $('dailyTrainingProgressText').textContent = 'Ожидает анализа партий';
+      $('dailyTrainingProgressFill').style.width = '0%';
+      $('dailyTrainingTasks').replaceChildren();
+      $('dailyTrainingComplete').disabled = true;
+      return;
+    }
     const plan = snapshot.plan;
     const day = plan.find(item => item.day === snapshot.currentDay)
       || plan.find(item => !item.completed)
       || plan[plan.length - 1];
     if (!day) {
-      $('dailyTrainingTitle').textContent = 'План пока не создан';
+      $('dailyTrainingTitle').textContent = 'Твоя тренировка ещё не собрана';
       $('dailyTrainingSubtitle').textContent = 'Настрой цель по рейтингу, чтобы получить персональную программу.';
       $('dailyTrainingTasks').replaceChildren();
       $('dailyTrainingMinutes').textContent = '—';
-      $('dailyTrainingProgressText').textContent = 'Нет активного плана';
+      $('dailyTrainingProgressText').textContent = 'Ожидает анализа партий';
       $('dailyTrainingProgressFill').style.width = '0%';
       $('dailyTrainingComplete').disabled = true;
       return;
@@ -111,6 +132,7 @@
       if (planTab) planTab.click();
       $('dayView')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
+    if (analyzeButton) analyzeButton.onclick = openPersonalAnalysis;
     $('dailyTrainingComplete').onclick = () => {
       const checkbox = $('dayCheck');
       if (!checkbox || checkbox.disabled) return;
