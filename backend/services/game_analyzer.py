@@ -506,6 +506,46 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         deep_after_infos = _normalise_engine_infos(deep_after_info)
                         deep_after_info = deep_after_infos[0] if deep_after_infos else {}
 
+                        # A piece being attacked is not enough for a Brilliant.
+                        # Test every legal capture of the offered piece at the
+                        # deep limit. If the opponent can accept it without
+                        # giving up at least 2.5 expected-points, it is not a
+                        # sound sacrifice and must not receive the Brilliant label.
+                        sacrifice_confirmed = False
+                        if is_sacrifice and sacrifice_details and deep_after_info.get("score") is not None:
+                            capture_moves = sacrifice_details.get("capture_uci") or []
+                            best_reply_points = expected_points_from_score(
+                                deep_after_info["score"],
+                                mover,
+                            )
+                            capture_points = []
+                            for capture_uci in capture_moves:
+                                try:
+                                    capture_move = chess.Move.from_uci(capture_uci)
+                                    if capture_move not in board.legal_moves:
+                                        continue
+                                    capture_info = engine.analyse(
+                                        board,
+                                        deep_limit,
+                                        root_moves=[capture_move],
+                                    )
+                                    if isinstance(capture_info, list):
+                                        capture_info = capture_info[0] if capture_info else {}
+                                    capture_score = capture_info.get("score") if capture_info else None
+                                    if capture_score is not None:
+                                        capture_points.append(
+                                            expected_points_from_score(capture_score, mover)
+                                        )
+                                except Exception:
+                                    continue
+
+                            # One safe/near-best capture is enough to disprove
+                            # the claim that the move offered a sound sacrifice.
+                            sacrifice_confirmed = bool(capture_points) and all(
+                                points > best_reply_points + 0.025
+                                for points in capture_points
+                            )
+
                         if deep_best_info and deep_after_info.get("score") is not None:
                             deep_best_pv = deep_best_info.get("pv") or []
                             deep_best_score = deep_best_info.get("score")
@@ -589,6 +629,13 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         # A deep-pass failure must not discard the valid fast
                         # analysis for the rest of the game.
                         deep_analysis_performed = False
+
+                # Only a deep-engine-confirmed sacrifice can be Brilliant.
+                is_sacrifice = bool(
+                    is_sacrifice
+                    and deep_analysis_performed
+                    and sacrifice_confirmed
+                )
 
                 if is_accepted_winning_mate or is_forced:
                     # Accepted mating alternatives and sole legal moves should
