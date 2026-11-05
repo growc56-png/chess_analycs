@@ -33,8 +33,9 @@ def get_sacrifice_details(board_before, move):
     if not after.is_attacked_by(opponent, target):
         return None
 
-    # Only count a legal recapture. Pinned pieces and illegal king captures
-    # are naturally excluded by python-chess' legal move generator.
+    # Record every legal opponent capture of the offered piece. The analyzer
+    # must then prove that accepting the offer is objectively inferior.
+    capture_replies = []
     for reply in after.legal_moves:
         if reply.to_square != target:
             continue
@@ -48,17 +49,27 @@ def get_sacrifice_details(board_before, move):
         ):
             continue
 
-        return {
-            "piece": chess.piece_name(piece.piece_type),
-            "piece_symbol": piece.symbol(),
-            "captured_piece": None,
-            "captured_symbol": None,
-            "recapture_san": after.san(reply),
+        capture_replies.append({
+            "uci": reply.uci(),
+            "san": after.san(reply),
             "attacker": chess.piece_name(attacker.piece_type),
-            "material_difference": moving_value,
-        }
+            "attacker_value": PIECE_VALUES.get(attacker.piece_type, 0),
+        })
 
-    return None
+    if not capture_replies:
+        return None
+
+    return {
+        "piece": chess.piece_name(piece.piece_type),
+        "piece_symbol": piece.symbol(),
+        "captured_piece": None,
+        "captured_symbol": None,
+        "recapture_san": capture_replies[0]["san"],
+        "attacker": capture_replies[0]["attacker"],
+        "capture_uci": [item["uci"] for item in capture_replies],
+        "capture_replies": capture_replies,
+        "material_difference": moving_value,
+    }
 
 
 def is_true_sacrifice(board_before, move):
