@@ -2827,7 +2827,7 @@ async function analyzePGN(pgn, gameUrl) {
   updateAnalysisProgress(-1, 'running');
   stopAnalysisPlayback();
 
-  const ANALYSIS_VERSION = 'v13-key-moments-reused-multipv';
+  const ANALYSIS_VERSION = 'v14-move-evaluations-deeper-analysis';
   const cacheKey = `analysis_${ANALYSIS_VERSION}_${gameUrl || pgn.slice(0, 50)}`;
   const cachedData = localStorage.getItem(cacheKey);
   if (cachedData) {
@@ -3521,47 +3521,55 @@ window.playTopMove = function(uci) {
 };
 
 // ТУТ БЫЛА ОШИБКА, ТЕПЕРЬ ФУНКЦИЯ ЗАКРЫТА И ДОПИСАНА
+function formatMoveEvaluation(move) {
+  if (!move) return '';
+  const hasEval = move.eval_after_white !== undefined && move.eval_after_white !== null;
+  if (!hasEval) return '';
+  const score = Number(move.eval_after_white);
+  if (move.eval_after_is_mate) {
+    const mateIn = Number(move.eval_after_mate_in || 0);
+    return (mateIn > 0 ? 'М' : '-М') + Math.abs(mateIn);
+  }
+  if (!Number.isFinite(score)) return '';
+  return (score > 0 ? '+' : '') + score.toFixed(1);
+}
+
 function renderMoveTable() {
-  const tbody = document.getElementById('moveTableBody'); tbody.innerHTML = '';
-  
-  const classSymbols = {
-    'brilliant': { text: '!!', title: 'Бриллиантовый ход' },
-    'great': { text: '!', title: 'Замечательный ход' },
-    'best': { text: '★', title: 'Лучший ход' },
-    'excellent': { text: '✓', title: 'Отличный ход' },
-    'good': { text: '✓', title: 'Хороший ход' },
-    'inaccuracy': { text: '?!', title: 'Неточность' },
-    'mistake': { text: '?', title: 'Ошибка' },
-    'miss': { text: '✗', title: 'Промах' },
-    'blunder': { text: '??', title: 'Зевок' },
-    'book': { text: '📖', title: 'Дебютный ход' },
-    'forced': { text: '□', title: 'Вынужденный ход' }
+  const tbody = document.getElementById('moveTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const classLabels = {
+    brilliant: 'Бриллиант', great: 'Замечательный', best: 'Лучший',
+    excellent: 'Отличный', good: 'Хороший', inaccuracy: 'Неточность',
+    mistake: 'Ошибка', miss: 'Промах', blunder: 'Зевок',
+    book: 'Теория', forced: 'Вынужденный'
+  };
+
+  const renderCell = (move, index, color, moveNum) => {
+    if (!move) return '...';
+    const san = String(move.san || '');
+    const label = classLabels[move.classification]
+      ? '<span class="move-class-label cls-' + move.classification + '">' + classLabels[move.classification] + '</span>'
+      : '';
+    const evaluation = formatMoveEvaluation(move);
+    const evalHtml = evaluation
+      ? '<span class="move-eval" title="Оценка позиции после хода; знак «+» означает преимущество белых">' + evaluation + '</span>'
+      : '';
+    return '<span class="move-cell-wrap"><button type="button" class="move-cell" data-move-index="' + index +
+      '" aria-label="Перейти к ходу ' + moveNum + ', ' + color + ': ' + san + '">' + san +
+      '</button>' + label + evalHtml + '</span>';
   };
 
   for (let i = 0; i < analysisMoves.length; i += 2) {
     const moveNum = Math.floor(i / 2) + 1;
     const whiteMove = analysisMoves[i];
     const blackMove = analysisMoves[i + 1];
-
-    let whiteHtml = `<button type="button" class="move-cell" data-move-index="${i}" aria-label="Перейти к ходу ${moveNum}, белые: ${whiteMove.san}">${whiteMove.san}</button>`;
-    if (whiteMove.classification && classSymbols[whiteMove.classification]) {
-      whiteHtml += `<span class="move-class-badge cls-${whiteMove.classification}" title="${classSymbols[whiteMove.classification].title}">${classSymbols[whiteMove.classification].text}</span>`;
-    }
-
-    let blackHtml = '...';
-    if (blackMove) {
-      blackHtml = `<button type="button" class="move-cell" data-move-index="${i+1}" aria-label="Перейти к ходу ${moveNum}, чёрные: ${blackMove.san}">${blackMove.san}</button>`;
-      if (blackMove.classification && classSymbols[blackMove.classification]) {
-        blackHtml += `<span class="move-class-badge cls-${blackMove.classification}" title="${classSymbols[blackMove.classification].title}">${classSymbols[blackMove.classification].text}</span>`;
-      }
-    }
-
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="col-num">${moveNum}</td>
-      <td class="col-white">${whiteHtml}</td>
-      <td class="col-black">${blackHtml}</td>
-    `;
+    tr.innerHTML =
+      '<td class="col-num">' + moveNum + '</td>' +
+      '<td class="col-white">' + renderCell(whiteMove, i, 'белые', moveNum) + '</td>' +
+      '<td class="col-black">' + renderCell(blackMove, i + 1, 'чёрные', moveNum) + '</td>';
     tbody.appendChild(tr);
   }
 }
