@@ -1,0 +1,94 @@
+:root {
+  --ct-bg: #111820;
+  --ct-bg-soft: #151f28;
+  --ct-panel: #1b2933;
+  --ct-panel-2: #202f3a;
+  --ct-panel-hover: #263944;
+  --ct-border: #344955;
+  --ct-text: #f2f6f9;
+  --ct-muted: #98aab6;
+  --ct-accent: #81b64c;
+  --ct-accent-soft: rgba(129,182,76,.14);
+}
+html { background: var(--ct-bg) !important; }
+body {
+  background: var(--ct-bg) !important;
+  color: var(--ct-text) !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+}
+.bots-page button, .mates-page button, .openings-app button, #tab-analysis button,
+.bots-page input, .mates-page input, .openings-app input, .openings-app select,
+#tab-analysis input, #tab-analysis select, #tab-analysis textarea {
+  font-family: inherit;
+  border-radius: 8px;
+}
+.bots-page .page-header, .mates-page .mates-header { color: var(--ct-text); }
+.bots-page .page-heading h1, .mates-page .mates-title h1,
+.openings-app .openings-page-heading h1 { color: var(--ct-text); }
+.bots-page .page-heading p, .mates-page .mates-title p,
+.openings-app .openings-page-heading p { color: var(--ct-muted); }
+.bots-page .back-link, .mates-page .back-link { color: var(--ct-muted); }
+.bots-page .back-link:hover, .mates-page .back-link:hover { color: var(--ct-text); }
+.bots-page .new-game-top, .mates-page button.primary,
+.openings-app .opening-btn.primary, .openings-app .opening-trainer-primary {
+  background: var(--ct-accent);
+  color: #14200f;
+}
+.bots-page .new-game-top:hover, .mates-page button.primary:hover,
+.openings-app .opening-btn.primary:hover, .openings-app .opening-trainer-primary:hover {
+  background: #94c65e;
+}
+.bots-page .player-card, .mates-page .list-box,
+.mates-page .mates-side-panel, .openings-app .opening-board-card,
+.openings-app .opening-trainer-setup, .openings-app .opening-trainer-card,
+.openings-app .opening-trainer-board-card, .openings-app .opening-trainer-theory-card {
+  border-color: var(--ct-border);
+}
+.openings-app .opening-board-card, .openings-app .opening-trainer-setup,
+.openings-app .opening-trainer-card, .openings-app .opening-trainer-board-card,
+.openings-app .opening-trainer-theory-card {
+  background: var(--ct-panel);
+  border-radius: 12px;
+}
+.openings-app .openings-header {
+  background: var(--ct-bg-soft);
+  border-bottom-color: #2d3e49;
+}
+.openings-app .openings-brand-mark {
+  background: linear-gradient(145deg, #91c65e, #5e893e);
+  color: #15210f;
+}
+.openings-app .opening-page-kicker, .openings-app .opening-card-eyebrow,
+.openings-app .opening-board-eyebrow { color: #a9d77c; }
+.openings-app .opening-trainer-field select,
+.openings-app .opening-trainer-side button,
+.openings-app .opening-trainer-secondary {
+  background: var(--ct-panel-2);
+  border-color: var(--ct-border);
+  color: var(--ct-text);
+}
+#tab-analysis .move-cell-wrap { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+#tab-analysis .move-eval {
+  display: inline-block;
+  margin-left: 2px;
+  color: #a9c58d;
+  font-size: 10px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+#tab-analysis .move-class-label {
+  display: inline-block;
+  margin-left: 3px;
+  color: var(--ct-muted);
+  font-size: 9px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+#tab-analysis .move-class-badge { display: none !important; }
+@media (max-width: 720px) {
+  .bots-page, .mates-page { padding: 16px 12px 28px; }
+  #tab-analysis .move-cell { min-width: 48px; padding: 4px 5px; }
+  #tab-analysis .move-eval { font-size: 9px; }
+  #tab-analysis .move-class-label { display: none; }
+}
