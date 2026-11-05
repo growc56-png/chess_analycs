@@ -605,6 +605,10 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 else:
                     curr_parsed = parse_score(after_score.white())
                 curr_eval = curr_parsed["eval"]
+                # Store every move's resulting evaluation from White's point of view.
+                eval_after_white = curr_parsed["eval"]
+                eval_after_is_mate = curr_parsed["is_mate"]
+                eval_after_mate_in = curr_parsed["mate_in"]
 
                 missed_tactic = (
                     not is_best
@@ -647,6 +651,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "move_num": move_number,
                     "san": san_move,
                     "eval": curr_eval,
+                    "eval_after_white": eval_after_white,
+                    "eval_after_is_mate": eval_after_is_mate,
+                    "eval_after_mate_in": eval_after_mate_in,
                     "uci": move.uci(),
                     "before_fen": before_fen,
                     "best_move_uci": best_move_uci,
