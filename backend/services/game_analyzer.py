@@ -479,6 +479,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     deep_reason = "mate_position"
 
                 deep_analysis_performed = False
+                sacrifice_confirmed = False
                 analysis_depth_used = int(best_info.get("depth") or ANALYSIS_DEPTH)
                 if (
                     deep_reason
@@ -511,7 +512,6 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         # deep limit. If the opponent can accept it without
                         # giving up at least 2.5 expected-points, it is not a
                         # sound sacrifice and must not receive the Brilliant label.
-                        sacrifice_confirmed = False
                         if is_sacrifice and sacrifice_details and deep_after_info.get("score") is not None:
                             capture_moves = sacrifice_details.get("capture_uci") or []
                             best_reply_points = expected_points_from_score(
@@ -541,9 +541,13 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
                             # One safe/near-best capture is enough to disprove
                             # the claim that the move offered a sound sacrifice.
-                            sacrifice_confirmed = bool(capture_points) and all(
-                                points > best_reply_points + 0.025
-                                for points in capture_points
+                            sacrifice_confirmed = (
+                                len(capture_points) == len(capture_moves)
+                                and bool(capture_points)
+                                and all(
+                                    points > best_reply_points + 0.025
+                                    for points in capture_points
+                                )
                             )
 
                         if deep_best_info and deep_after_info.get("score") is not None:
