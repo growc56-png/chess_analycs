@@ -745,6 +745,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "is_time_pressure": time_pressure,
                     "clock_before": clock_before,
                     "is_sacrifice": is_sacrifice,
+                    "brilliant_sacrifice_verified": bool(sacrifice_confirmed),
                     "sacrifice_details": sacrifice_details,
                     "fen": board.fen(),
                     "next_top_moves": next_top_moves,
@@ -782,7 +783,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 "deep_analysis_depth": DEEP_ANALYSIS_DEPTH,
                 "deep_analysis_time": DEEP_ANALYSIS_TIME,
                 "deep_positions_checked": deep_positions_checked,
-                "analysis_profile": "two_pass_centipawn_accuracy_v3"
+                "analysis_profile": "two_pass_centipawn_accuracy_v4_brilliant_verified"
             }
 
         except HTTPException:
