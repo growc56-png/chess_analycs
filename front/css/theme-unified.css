@@ -22,7 +22,21 @@ body {
   font-family: inherit;
   border-radius: 8px;
 }
-.bots-page .page-header, .mates-page .mates-header { color: var(--ct-text); }
+.bots-page .page-header, .mates-page .mates-header, .container .header { color: var(--ct-text); }
+.container .header {
+  padding: 14px 16px;
+  border: 1px solid var(--ct-border);
+  border-radius: 12px;
+  background: var(--ct-bg-soft);
+}
+.container .header h1 { color: var(--ct-text); font-size: 22px; }
+.container .header a { color: var(--ct-accent); }
+.container .list-box {
+  background: var(--ct-panel);
+  border: 1px solid var(--ct-border);
+  border-radius: 12px;
+}
+.container .layout { gap: 16px; }
 .bots-page .page-heading h1, .mates-page .mates-title h1,
 .openings-app .openings-page-heading h1 { color: var(--ct-text); }
 .bots-page .page-heading p, .mates-page .mates-title p,
