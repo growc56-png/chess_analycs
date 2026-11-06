@@ -8,7 +8,7 @@
     game: null, board: null, mode: 'idle', moveIndex: 0,
     botThinking: false, runId: 0, loadToken: 0, lastError: '',
     premoveQueue: [], virtualGame: null, deviationTraining: false,
-    detailCache: new Map()
+    detailCache: new Map(), openingBotVariants: [], openingBotFamily: '', openingBotSaved: false
   };
 
   const $ = (id) => document.getElementById(id);
@@ -150,7 +150,7 @@
   function renderMoveChips() {
     const host = byId('openingTrainerMoves');
     if (!host || !state.opening) return;
-    const moves = Array.isArray(state.opening.moves) ? state.opening.moves : [];
+    const moves = state.mode === 'opening-bot' && state.game ? state.game.history() : (Array.isArray(state.opening.moves) ? state.opening.moves : []);
     const game = new Chess();
     const chunks = [];
     moves.forEach((san, index) => {
@@ -213,7 +213,7 @@
 
   function updateBoard() {
     if (!state.board || !state.game) return;
-    if (['practice', 'engine'].includes(state.mode)) renderPracticeBoard();
+    if (['practice', 'engine', 'opening-bot'].includes(state.mode)) renderPracticeBoard();
     else {
       state.board.position(state.game.fen(), false);
       state.board.orientation(state.side);
@@ -247,7 +247,7 @@
   function setMode(mode) {
     state.mode = mode;
     const isStudy = mode === 'study';
-    const isPractice = mode === 'practice' || mode === 'engine';
+    const isPractice = mode === 'practice' || mode === 'engine' || mode === 'opening-bot';
     byId('openingTrainerIdle').hidden = true;
     byId('openingStartBlock').hidden = mode !== 'idle';
     byId('openingStudyStartBtn').hidden = mode !== 'idle';
@@ -256,7 +256,7 @@
     byId('openingTrainerBoardPanel').hidden = false;
     byId('openingTrainerMovesPanel').hidden = false;
     byId('openingTrainerModeLabel').textContent = mode === 'study' ? 'ИЗУЧЕНИЕ ТЕОРИИ' :
-      mode === 'practice' ? 'ПОВТОРЕНИЕ ДЕБЮТА' : mode === 'engine' ? 'ПАРТИЯ ПРОТИВ БОТА' : 'ВЫБЕРИ ДЕБЮТ';
+      mode === 'practice' ? 'ПОВТОРЕНИЕ ДЕБЮТА' : mode === 'engine' || mode === 'opening-bot' ? 'ПАРТИЯ ПРОТИВ ДЕБЮТНОГО БОТА' : 'ВЫБЕРИ ДЕБЮТ';
     if (state.board) updateBoard();
   }
 
@@ -299,6 +299,8 @@
 
     const startButton = byId('openingStudyStartBtn');
     const deviationButton = byId('openingDeviationStart');
+    const botButton = byId('openingBotStartBtn');
+    if (botButton) botButton.disabled = true;
     if (startButton) startButton.disabled = true;
     if (deviationButton) deviationButton.disabled = true;
     byId('openingTrainerMoves').innerHTML = '<div class="opening-catalog-empty">Подготавливаю линию выбранного дебюта…</div>';
@@ -316,11 +318,13 @@
       renderCatalogList();
       if (startButton) startButton.disabled = false;
       if (deviationButton) deviationButton.disabled = false;
+      if (botButton) botButton.disabled = false;
       setMessage('Линия загружена. Выбери свою сторону и начни изучение.', 'success');
     } catch (error) {
       if (token !== state.loadToken) return;
       if (startButton) startButton.disabled = true;
       if (deviationButton) deviationButton.disabled = true;
+      if (botButton) botButton.disabled = true;
       setMessage(`Не удалось загрузить этот дебют: ${error.message}`, 'error');
     }
   }
@@ -330,7 +334,7 @@
     window.initBoardClickToMove(
       'openingTrainerBoard',
       () => {
-        if (['practice', 'engine'].includes(state.mode) && isOpeningPlanningTurn()) {
+        if (['practice', 'engine', 'opening-bot'].includes(state.mode) && isOpeningPlanningTurn()) {
           rebuildOpeningPremoveState();
           return state.virtualGame || state.game;
         }
@@ -339,7 +343,7 @@
       handleUserDrop,
       {
         canSelect: piece => Boolean(
-          ['practice', 'engine'].includes(state.mode) &&
+          ['practice', 'engine', 'opening-bot'].includes(state.mode) &&
           !state.game.game_over() &&
           piece &&
           piece.color === userColor()
@@ -353,7 +357,7 @@
     state.board = Chessboard('openingTrainerBoard', {
       position: 'start', orientation: 'white', draggable: true, pieceTheme: PIECE_THEME,
       onDragStart: (source, piece) => {
-        if (!['practice', 'engine'].includes(state.mode) || state.game.game_over()) return false;
+        if (!['practice', 'engine', 'opening-bot'].includes(state.mode) || state.game.game_over()) return false;
         rebuildOpeningPremoveState();
         const activeGame = isOpeningPlanningTurn() ? state.virtualGame : state.game;
         if (!piece || piece[0] !== userColor() || !activeGame) return false;
@@ -679,7 +683,7 @@
   }
 
   function executeOpeningPremove(run) {
-    if (run !== state.runId || !['practice', 'engine'].includes(state.mode) || !state.premoveQueue.length) {
+    if (run !== state.runId || !['practice', 'engine', 'opening-bot'].includes(state.mode) || !state.premoveQueue.length) {
       updateBoard();
       return;
     }
@@ -716,9 +720,12 @@
     const gameOver = state.game.game_over();
     if (gameOver) {
       state.premoveQueue = [];
-      setMessage('Партия завершена: ' + (state.game.in_checkmate() ? 'мат' : 'ничья') + '.', 'success');
-      byId('openingPracticeStatus').textContent = 'Партия завершена.';
       updateBoard();
+      if (state.mode === 'opening-bot') finishOpeningBotGame();
+      else {
+        setMessage('Партия завершена: ' + (state.game.in_checkmate() ? 'мат' : 'ничья') + '.', 'success');
+        byId('openingPracticeStatus').textContent = 'Партия завершена.';
+      }
       return;
     }
 
@@ -728,13 +735,15 @@
       enterEngineMode(run);
     } else if (state.mode === 'practice') {
       setTimeout(() => maybePlayBookMove(run), 160);
+    } else if (state.mode === 'opening-bot') {
+      setTimeout(() => playOpeningBotMove(run), 160);
     } else {
       setTimeout(() => playEngineMove(run), 160);
     }
   }
 
   function handleUserDrop(source, target) {
-    if (!['practice', 'engine'].includes(state.mode) || state.game.game_over()) return 'snapback';
+    if (!['practice', 'engine', 'opening-bot'].includes(state.mode) || state.game.game_over()) return 'snapback';
     const planningMode = isOpeningPlanningTurn();
     if (planningMode) {
       const base = getPremoveBaseGame();
@@ -775,6 +784,14 @@
         if (state.moveIndex >= state.opening.moves.length && !state.deviationTraining) enterEngineMode(run);
         else maybePlayBookMove(run);
       }, 220);
+    } else if (state.mode === 'opening-bot') {
+      updateProgress();
+      if (state.game.game_over()) finishOpeningBotGame();
+      else {
+        byId('openingPracticeStatus').textContent = 'Ход сделан. Бот ищет продолжение выбранного дебюта…';
+        const run = state.runId;
+        setTimeout(() => playOpeningBotMove(run), 220);
+      }
     } else {
       updateProgress();
       byId('openingPracticeStatus').textContent = 'Ход сделан. Бот отвечает…';
@@ -782,6 +799,162 @@
       setTimeout(() => playEngineMove(run), 220);
     }
     return undefined;
+  }
+
+  function readPersonalOpeningLines() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('chessTrainerPersonalOpeningLines') || '[]');
+      return Array.isArray(saved) ? saved.filter(item =>
+        item && item.id && item.family && Array.isArray(item.moves) && item.moves.length && validateLine(item)
+      ) : [];
+    } catch (_) { return []; }
+  }
+
+  function finishOpeningBotGame() {
+    if (state.mode !== 'opening-bot' || !state.game || !state.game.game_over()) return;
+    state.botThinking = false;
+    state.premoveQueue = [];
+    updateBoard();
+    const won = state.game.in_checkmate() && state.game.turn() !== userColor();
+    const drawn = state.game.is_draw ? state.game.is_draw() : state.game.in_draw();
+    byId('openingBotResult').hidden = false;
+    byId('openingBotSaveTheory').hidden = !won;
+    byId('openingBotResultTitle').textContent = won ? 'Победа! Отличная партия.' : drawn ? 'Ничья' : 'Партия завершена';
+    byId('openingBotResultText').textContent = won
+      ? 'Сохрани все ходы обоих игроков как собственный вариант дебюта и добавь к нему свои заметки.'
+      : 'Сыграй ещё раз. Сохранение собственной теории будет доступно после победы.';
+    byId('openingPracticeStatus').textContent = 'Партия завершена.';
+    setMessage(won
+      ? 'Ты выиграл у дебютного бота. Теперь можешь сохранить эту партию в свои варианты.'
+      : drawn ? 'Ничья. Попробуй другую вариацию выбранного дебюта.' : 'Партия завершена. Попробуй ещё раз и найди более сильный план.',
+      won ? 'success' : 'info');
+  }
+
+  async function startOpeningBotGame() {
+    if (!state.opening) return;
+    state.runId++;
+    const run = state.runId;
+    state.botThinking = false;
+    resetGame();
+    state.openingBotFamily = state.opening.family || state.opening.name;
+    state.openingBotSaved = false;
+    const siblings = state.openings.filter(item =>
+      (item.family || item.name) === state.openingBotFamily && item.side === state.opening.side
+    );
+    const variants = [];
+    for (const summary of siblings) {
+      try {
+        const detail = await getOpeningDetails(summary);
+        if (validateLine(detail)) variants.push(detail);
+      } catch (_) {}
+    }
+    if (run !== state.runId) return;
+    state.openingBotVariants = variants.length ? variants : [state.opening];
+    state.deviationTraining = false;
+    setMode('opening-bot');
+    refreshBoardClickToMove();
+    byId('openingBotResult').hidden = true;
+    byId('openingBotSaveTheory').disabled = false;
+    byId('openingBotSaveTheory').textContent = 'Сохранить партию в мои варианты';
+    byId('openingBotTheoryNotes').value = '';
+    byId('openingPracticeStatus').textContent = 'Играй выбранный дебют. Бот будет выбирать разные теоретические продолжения.';
+    setMessage('Выбран дебют «' + state.openingBotFamily + '». Доступно линий: ' + state.openingBotVariants.length +
+      '. Бот будет менять варианты, а если ты выйдешь из репертуара — продолжит по позиции.', 'success');
+    updateProgress();
+    if (state.game.turn() !== userColor()) playOpeningBotMove(run);
+  }
+
+  async function playOpeningBotMove(run) {
+    if (run !== state.runId || state.mode !== 'opening-bot' || state.botThinking || state.game.game_over()) return;
+    if (state.game.turn() === userColor()) return;
+    state.botThinking = true;
+    renderPracticeBoard();
+    byId('openingPracticeStatus').textContent = 'Бот выбирает продолжение дебюта…';
+    const history = state.game.history();
+    const bookCandidates = [];
+    state.openingBotVariants.forEach(variant => {
+      const line = Array.isArray(variant.moves) ? variant.moves : [];
+      if (line.length > history.length && history.every((san, index) => line[index] === san)) {
+        bookCandidates.push(line[history.length]);
+      }
+    });
+    const uniqueBookMoves = [...new Set(bookCandidates)];
+    let move = null;
+    try {
+      if (uniqueBookMoves.length) {
+        const san = uniqueBookMoves[Math.floor(Math.random() * uniqueBookMoves.length)];
+        move = state.game.move(san);
+      } else {
+        const response = await fetch('/api/evaluate', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({fen: state.game.fen()})
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Ошибка движка');
+        const candidates = Array.isArray(data.top_moves) ? data.top_moves.filter(item => item && item.uci && item.uci.length >= 4) : [];
+        if (!candidates.length) throw new Error('Stockfish не вернул ход');
+        const pick = state.level === 'easy'
+          ? Math.floor(Math.random() * candidates.length)
+          : state.level === 'medium'
+            ? Math.floor(Math.random() * Math.min(3, candidates.length))
+            : 0;
+        const uci = candidates[pick].uci;
+        move = state.game.move({from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] || 'q'});
+      }
+      if (!move) throw new Error('Не удалось применить ход бота');
+      updateBoard();
+      updateProgress();
+      if (state.game.game_over()) finishOpeningBotGame();
+      else {
+        byId('openingPracticeStatus').textContent = 'Бот сыграл ' + move.san + '. Твой ход.';
+        setMessage(uniqueBookMoves.length
+          ? 'Бот продолжает выбранный дебют: ' + move.san + '.'
+          : 'Позиция вышла за пределы сохранённых линий. Бот продолжает играть по Stockfish.', 'info');
+      }
+    } catch (error) {
+      setMessage('Не удалось сделать ход бота: ' + error.message, 'error');
+      byId('openingPracticeStatus').textContent = 'Не удалось получить ход. Попробуй ещё раз.';
+    } finally {
+      if (run === state.runId) {
+        state.botThinking = false;
+        updateBoard();
+        if (state.game.game_over()) finishOpeningBotGame();
+        else if (state.premoveQueue.length && state.game.turn() === userColor()) executeOpeningPremove(run);
+      }
+    }
+  }
+
+  function saveOpeningBotTheory() {
+    if (state.mode !== 'opening-bot' || !state.game || !state.game.game_over() || state.openingBotSaved) return;
+    const won = state.game.in_checkmate() && state.game.turn() !== userColor();
+    if (!won) return;
+    const moves = state.game.history();
+    if (!moves.length || !validateLine({moves})) {
+      setMessage('Не удалось сохранить линию: проверь запись ходов.', 'error');
+      return;
+    }
+    const saved = readPersonalOpeningLines();
+    const id = 'my_opening_' + Date.now();
+    const notes = (byId('openingBotTheoryNotes').value || '').trim();
+    const line = {
+      id, side: state.side, family: state.openingBotFamily || state.opening.family || 'Мои варианты',
+      name: 'Моя партия · ' + new Date().toLocaleDateString('ru-RU'), moves,
+      description: notes || 'Сохранённая партия против бота.', plans_white: state.side === 'white' ? notes : '',
+      plans_black: state.side === 'black' ? notes : '', personal: true, pgn: state.game.pgn()
+    };
+    saved.push(line);
+    try { localStorage.setItem('chessTrainerPersonalOpeningLines', JSON.stringify(saved)); }
+    catch (_) {
+      setMessage('Браузер не позволил сохранить вариант. Освободи место в хранилище и попробуй снова.', 'error');
+      return;
+    }
+    state.openingBotSaved = true;
+    state.openings.push(line);
+    state.detailCache.set(String(id), line);
+    renderOpeningOptions();
+    setMessage('Партия сохранена в «Мои варианты» внутри каталога дебютов. Ходы обоих игроков и заметки записаны.', 'success');
+    byId('openingBotSaveTheory').textContent = '✓ Сохранено в мои варианты';
+    byId('openingBotSaveTheory').disabled = true;
   }
 
   function resetTraining() {
@@ -823,6 +996,8 @@
     byId('openingStartPractice').addEventListener('click', () => startPractice(false));
     byId('openingStartDeviation').addEventListener('click', () => startPractice(true));
     byId('openingDeviationStart').addEventListener('click', () => startPractice(true));
+    byId('openingBotStartBtn').addEventListener('click', startOpeningBotGame);
+    byId('openingBotSaveTheory').addEventListener('click', saveOpeningBotTheory);
     byId('openingPracticeRestart').addEventListener('click', () => startPractice(false));
     byId('openingTrainerReset').addEventListener('click', resetTraining);
   }
@@ -861,6 +1036,7 @@
       }
       if (!state.openings.length) throw new Error('Список дебютов пуст. Проверь openings-data.js и /api/openings.');
 
+      readPersonalOpeningLines().forEach(item => { state.openings.push(item); state.detailCache.set(String(item.id), item); });
       renderOpeningOptions();
       state.catalogSide = state.openings.some(item => item.side === 'white') ? 'white' : 'black';
       const first = state.openings.find(item => item.side === state.catalogSide) || state.openings[0];
