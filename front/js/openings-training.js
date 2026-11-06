@@ -100,7 +100,7 @@
             <button type="button" class="opening-catalog-item ${state.opening && String(state.opening.id) === String(item.id) ? 'active' : ''}"
               data-opening-id="${escapeHtml(item.id)}">
               <span>${escapeHtml(item.name || 'Основная линия')}</span>
-              <small>${Number(item.move_count ?? item.moves?.length ?? 0)} полуходов</small>
+              <small>${item.personal ? 'МОЙ ВАРИАНТ' : Number(item.move_count ?? item.moves?.length ?? 0) + ' полуходов'}</small>
             </button>
           `).join('')}
         </div>
@@ -235,6 +235,14 @@
   }
 
   function updateProgress() {
+    if (state.mode === 'opening-bot') {
+      const played = state.game ? state.game.history().length : 0;
+      byId('openingTrainerProgressFill').style.width = '0%';
+      byId('openingTrainerProgressText').textContent = played + ' полуходов сыграно';
+      byId('openingTrainerProgressTextBottom').textContent = 'партия';
+      renderMoveChips();
+      return;
+    }
     const total = state.opening?.moves?.length || 0;
     const done = Math.min(state.moveIndex, total);
     const percent = total ? Math.round(done / total * 100) : 0;
@@ -281,6 +289,7 @@
     if (!summary) return;
 
     const token = ++state.loadToken;
+    byId('openingBotResult').hidden = true;
     state.runId++;
     state.botThinking = false;
     state.opening = summary;
