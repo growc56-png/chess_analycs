@@ -8,7 +8,7 @@
   <title>Изучение дебютов — Chess Trainer</title>
   <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
   <link rel="stylesheet" href="/css/index.css?v=20261102-clickmove-v2">
-  <link rel="stylesheet" href="/css/openings-page.css?v=20261103-deviation-v2">
+  <link rel="stylesheet" href="/css/openings-page.css?v=20261106-opening-bots-v1">
   <link rel="stylesheet" href="/css/theme-unified.css?v=20261106-theme-v1">
   <script src="/js/board-interactions.js?v=20261102-clickmove-v2" defer></script>
 <script src="/js/jquery.min.js"></script>
@@ -17,7 +17,7 @@
   <script src="/js/chess-premove.js?v=20261103-unified-premove-v3" defer></script>
   <script src="/js/board-drawing.js?v=20261103-unified-premove-v3" defer></script>
   <script src="/js/openings-data.js?v=20261101-2" defer></script>
-  <script src="/js/openings-training.js?v=20261103-deviation-v2" defer></script>
+  <script src="/js/openings-training.js?v=20261106-opening-bots-v1" defer></script>
 </head>
 <body class="openings-page-body">
   <div class="openings-app">
@@ -140,9 +140,19 @@
             </div>
 
             <div id="openingTrainerIdle" hidden></div>
+            <section id="openingBotResult" class="opening-bot-result" hidden>
+              <span class="opening-card-eyebrow">ТВОЯ ПАРТИЯ</span>
+              <h3 id="openingBotResultTitle">Партия завершена</h3>
+              <p id="openingBotResultText"></p>
+              <label for="openingBotTheoryNotes">Твои заметки к варианту</label>
+              <textarea id="openingBotTheoryNotes" rows="3" maxlength="1200" placeholder="Например: после ...Nf6 лучше играть Bf4, не торопиться с c4..."></textarea>
+              <button type="button" class="opening-btn accent full" id="openingBotSaveTheory">Сохранить партию в мои варианты</button>
+            </section>
             <div class="opening-start-block" id="openingStartBlock">
               <button type="button" class="opening-btn primary full" id="openingStudyStartBtn">▶ Начать изучение теории</button>
               <button type="button" class="opening-btn accent full" id="openingDeviationStart" disabled>♟ Тренировать отклонения соперника</button>
+              <button type="button" class="opening-btn primary full" id="openingBotStartBtn" disabled>♞ Играть с ботом этого дебюта</button>
+              <p>Бот будет выбирать разные продолжения выбранного дебюта, а после выхода из теории продолжит играть по позиции.</p>
               <p>Отдельная тренировка: соперник сыграет не по теории, а Stockfish поможет найти правильный ответ.</p>
             </div>
           </section>
