@@ -223,6 +223,7 @@
   }
 
   function resetGame() {
+    if (byId('openingBotResult')) byId('openingBotResult').hidden = true;
     state.premoveQueue = [];
     state.virtualGame = null;
     state.deviationTraining = false;
