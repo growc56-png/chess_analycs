@@ -179,3 +179,51 @@ body.openings-page-body {
 .opening-deviation-plan { padding-top: 7px; border-top: 1px solid rgba(151,180,202,.12); color: #8fd1b4; }
 
 .opening-mode-controls > .opening-btn.full { width: 100%; margin-top: 8px; }
+
+
+/* Игра против ботов выбранного дебюта и сохранение своих теоретических линий. */
+.opening-bot-result {
+  margin-top: 12px;
+  padding: 15px;
+  border: 1px solid rgba(104, 202, 161, .25);
+  border-radius: 12px;
+  background: rgba(20, 65, 53, .22);
+}
+.opening-bot-result h3 {
+  margin: 7px 0;
+  color: #eaf8f1;
+  font-size: 15px;
+}
+.opening-bot-result p {
+  margin: 0 0 11px;
+  color: #b7cbbf;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.opening-bot-result label {
+  display: block;
+  margin: 10px 0 6px;
+  color: #a9d9c4;
+  font-size: 10px;
+  font-weight: 800;
+}
+.opening-bot-result textarea {
+  display: block;
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  padding: 10px;
+  color: #e5f0eb;
+  background: rgba(4, 15, 22, .72);
+  border: 1px solid rgba(151, 190, 172, .2);
+  border-radius: 9px;
+  outline: none;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.opening-bot-result textarea:focus {
+  border-color: #65c6a2;
+  box-shadow: 0 0 0 3px rgba(91, 189, 152, .1);
+}
+.opening-bot-result[hidden] { display: none !important; }
