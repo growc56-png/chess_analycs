@@ -47,6 +47,41 @@
     }, 0);
   }
 
+  function renderCoachPlanStatus() {
+    const status = $('dailyTrainingPlanStatus');
+    const button = $('dailyTrainingAnalyze');
+    if (!status) return;
+    const state = typeof window.getChessCoachPlanState === 'function'
+      ? window.getChessCoachPlanState()
+      : (window.__chessCoachPlanState || { hasPlan: false, refreshDue: false });
+    if (!state.hasPlan) {
+      status.textContent = 'План ещё не установлен · анализ до 50 партий создаст первую неделю тренировок.';
+      status.className = 'daily-coach-plan-status is-empty';
+      if (button) {
+        button.hidden = false;
+        button.textContent = '✦ Анализировать 50 партий и собрать план';
+      }
+      return;
+    }
+    if (state.refreshDue) {
+      status.textContent = 'Прошла неделя — пора обновить план. Предыдущие недели и выполненные упражнения сохранены.';
+      status.className = 'daily-coach-plan-status is-due';
+      if (button) {
+        button.hidden = false;
+        button.textContent = '↻ Обновить план на новую неделю';
+      }
+      return;
+    }
+    const nextDate = state.nextRefreshAt
+      ? new Date(state.nextRefreshAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+      : 'через неделю';
+    status.textContent = '✓ План установлен · следующее обновление: ' + nextDate +
+      ' · сохранено недель: ' + (state.weeksSaved || 0) +
+      ' · решено упражнений: ' + (state.solvedDrills || 0);
+    status.className = 'daily-coach-plan-status is-installed';
+    if (button) button.hidden = true;
+  }
+
   function render(snapshot) {
     const root = $('dailyTrainingDashboard');
     if (!root) return;
@@ -148,7 +183,7 @@
   const analyzeButton = $('dailyTrainingAnalyze');
   if (analyzeButton) analyzeButton.addEventListener('click', openPersonalAnalysis);
 
-  window.addEventListener('chess-plan-updated', refresh);
+  window.addEventListener('chess-plan-updated', refresh);\n  window.addEventListener('chess-coach-plan-updated', renderCoachPlanStatus);
   window.addEventListener('chess-auth-ready', refresh);
   window.addEventListener('load', refresh);
 })();
