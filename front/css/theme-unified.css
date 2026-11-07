@@ -141,3 +141,43 @@ body {
   border-color: rgba(143,190,96,.45);
   color: #cde8b5;
 }
+
+
+/* Analysis toolbar: keep PGN export visible above the board and move list. */
+#tab-analysis .analysis-download-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 12px 0 14px;
+}
+#tab-analysis .analysis-download-pgn {
+  min-height: 40px;
+  padding: 9px 16px;
+  border: 1px solid rgba(143,190,96,.48);
+  border-radius: 10px;
+  background: rgba(129,182,76,.13);
+  color: #d5edc2;
+  font-weight: 750;
+  letter-spacing: .01em;
+}
+#tab-analysis .analysis-download-pgn:not(:disabled) {
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(0,0,0,.14);
+}
+#tab-analysis .analysis-download-pgn:disabled {
+  opacity: .48;
+  cursor: not-allowed;
+}
+#tab-analysis .move-class-label { display: none !important; }
+#tab-analysis .move-class-icon {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+@media (max-width: 720px) {
+  #tab-analysis .analysis-download-row { justify-content: flex-start; margin: 10px 0 12px; }
+  #tab-analysis .analysis-download-pgn { width: 100%; }
+  #tab-analysis .move-class-icon { width: 18px; min-width: 18px; height: 18px; font-size: 10px; }
+}
