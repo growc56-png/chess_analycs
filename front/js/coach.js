@@ -493,17 +493,20 @@
       });
       summary.drills = summary.drills.slice(0, 24);
       const createdAt = new Date().toISOString();
-      archiveCurrentCoachWeek(report);\n      const history = readStorage(COACH_HISTORY_KEY, []);
+      archiveCurrentCoachWeek(report);
+      const history = readStorage(COACH_HISTORY_KEY, []);
       history.push({ date: createdAt, accuracy: summary.accuracy, errors: summary.totalErrors, games: summary.games });
       writeStorage(COACH_HISTORY_KEY, history.slice(-52));
       report = {
         createdAt,
+        planUpdatedAt: createdAt,
         username: $('coachChesscomUsername').value.trim() || $('coachLichessUsername').value.trim() || '',
         games: analyses,
         summary
       };
       writeStorage(COACH_REPORT_KEY, report);
       renderReport();
+      updateCoachPlanControls();
       setProgress(100, 'Анализ завершён. Найдено ошибок: ' + summary.totalErrors + '.');
       setStatus('Готово! Отчёт и персональные упражнения обновлены.', 'success');
     } catch (error) {
@@ -736,6 +739,7 @@
     const drill = currentDrills()[index];
     if (!drill) return;
     activeDrillIndex = index;
+    renderDrillExplanation(drill);
     drillGame = new Chess(drill.beforeFen);
     const color = drillGame.turn();
     $('coachDrillTitle').textContent = drill.gameLabel + ' · ход ' + drill.moveNum;
@@ -1126,11 +1130,13 @@
     report = readStorage(COACH_REPORT_KEY, null);
     if (report && report.summary) {
       renderReport();
-      setStatus('Загружен сохранённый отчёт от ' + new Date(report.createdAt).toLocaleString('ru-RU') + '. Новые партии можно добавить в любой момент.', 'success');
+      setStatus('План установлен. Следующее обновление доступно через неделю.', 'success');
+      updateCoachPlanControls();
       return;
     }
 
-    setStatus('Загрузи до 50 партий, чтобы создать персональный отчёт для этого аккаунта.');\n    updateCoachPlanControls();
+    setStatus('Загрузи до 50 партий, чтобы создать персональный отчёт для этого аккаунта.');
+    updateCoachPlanControls();
   }
 
   function init() {
@@ -1139,7 +1145,8 @@
     const account = window.getChessTrainerUser ? window.getChessTrainerUser() : null;
     const accountScope = account && account.id ? String(account.id) : 'guest';
     COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v2.user.' + accountScope;
-    COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2.user.' + accountScope;\n    COACH_PROGRESS_KEY = 'chessTrainer.personalCoach.progress.v1.user.' + accountScope;
+    COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2.user.' + accountScope;
+    COACH_PROGRESS_KEY = 'chessTrainer.personalCoach.progress.v1.user.' + accountScope;
     OPENING_SRS_KEY = 'chessTrainer.openingSrs.v1.user.' + accountScope;
 
     $('coachSource').addEventListener('change', updateSourcePanels);
