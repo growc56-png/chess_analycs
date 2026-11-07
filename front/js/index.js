@@ -2889,16 +2889,16 @@ function formatSpentTime(seconds) {
 }
 
 const ANALYSIS_CLASS_ROWS = [
-  { key: 'brilliant', label: 'Бриллиантовый', icon: '!!', className: 'brilliant' },
-  { key: 'great', label: 'Замечательный', icon: '!', className: 'great' },
+  { key: 'brilliant', label: 'Бриллиантовый', icon: '💎', className: 'brilliant' },
+  { key: 'great', label: 'Замечательный', icon: '✨', className: 'great' },
   { key: 'best', label: 'Лучший', icon: '★', className: 'best' },
-  { key: 'excellent', label: 'Отличный', icon: '👍', className: 'excellent' },
-  { key: 'good', label: 'Хороший', icon: '✓', className: 'good' },
-  { key: 'inaccuracy', label: 'Неточность', icon: '?!', className: 'inaccuracy' },
+  { key: 'excellent', label: 'Отличный', icon: '✓', className: 'excellent' },
+  { key: 'good', label: 'Хороший', icon: '●', className: 'good' },
+  { key: 'inaccuracy', label: 'Неточность', icon: '⚠', className: 'inaccuracy' },
   { key: 'mistake', label: 'Ошибка', icon: '?', className: 'mistake' },
-  { key: 'miss', label: 'Промах', icon: '✗', className: 'miss' },
-  { key: 'blunder', label: 'Зевок', icon: '??', className: 'blunder' },
-  { key: 'book', label: 'Теория', icon: '▤', className: 'book' },
+  { key: 'miss', label: 'Промах', icon: '✕', className: 'miss' },
+  { key: 'blunder', label: 'Зевок', icon: '‼', className: 'blunder' },
+  { key: 'book', label: 'Теория', icon: '📖', className: 'book' },
   { key: 'forced', label: 'Вынужденный', icon: '□', className: 'forced' }
 ];
 
