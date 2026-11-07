@@ -18,8 +18,8 @@ STOCKFISH_PATH = BASE_DIR / "stockfish-windows-x86-64-universal.exe"
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-ANALYSIS_DEPTH = int(os.getenv("CHESS_ANALYSIS_DEPTH", "17"))
-ANALYSIS_TIME = float(os.getenv("CHESS_ANALYSIS_TIME", "1.5"))
+ANALYSIS_DEPTH = int(os.getenv("CHESS_ANALYSIS_DEPTH", "18"))
+ANALYSIS_TIME = float(os.getenv("CHESS_ANALYSIS_TIME", "2.0"))
 
 # Дополнительная глубокая проверка только критических ходов.
 # Ограничение количества защищает время анализа длинных партий.
