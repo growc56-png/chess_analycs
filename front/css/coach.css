@@ -141,3 +141,5 @@
 .coach-drill-line-label{margin-top:10px;color:#8fa9b3;font-size:9px;font-weight:900;letter-spacing:.8px}
 .coach-drill-line{margin-top:5px;padding:8px 9px;border-radius:6px;background:rgba(7,18,25,.55);color:#e5d8b7;font-size:12px;font-weight:800;line-height:1.5;overflow-wrap:anywhere}
 .coach-drill-explanation .coach-drill-next-idea{padding-top:8px;border-top:1px solid rgba(115,148,166,.14)}
+
+.coach-import-panel[hidden]{display:none!important}
