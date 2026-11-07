@@ -524,6 +524,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                 mover,
                             )
                             capture_points = []
+                            capture_forced_mates = []
                             for capture_uci in capture_moves:
                                 try:
                                     capture_move = chess.Move.from_uci(capture_uci)
@@ -541,22 +542,36 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                         capture_points.append(
                                             expected_points_from_score(capture_score, mover)
                                         )
+                                        mover_score = capture_score.pov(mover)
+                                        capture_forced_mates.append(
+                                            mover_score.is_mate()
+                                            and mover_score.mate() is not None
+                                            and mover_score.mate() > 0
+                                        )
                                 except Exception:
                                     continue
 
-                            # One safe/near-best capture is enough to disprove
-                            # the claim that the move offered a sound sacrifice.
                             if capture_moves:
-                                # One safe/near-best capture disproves a sound
-                                # sacrifice. Require every legal acceptance to
-                                # be clearly worse for the opponent.
-                                sacrifice_confirmed = (
+                                # A capture that accepts the offered queen can
+                                # still be objectively losing because it allows
+                                # a forced mate. Treat that as a verified
+                                # mating sacrifice even when the engine's
+                                # best reply is the same capture.
+                                all_acceptances_mated = (
+                                    len(capture_forced_mates) == len(capture_moves)
+                                    and bool(capture_forced_mates)
+                                    and all(capture_forced_mates)
+                                )
+                                all_acceptances_refuted = (
                                     len(capture_points) == len(capture_moves)
                                     and bool(capture_points)
                                     and all(
                                         points > best_reply_points + 0.025
                                         for points in capture_points
                                     )
+                                )
+                                sacrifice_confirmed = (
+                                    all_acceptances_mated or all_acceptances_refuted
                                 )
                             else:
                                 # No immediate capture is possible (often a
