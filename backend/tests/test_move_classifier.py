@@ -39,11 +39,11 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertTrue(is_true_sacrifice(board, move))
 
     def test_checking_queen_offer_is_detected_without_immediate_legal_capture(self):
-        # Qe6+ is attacked by the rook on a6, but Black must first answer
-        # the check; the knight can block on e7. There is no legal capture
-        # of the queen in the immediate reply position.
-        board = chess.Board("4k1n1/8/r2Q4/8/8/8/8/K7 w - - 0 1")
-        move = board.parse_san("Qe6+")
+        # Qd7+ is attacked by the rook on e7, but that rook is pinned
+        # to the king by the white rook on e1. Capturing the queen would
+        # expose the black king, so there is no legal immediate capture.
+        board = chess.Board("4k3/4r3/3Q4/8/8/8/8/4R2K w - - 0 1")
+        move = board.parse_san("Qd7+")
 
         details = get_sacrifice_details(board, move)
 
