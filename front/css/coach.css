@@ -129,3 +129,15 @@
 #tab-errors .errors-summary-inner { margin:0; padding:0; border:0; background:transparent; }
 #tab-errors .errors-summary-panel[open]>summary { margin-bottom:10px; }
 @media(max-width:680px){#tab-coach .coach-import-controls{grid-template-columns:1fr}#tab-coach .coach-extra-fields{grid-template-columns:1fr}}
+
+
+/* Explanation of the selected mistake beside the drill list */
+.coach-drill-insight-column{display:grid;gap:10px;min-width:0;align-content:start}
+.coach-drill-explanation{padding:13px 14px;border:1px solid rgba(112,170,139,.25);border-radius:9px;background:linear-gradient(145deg,rgba(53,105,79,.15),rgba(17,31,40,.96));color:#c4d2d8;font-size:11px;line-height:1.6}
+.coach-drill-explanation-kicker{margin-bottom:7px;color:#8ec4a5;font-size:9px;font-weight:900;letter-spacing:1px}
+.coach-drill-explanation>strong{display:block;color:#e4edf0;font-size:11px;line-height:1.55}
+.coach-drill-explanation p{margin:8px 0 0;color:#aebfc7}
+.coach-drill-best-move{color:#b8e0c5}
+.coach-drill-line-label{margin-top:10px;color:#8fa9b3;font-size:9px;font-weight:900;letter-spacing:.8px}
+.coach-drill-line{margin-top:5px;padding:8px 9px;border-radius:6px;background:rgba(7,18,25,.55);color:#e5d8b7;font-size:12px;font-weight:800;line-height:1.5;overflow-wrap:anywhere}
+.coach-drill-explanation .coach-drill-next-idea{padding-top:8px;border-top:1px solid rgba(115,148,166,.14)}
