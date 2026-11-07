@@ -482,6 +482,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
                 deep_analysis_performed = False
                 sacrifice_confirmed = False
+                played_move_forces_mate = False
+                played_move_mate_score = None
                 analysis_depth_used = int(best_info.get("depth") or ANALYSIS_DEPTH)
                 if (
                     deep_reason
@@ -511,6 +513,27 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         )
                         deep_after_infos = _normalise_engine_infos(deep_after_info)
                         deep_after_info = deep_after_infos[0] if deep_after_infos else {}
+
+                        # Independently analyse the actual played move. MultiPV
+                        # can omit a mating sacrifice from its candidate list.
+                        if is_sacrifice:
+                            played_info = engine.analyse(
+                                before_board,
+                                deep_limit,
+                                root_moves=[move],
+                            )
+                            if isinstance(played_info, list):
+                                played_info = played_info[0] if played_info else {}
+                            played_move_mate_score = (
+                                played_info.get("score") if played_info else None
+                            )
+                            if played_move_mate_score is not None:
+                                played_side_score = played_move_mate_score.pov(mover)
+                                played_move_forces_mate = bool(
+                                    played_side_score.is_mate()
+                                    and played_side_score.mate() is not None
+                                    and played_side_score.mate() > 0
+                                )
 
                         # A piece being attacked is not enough for a Brilliant.
                         # Test every legal capture of the offered piece at the
@@ -699,6 +722,20 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         # A deep-pass failure must not discard the valid fast
                         # analysis for the rest of the game.
                         deep_analysis_performed = False
+
+                # A forced mate after the actual played sacrifice is
+                # conclusive even if MultiPV did not rank it among top moves.
+                if (
+                    is_sacrifice
+                    and deep_analysis_performed
+                    and played_move_forces_mate
+                ):
+                    sacrifice_confirmed = True
+                    is_best = True
+                    is_accepted_winning_mate = True
+                    after_score = played_move_mate_score
+                    win_points_loss = 0.0
+                    centipawn_loss = 0
 
                 # Only a deep-engine-confirmed sacrifice can be Brilliant.
                 is_sacrifice = bool(
