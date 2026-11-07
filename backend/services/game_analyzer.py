@@ -14,6 +14,8 @@ from config import (
     DEEP_ANALYSIS_DEPTH,
     DEEP_ANALYSIS_TIME,
     MAX_DEEP_ANALYSIS_MOVES,
+    BRILLIANT_ANALYSIS_DEPTH,
+    BRILLIANT_ANALYSIS_TIME,
 )
 
 from services.stockfish import (
@@ -488,9 +490,12 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 ):
                     deep_positions_checked += 1
                     try:
+                        # Give sacrifices a larger search budget: tactical
+                        # queen offers and forced mates are especially prone
+                        # to shallow-horizon evaluation errors.
                         deep_limit = get_engine_limit(
-                            depth=DEEP_ANALYSIS_DEPTH,
-                            time_limit=DEEP_ANALYSIS_TIME,
+                            depth=(BRILLIANT_ANALYSIS_DEPTH if is_sacrifice else DEEP_ANALYSIS_DEPTH),
+                            time_limit=(BRILLIANT_ANALYSIS_TIME if is_sacrifice else DEEP_ANALYSIS_TIME),
                         )
                         deep_before_infos = engine.analyse(
                             before_board,
@@ -541,14 +546,29 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
                             # One safe/near-best capture is enough to disprove
                             # the claim that the move offered a sound sacrifice.
-                            sacrifice_confirmed = (
-                                len(capture_points) == len(capture_moves)
-                                and bool(capture_points)
-                                and all(
-                                    points > best_reply_points + 0.025
-                                    for points in capture_points
+                            if capture_moves:
+                                # One safe/near-best capture disproves a sound
+                                # sacrifice. Require every legal acceptance to
+                                # be clearly worse for the opponent.
+                                sacrifice_confirmed = (
+                                    len(capture_points) == len(capture_moves)
+                                    and bool(capture_points)
+                                    and all(
+                                        points > best_reply_points + 0.025
+                                        for points in capture_points
+                                    )
                                 )
-                            )
+                            else:
+                                # No immediate capture is possible, commonly
+                                # because the offered queen has just given
+                                # check and the opponent must block/escape.
+                                # In this special case require Stockfish to
+                                # prove a forced win by mate at the deeper limit.
+                                mover_score = deep_after_info["score"].pov(mover)
+                                mate_distance = mover_score.mate() if mover_score.is_mate() else None
+                                sacrifice_confirmed = (
+                                    mate_distance is not None and mate_distance > 0
+                                )
 
                         if deep_best_info and deep_after_info.get("score") is not None:
                             deep_best_pv = deep_best_info.get("pv") or []
@@ -782,8 +802,10 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 "analysis_time": ANALYSIS_TIME,
                 "deep_analysis_depth": DEEP_ANALYSIS_DEPTH,
                 "deep_analysis_time": DEEP_ANALYSIS_TIME,
+                "brilliant_analysis_depth": BRILLIANT_ANALYSIS_DEPTH,
+                "brilliant_analysis_time": BRILLIANT_ANALYSIS_TIME,
                 "deep_positions_checked": deep_positions_checked,
-                "analysis_profile": "two_pass_centipawn_accuracy_v4_brilliant_verified"
+                "analysis_profile": "two_pass_centipawn_accuracy_v5_deep_mate_sacrifice"
             }
 
         except HTTPException:
