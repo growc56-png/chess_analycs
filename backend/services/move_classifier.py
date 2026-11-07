@@ -78,6 +78,14 @@ def get_sacrifice_details(board_before, move):
             "attacker_value": PIECE_VALUES.get(attacker.piece_type, 0),
         })
 
+    # A real offer must give the opponent a legal way to take the piece.
+    # The only exception is a checking sacrifice: the opponent may be forced
+    # to answer the check before the offered piece can be captured. A quiet
+    # interposition such as ...Ne7 is not an offer when the king protects e7
+    # and no legal capture exists.
+    if not capture_replies and not after.is_check():
+        return None
+
     return {
         "piece": chess.piece_name(piece.piece_type),
         "piece_symbol": piece.symbol(),
