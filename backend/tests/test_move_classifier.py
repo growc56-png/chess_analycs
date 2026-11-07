@@ -38,6 +38,19 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertEqual(details["material_difference"], 5)
         self.assertTrue(is_true_sacrifice(board, move))
 
+    def test_checking_queen_offer_is_detected_without_immediate_legal_capture(self):
+        # Qe6+ is attacked by the rook on a6, but Black must first answer
+        # the check; the knight can block on e7. There is no legal capture
+        # of the queen in the immediate reply position.
+        board = chess.Board("4k1n1/8/r2Q4/8/8/8/8/K7 w - - 0 1")
+        move = board.parse_san("Qe6+")
+
+        details = get_sacrifice_details(board, move)
+
+        self.assertIsNotNone(details)
+        self.assertEqual(details["piece"], "queen")
+        self.assertEqual(details["capture_uci"], [])
+
     def test_capture_followed_by_recapture_is_not_a_sacrifice(self):
         board = chess.Board("7k/8/8/8/pr6/8/8/R6K w - - 0 1")
         move = board.parse_san("Rxa4")
@@ -62,6 +75,22 @@ class MoveClassificationTests(unittest.TestCase):
                 prev_eval=0.0,
                 curr_eval=0.0,
                 second_best_gap=0.0,
+            ),
+            "brilliant",
+        )
+
+    def test_verified_sacrifice_that_forces_mate_remains_brilliant(self):
+        self.assertEqual(
+            classify_move(
+                win_percent_loss=0.0,
+                is_best=True,
+                is_sacrifice=True,
+                is_forced=False,
+                prev_eval=0.0,
+                curr_eval=100.0,
+                second_best_gap=0.0,
+                is_mate=True,
+                mate_won=True,
             ),
             "brilliant",
         )
