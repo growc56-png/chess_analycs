@@ -4,21 +4,30 @@ from services.stockfish import PIECE_VALUES
 
 
 def get_sacrifice_details(board_before, move):
-    """Return details only for a quiet, legally capturable material offer.
+    """Detect a valuable piece offer, including capture-then-sacrifice moves.
 
-    Captures followed by recaptures are exchanges, not sacrifices. The move
-    quality is checked separately by Stockfish after this material test.
+    A move such as Qxc6+ can win a minor piece and still offer the queen
+    to a pawn. It is a real sacrifice when the offered piece's value exceeds
+    the value captured; Stockfish verifies the compensation afterwards.
     """
     piece = board_before.piece_at(move.from_square)
     if piece is None or piece.piece_type in (chess.PAWN, chess.KING):
         return None
 
-    # A capture is not a sacrifice for the Brilliant classification.
-    if board_before.piece_at(move.to_square) is not None or board_before.is_en_passant(move):
-        return None
-
     moving_value = PIECE_VALUES.get(piece.piece_type, 0)
     if moving_value <= 0:
+        return None
+
+    captured_piece = board_before.piece_at(move.to_square)
+    if board_before.is_en_passant(move):
+        captured_piece = chess.Piece(chess.PAWN, not piece.color)
+    captured_value = (
+        PIECE_VALUES.get(captured_piece.piece_type, 0)
+        if captured_piece is not None else 0
+    )
+    # Ordinary exchanges/captures are not sacrifices: the value offered
+    # must be greater than the value won by the move.
+    if moving_value <= captured_value:
         return None
 
     after = board_before.copy(stack=True)
@@ -33,13 +42,10 @@ def get_sacrifice_details(board_before, move):
     if not after.is_attacked_by(opponent, target):
         return None
 
-    # Record every legal opponent capture of the offered piece. The analyzer
-    # must then prove that accepting the offer is objectively inferior.
     capture_replies = []
     for reply in after.legal_moves:
         if reply.to_square != target:
             continue
-
         target_piece = after.piece_at(target)
         attacker = after.piece_at(reply.from_square)
         if (
@@ -48,7 +54,6 @@ def get_sacrifice_details(board_before, move):
             or attacker is None
         ):
             continue
-
         capture_replies.append({
             "uci": reply.uci(),
             "san": after.san(reply),
@@ -56,20 +61,21 @@ def get_sacrifice_details(board_before, move):
             "attacker_value": PIECE_VALUES.get(attacker.piece_type, 0),
         })
 
-    # A checking sacrifice can be sound even when the opponent cannot
-    # capture the offered piece immediately (for example, the only reply is
-    # to block the check). Keep the offer so the deep engine pass can verify
-    # the forced continuation instead of rejecting it at the detection stage.
     return {
         "piece": chess.piece_name(piece.piece_type),
         "piece_symbol": piece.symbol(),
-        "captured_piece": None,
-        "captured_symbol": None,
+        "captured_piece": (
+            chess.piece_name(captured_piece.piece_type)
+            if captured_piece is not None else None
+        ),
+        "captured_symbol": (
+            captured_piece.symbol() if captured_piece is not None else None
+        ),
         "recapture_san": capture_replies[0]["san"] if capture_replies else None,
         "attacker": capture_replies[0]["attacker"] if capture_replies else None,
         "capture_uci": [item["uci"] for item in capture_replies],
         "capture_replies": capture_replies,
-        "material_difference": moving_value,
+        "material_difference": moving_value - captured_value,
     }
 
 
