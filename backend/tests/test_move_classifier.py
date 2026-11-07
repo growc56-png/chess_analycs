@@ -42,7 +42,7 @@ class SacrificeDetectionTests(unittest.TestCase):
         # Qd7+ is attacked by the rook on e7, but that rook is pinned
         # to the king by the white rook on e1. Capturing the queen would
         # expose the black king, so there is no legal immediate capture.
-        board = chess.Board("4k3/4r3/3Q4/8/8/8/8/4R2K w - - 0 1")
+        board = chess.Board("4k3/4r3/2PQ4/8/8/8/8/4R2K w - - 0 1")
         move = board.parse_san("Qd7+")
 
         details = get_sacrifice_details(board, move)
