@@ -559,16 +559,47 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                     )
                                 )
                             else:
-                                # No immediate capture is possible, commonly
-                                # because the offered queen has just given
-                                # check and the opponent must block/escape.
-                                # In this special case require Stockfish to
-                                # prove a forced win by mate at the deeper limit.
-                                mover_score = deep_after_info["score"].pov(mover)
-                                mate_distance = mover_score.mate() if mover_score.is_mate() else None
-                                sacrifice_confirmed = (
-                                    mate_distance is not None and mate_distance > 0
+                                # No immediate capture is possible (often a
+                                # checking queen sacrifice where the opponent
+                                # must block or move the king). Do not require
+                                # a forced mate: Chess.com's Brilliant concept
+                                # also includes sound positional/attacking
+                                # sacrifices. Verify compensation by comparing
+                                # the deep pre-move best score with the deep
+                                # resulting position.
+                                before_deep_score = (
+                                    deep_best_info.get("score")
+                                    if deep_best_info else None
                                 )
+                                if before_deep_score is not None:
+                                    before_expected = expected_points_from_score(
+                                        before_deep_score, mover
+                                    )
+                                    after_expected = expected_points_from_score(
+                                        deep_after_info["score"], mover
+                                    )
+                                    sacrifice_confirmed = (
+                                        before_expected < 0.90
+                                        and after_expected >= 0.45
+                                    )
+
+                        # A Brilliant sacrifice must not merely preserve a
+                        # position that was already completely winning, and
+                        # Stockfish must still regard the resulting position
+                        # as at least approximately playable for the mover.
+                        if sacrifice_confirmed and deep_best_info and deep_after_info.get("score") is not None:
+                            before_deep_score = deep_best_info.get("score")
+                            before_expected = (
+                                expected_points_from_score(before_deep_score, mover)
+                                if before_deep_score is not None else 0.0
+                            )
+                            after_expected = expected_points_from_score(
+                                deep_after_info["score"], mover
+                            )
+                            sacrifice_confirmed = (
+                                before_expected < 0.90
+                                and after_expected >= 0.45
+                            )
 
                         if deep_best_info and deep_after_info.get("score") is not None:
                             deep_best_pv = deep_best_info.get("pv") or []
@@ -805,7 +836,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 "brilliant_analysis_depth": BRILLIANT_ANALYSIS_DEPTH,
                 "brilliant_analysis_time": BRILLIANT_ANALYSIS_TIME,
                 "deep_positions_checked": deep_positions_checked,
-                "analysis_profile": "two_pass_centipawn_accuracy_v5_deep_mate_sacrifice"
+                "analysis_profile": "two_pass_expected_points_v6_compensated_sacrifice"
             }
 
         except HTTPException:
