@@ -45,8 +45,16 @@ def get_sacrifice_details(board_before, move):
     # recapture a queen that takes the knight). This avoids false Brilliant
     # labels for king-protected pieces.
     mover_king = after.king(mover)
-    if mover_king is not None and mover_king in after.attackers(mover, target):
-        return None
+    if mover_king is not None:
+        # Do not treat a piece as sacrificed when it lands on a square
+        # immediately adjacent to its own king. In particular, ...Ne7
+        # blocks the check from Qxe6+ while being protected by the king e8.
+        # Keep this geometric check in addition to attackers(): it is a
+        # hard safety guard against false Brilliant labels.
+        if chess.square_distance(mover_king, target) == 1:
+            return None
+        if mover_king in after.attackers(mover, target):
+            return None
 
     if not after.is_attacked_by(opponent, target):
         return None
