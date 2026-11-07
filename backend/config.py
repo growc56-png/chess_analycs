@@ -23,9 +23,13 @@ ANALYSIS_TIME = float(os.getenv("CHESS_ANALYSIS_TIME", "1.5"))
 
 # Дополнительная глубокая проверка только критических ходов.
 # Ограничение количества защищает время анализа длинных партий.
-DEEP_ANALYSIS_DEPTH = int(os.getenv("CHESS_DEEP_ANALYSIS_DEPTH", "21"))
-DEEP_ANALYSIS_TIME = float(os.getenv("CHESS_DEEP_ANALYSIS_TIME", "1.8"))
-MAX_DEEP_ANALYSIS_MOVES = int(os.getenv("CHESS_MAX_DEEP_ANALYSIS_MOVES", "12"))
+DEEP_ANALYSIS_DEPTH = int(os.getenv("CHESS_DEEP_ANALYSIS_DEPTH", "23"))
+DEEP_ANALYSIS_TIME = float(os.getenv("CHESS_DEEP_ANALYSIS_TIME", "2.5"))
+MAX_DEEP_ANALYSIS_MOVES = int(os.getenv("CHESS_MAX_DEEP_ANALYSIS_MOVES", "16"))
+
+# Extra budget for high-value sacrifices and forced-mate verification.
+BRILLIANT_ANALYSIS_DEPTH = int(os.getenv("CHESS_BRILLIANT_ANALYSIS_DEPTH", "26"))
+BRILLIANT_ANALYSIS_TIME = float(os.getenv("CHESS_BRILLIANT_ANALYSIS_TIME", "4.0"))
 
 EVALUATE_DEPTH = int(os.getenv("CHESS_EVALUATE_DEPTH", "15"))
 EVALUATE_TIME = float(os.getenv("CHESS_EVALUATE_TIME", "1.2"))
