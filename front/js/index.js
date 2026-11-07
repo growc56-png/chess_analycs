@@ -2809,9 +2809,12 @@ function playMoveSound() {
 }
 
 async function analyzePGN(pgn, gameUrl) {
-  currentAnalysisPgn = String(pgn || '');
+  currentAnalysisPgn = typeof pgn === 'string' ? pgn.trim() : '';
   const downloadPgnButton = document.getElementById('analysisDownloadPgnBtn');
-  if (downloadPgnButton) downloadPgnButton.disabled = !currentAnalysisPgn;
+  if (downloadPgnButton) {
+    downloadPgnButton.disabled = !currentAnalysisPgn;
+    downloadPgnButton.title = currentAnalysisPgn ? 'Скачать исходную партию в формате PGN' : 'Сначала загрузи партию для анализа';
+  }
   cancelCurrentPositionEvaluation();
   document.getElementById('evalText').textContent = 'Анализ...';
   document.getElementById('topLinesList').innerHTML = '<span style="color:#81b64c; font-weight:600;">Анализ...</span>';
@@ -3968,10 +3971,13 @@ function downloadCurrentAnalysisPgn() {
   const link = document.createElement('a');
   link.href = url;
   link.download = [date, white, 'vs', black].filter(Boolean).join('_') + '.pgn';
+  link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  window.setTimeout(() => {
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, 1500);
 }
 
 (function initAnalysisNavigationControls() {
