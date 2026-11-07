@@ -51,6 +51,17 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertEqual(details["piece"], "queen")
         self.assertEqual(details["capture_uci"], [])
 
+    def test_king_protected_check_interposition_is_not_a_sacrifice(self):
+        # After 11.Qxe6+, ...Ne7 blocks the check. The knight on e7 is
+        # protected by the king on e8, so White has no legal capture of it.
+        board = chess.Board(
+            "r1b1kbnr/pp1n2pp/3qQp2/3p3b/3P3P/3B1P1N/PPPN2P1/R1B1RK2 b - - 0 11"
+        )
+        move = board.parse_san("Ne7")
+
+        self.assertIsNone(get_sacrifice_details(board, move))
+        self.assertFalse(is_true_sacrifice(board, move))
+
     def test_capture_followed_by_recapture_is_not_a_sacrifice(self):
         board = chess.Board("7k/8/8/8/pr6/8/8/R6K w - - 0 1")
         move = board.parse_san("Rxa4")
