@@ -36,6 +36,7 @@ let currentAnalysisIndex = -1;
 let latestGamesCache = null;
 
 let analysisGame = new Chess();
+let currentAnalysisPgn = '';
 let activeAnalysisChallenge = null;
 let isAnalyzing = false;
 let currentWhitePlayer = "White";
@@ -2808,6 +2809,9 @@ function playMoveSound() {
 }
 
 async function analyzePGN(pgn, gameUrl) {
+  currentAnalysisPgn = String(pgn || '');
+  const downloadPgnButton = document.getElementById('analysisDownloadPgnBtn');
+  if (downloadPgnButton) downloadPgnButton.disabled = !currentAnalysisPgn;
   cancelCurrentPositionEvaluation();
   document.getElementById('evalText').textContent = 'Анализ...';
   document.getElementById('topLinesList').innerHTML = '<span style="color:#81b64c; font-weight:600;">Анализ...</span>';
@@ -3539,18 +3543,14 @@ function renderMoveTable() {
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  const classLabels = {
-    brilliant: 'Бриллиант', great: 'Замечательный', best: 'Лучший',
-    excellent: 'Отличный', good: 'Хороший', inaccuracy: 'Неточность',
-    mistake: 'Ошибка', miss: 'Промах', blunder: 'Зевок',
-    book: 'Теория', forced: 'Вынужденный'
-  };
+  const classMeta = Object.fromEntries(ANALYSIS_CLASS_ROWS.map(row => [row.key, row]));
 
   const renderCell = (move, index, color, moveNum) => {
     if (!move) return '...';
     const san = String(move.san || '');
-    const label = classLabels[move.classification]
-      ? '<span class="move-class-label cls-' + move.classification + '">' + classLabels[move.classification] + '</span>'
+    const meta = classMeta[move.classification];
+    const label = meta
+      ? '<span class="move-class-icon cls-' + meta.className + '" title="' + meta.label + '" aria-label="' + meta.label + '" role="img">' + meta.icon + '</span>'
       : '';
     const evaluation = formatMoveEvaluation(move);
     const evalHtml = evaluation
@@ -3956,7 +3956,30 @@ window.showAnalysisMove = function(index) {
 };
 
 // Навигация по уже проанализированной партии.
+function downloadCurrentAnalysisPgn() {
+  const pgn = String(currentAnalysisPgn || '').trim();
+  if (!pgn) return;
+  const safePart = value => String(value || '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, '_').slice(0, 48);
+  const white = safePart(getPgnHeader(pgn, 'White', 'White'));
+  const black = safePart(getPgnHeader(pgn, 'Black', 'Black'));
+  const date = safePart(getPgnHeader(pgn, 'Date', new Date().toISOString().slice(0, 10)));
+  const blob = new Blob([pgn.endsWith('\n') ? pgn : pgn + '\n'], { type: 'application/x-chess-pgn;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = [date, white, 'vs', black].filter(Boolean).join('_') + '.pgn';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 (function initAnalysisNavigationControls() {
+  const downloadButton = document.getElementById('analysisDownloadPgnBtn');
+  if (downloadButton && !downloadButton.dataset.bound) {
+    downloadButton.addEventListener('click', downloadCurrentAnalysisPgn);
+    downloadButton.dataset.bound = '1';
+  }
   const retryButton = document.getElementById('analysisRetryMistakeBtn');
   if (retryButton && !retryButton.dataset.bound) {
     retryButton.addEventListener('click', startAnalysisMistakeChallenge);
