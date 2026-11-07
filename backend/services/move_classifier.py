@@ -39,6 +39,15 @@ def get_sacrifice_details(board_before, move):
 
     target = move.to_square
     opponent = not mover
+
+    # A piece that has just stepped onto a square protected by its own king
+    # is not an offered sacrifice (e.g. ...Ne7 when the king can simply
+    # recapture a queen that takes the knight). This avoids false Brilliant
+    # labels for king-protected pieces.
+    mover_king = after.king(mover)
+    if mover_king is not None and mover_king in after.attackers(mover, target):
+        return None
+
     if not after.is_attacked_by(opponent, target):
         return None
 
