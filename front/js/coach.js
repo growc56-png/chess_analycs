@@ -4,6 +4,7 @@
   let COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v2.guest';
   let OPENING_SRS_KEY = 'chessTrainer.openingSrs.v1.guest';
   let COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2.guest';
+  let COACH_PROGRESS_KEY = 'chessTrainer.personalCoach.progress.v1.guest';
   const BAD_CLASSES = new Set(['blunder', 'mistake', 'inaccuracy', 'miss']);
   const CLASS_LABELS = { blunder: 'Зевок', mistake: 'Ошибка', inaccuracy: 'Неточность', miss: 'Промах' };
   const PHASE_LABELS = { opening: 'Дебют', middlegame: 'Миттельшпиль', endgame: 'Эндшпиль' };
@@ -37,6 +38,54 @@
       console.warn('Не удалось сохранить локальные данные тренера:', error);
       return false;
     }
+  }
+
+  const COACH_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function getCoachPlanState() {
+    if (!report || !report.summary || !report.createdAt) {
+      return { hasPlan: false, refreshDue: false, nextRefreshAt: null, weeksSaved: 0, solvedDrills: 0 };
+    }
+    const progress = readStorage(COACH_PROGRESS_KEY, { weeks: [], solvedDrills: 0 });
+    const installedAt = Date.parse(report.planUpdatedAt || report.createdAt);
+    const next = Number.isFinite(installedAt) ? installedAt + COACH_WEEK_MS : Date.now();
+    const currentSolved = (report.summary.drills || []).filter(item => item.solved).length;
+    const archivedSolved = Number(progress.solvedDrills || 0);
+    return {
+      hasPlan: true,
+      refreshDue: Date.now() >= next,
+      nextRefreshAt: new Date(next).toISOString(),
+      weeksSaved: Array.isArray(progress.weeks) ? progress.weeks.length : 0,
+      solvedDrills: archivedSolved + currentSolved
+    };
+  }
+
+  function updateCoachPlanControls() {
+    const state = getCoachPlanState();
+    const panel = $('coachImportPanel');
+    if (panel) panel.hidden = state.hasPlan && !state.refreshDue;
+    window.__chessCoachPlanState = state;
+    window.dispatchEvent(new CustomEvent('chess-coach-plan-updated', { detail: state }));
+  }
+
+  function archiveCurrentCoachWeek(previousReport) {
+    if (!previousReport || !previousReport.summary) return;
+    const progress = readStorage(COACH_PROGRESS_KEY, { weeks: [], solvedDrills: 0 });
+    if (!Array.isArray(progress.weeks)) progress.weeks = [];
+    const drills = previousReport.summary.drills || [];
+    const solved = drills.filter(item => item.solved).length;
+    progress.solvedDrills = Number(progress.solvedDrills || 0) + solved;
+    progress.weeks.push({
+      archivedAt: new Date().toISOString(),
+      reportDate: previousReport.createdAt,
+      games: Number(previousReport.summary.games || 0),
+      accuracy: Number(previousReport.summary.accuracy || 0),
+      errors: Number(previousReport.summary.totalErrors || 0),
+      drills: drills.length,
+      solvedDrills: solved
+    });
+    progress.weeks = progress.weeks.slice(-52);
+    writeStorage(COACH_PROGRESS_KEY, progress);
   }
 
   function delay(ms) {
@@ -444,9 +493,9 @@
       });
       summary.drills = summary.drills.slice(0, 24);
       const createdAt = new Date().toISOString();
-      const history = readStorage(COACH_HISTORY_KEY, []);
+      archiveCurrentCoachWeek(report);\n      const history = readStorage(COACH_HISTORY_KEY, []);
       history.push({ date: createdAt, accuracy: summary.accuracy, errors: summary.totalErrors, games: summary.games });
-      writeStorage(COACH_HISTORY_KEY, history.slice(-12));
+      writeStorage(COACH_HISTORY_KEY, history.slice(-52));
       report = {
         createdAt,
         username: $('coachChesscomUsername').value.trim() || $('coachLichessUsername').value.trim() || '',
@@ -642,6 +691,45 @@
     const el = $('coachDrillFeedback');
     el.textContent = message;
     el.className = 'coach-drill-feedback' + (type ? ' ' + type : '');
+  }
+
+  function renderDrillExplanation(drill) {
+    const panel = $('coachDrillExplanation');
+    if (!panel || !drill) return;
+    const motifLabels = {
+      fork: 'вилка / двойное нападение',
+      pin: 'связка',
+      discovered_check: 'вскрытый шах',
+      mate: 'матовая идея',
+      mate_in_2: 'мат в два хода',
+      discovered_attack: 'вскрытое нападение',
+      skewer: 'сквозной удар',
+      deflection: 'отвлечение защитника',
+      attraction: 'завлечение'
+    };
+    const motifs = (Array.isArray(drill.motifs) ? drill.motifs : [])
+      .map(item => motifLabels[item] || String(item).replace(/_/g, ' '))
+      .filter(Boolean);
+    const reasons = {
+      blunder: 'Зевок: этот ход резко ухудшил позицию и мог привести к потере материала или решающему преимуществу соперника.',
+      mistake: 'Ошибка: ход заметно уступает лучшему продолжению и отдаёт сопернику важный ресурс.',
+      inaccuracy: 'Неточность: позиция не обязательно проиграна, но ты упустил более сильный способ продолжить игру.',
+      miss: 'Пропуск: в этой позиции была возможность сыграть сильнее.'
+    };
+    const line = Array.isArray(drill.bestLineSan) && drill.bestLineSan.length
+      ? drill.bestLineSan.join(' ')
+      : drill.bestMoveSan || drill.bestMoveUci || 'Продолжение не сохранено';
+    const idea = motifs.length
+      ? 'Что было упущено: ' + motifs.join(', ') + '.'
+      : 'Идея: сравни сыгранный ход с вариантом движка и проверь, какие фигуры и поля становятся уязвимыми.';
+    panel.innerHTML =
+      '<div class="coach-drill-explanation-kicker">ПОЧЕМУ ЭТО ОШИБКА</div>' +
+      '<strong>' + escapeHtml(reasons[drill.classification] || 'В этой позиции был более точный ход.') + '</strong>' +
+      '<p>Ты сыграл <b>' + escapeHtml(drill.playedSan || '—') + '</b>. Лучший ход: <b class="coach-drill-best-move">' + escapeHtml(drill.bestMoveSan || drill.bestMoveUci || '—') + '</b>.' +
+      (Number.isFinite(Number(drill.cpLoss)) && Number(drill.cpLoss) > 0 ? ' Потеря оценки: примерно ' + Math.round(Number(drill.cpLoss)) + ' сантипешек.' : '') + '</p>' +
+      '<p>' + escapeHtml(idea) + '</p>' +
+      '<div class="coach-drill-line-label">ЛУЧШЕЕ ПРОДОЛЖЕНИЕ</div><div class="coach-drill-line">' + escapeHtml(line) + '</div>' +
+      '<p class="coach-drill-next-idea"><b>Что делать дальше:</b> найди лучший ход на доске, затем проследи за ответом соперника и повтори позицию без подсказки.</p>';
   }
 
   function openDrill(index) {
@@ -1042,7 +1130,7 @@
       return;
     }
 
-    setStatus('Загрузи свои партии, чтобы создать персональный отчёт для этого аккаунта.');
+    setStatus('Загрузи до 50 партий, чтобы создать персональный отчёт для этого аккаунта.');\n    updateCoachPlanControls();
   }
 
   function init() {
@@ -1051,7 +1139,7 @@
     const account = window.getChessTrainerUser ? window.getChessTrainerUser() : null;
     const accountScope = account && account.id ? String(account.id) : 'guest';
     COACH_REPORT_KEY = 'chessTrainer.personalCoach.report.v2.user.' + accountScope;
-    COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2.user.' + accountScope;
+    COACH_HISTORY_KEY = 'chessTrainer.personalCoach.history.v2.user.' + accountScope;\n    COACH_PROGRESS_KEY = 'chessTrainer.personalCoach.progress.v1.user.' + accountScope;
     OPENING_SRS_KEY = 'chessTrainer.openingSrs.v1.user.' + accountScope;
 
     $('coachSource').addEventListener('change', updateSourcePanels);
