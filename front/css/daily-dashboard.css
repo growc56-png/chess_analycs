@@ -36,3 +36,10 @@
 .daily-coach-hint{margin:10px 0 0;color:#80959f;font-size:9px;line-height:1.5}
 @media(max-width:700px){.daily-coach-card{padding:15px}.daily-coach-heading h3{font-size:18px}.daily-coach-progress{align-items:flex-start;flex-direction:column;gap:6px}.daily-coach-progress>span{min-width:0;text-align:left}.daily-coach-task{align-items:flex-start}.daily-coach-task-action{align-self:center}.daily-coach-footer>*{flex:1}.daily-coach-primary,.daily-coach-secondary{width:100%}}
 @media(max-width:420px){.daily-coach-task{flex-wrap:wrap}.daily-coach-task-copy{flex-basis:calc(100% - 44px)}.daily-coach-task-action{margin-left:43px}}
+
+
+.daily-coach-plan-status{margin:0 0 10px;padding:9px 11px;border:1px solid rgba(125,155,164,.2);border-radius:8px;background:rgba(13,27,35,.5);color:#a9bbc3;font-size:10px;line-height:1.5}
+.daily-coach-plan-status.is-installed{border-color:rgba(116,179,147,.28);color:#b7ddc7}
+.daily-coach-plan-status.is-due{border-color:rgba(224,167,95,.35);color:#e9c28d}
+.daily-coach-plan-status.is-empty{color:#9eb2bc}
+.daily-coach-analyze[hidden]{display:none!important}
