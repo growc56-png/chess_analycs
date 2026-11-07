@@ -106,3 +106,38 @@ body {
   #tab-analysis .move-eval { font-size: 9px; }
   #tab-analysis .move-class-label { display: none; }
 }
+
+
+/* Compact visual move-class symbols (labels remain available as tooltips). */
+#tab-analysis .move-class-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 3px;
+  padding: 0 3px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+#tab-analysis .move-class-icon.cls-brilliant { color: #55c8d7; background: rgba(85,200,215,.13); }
+#tab-analysis .move-class-icon.cls-great,
+#tab-analysis .move-class-icon.cls-best { color: #8fc96a; background: rgba(143,201,106,.12); }
+#tab-analysis .move-class-icon.cls-excellent { color: #9bc9a0; }
+#tab-analysis .move-class-icon.cls-good { color: #b4c1ca; }
+#tab-analysis .move-class-icon.cls-inaccuracy { color: #e3c35f; }
+#tab-analysis .move-class-icon.cls-mistake,
+#tab-analysis .move-class-icon.cls-miss { color: #e89a52; }
+#tab-analysis .move-class-icon.cls-blunder { color: #e56b6b; }
+#tab-analysis .move-class-icon.cls-book { color: #8eb8e8; }
+#tab-analysis .move-class-icon.cls-forced { color: #9ba5ad; }
+#tab-analysis .analysis-download-pgn:disabled { opacity: .45; cursor: not-allowed; }
+#tab-analysis .analysis-download-pgn:not(:disabled) {
+  border-color: rgba(143,190,96,.45);
+  color: #cde8b5;
+}
