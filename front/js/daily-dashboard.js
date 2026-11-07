@@ -87,6 +87,7 @@
     if (!root) return;
     const analyzeButton = $('dailyTrainingAnalyze');
     if (analyzeButton) analyzeButton.onclick = openPersonalAnalysis;
+    renderCoachPlanStatus();
     if (!snapshot || !Array.isArray(snapshot.plan)) {
       $('dailyTrainingTitle').textContent = 'Твоя тренировка ещё не собрана';
       $('dailyTrainingSubtitle').textContent = 'Сначала проанализируй свои партии — тренер найдёт повторяющиеся ошибки и подготовит программу.';
@@ -183,7 +184,8 @@
   const analyzeButton = $('dailyTrainingAnalyze');
   if (analyzeButton) analyzeButton.addEventListener('click', openPersonalAnalysis);
 
-  window.addEventListener('chess-plan-updated', refresh);\n  window.addEventListener('chess-coach-plan-updated', renderCoachPlanStatus);
+  window.addEventListener('chess-plan-updated', refresh);
+  window.addEventListener('chess-coach-plan-updated', renderCoachPlanStatus);
   window.addEventListener('chess-auth-ready', refresh);
   window.addEventListener('load', refresh);
 })();
