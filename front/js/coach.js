@@ -64,6 +64,14 @@
     const state = getCoachPlanState();
     const panel = $('coachImportPanel');
     if (panel) panel.hidden = state.hasPlan && !state.refreshDue;
+    if (state.hasPlan) {
+      setStatus(
+        state.refreshDue
+          ? 'Прошла неделя. Загрузи свежие партии (до 50), чтобы обновить план. Прогресс прошлых недель сохранён.'
+          : 'План установлен. Следующее обновление будет доступно через неделю.',
+        state.refreshDue ? 'success' : 'success'
+      );
+    }
     window.__chessCoachPlanState = state;
     window.dispatchEvent(new CustomEvent('chess-coach-plan-updated', { detail: state }));
   }
