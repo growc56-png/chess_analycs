@@ -56,9 +56,10 @@ def get_sacrifice_details(board_before, move):
             "attacker_value": PIECE_VALUES.get(attacker.piece_type, 0),
         })
 
-    if not capture_replies:
-        return None
-
+    # A checking sacrifice can be sound even when the opponent cannot
+    # capture the offered piece immediately (for example, the only reply is
+    # to block the check). Keep the offer so the deep engine pass can verify
+    # the forced continuation instead of rejecting it at the detection stage.
     return {
         "piece": chess.piece_name(piece.piece_type),
         "piece_symbol": piece.symbol(),
@@ -97,6 +98,11 @@ def classify_move(
     CAPS2 formula.
     """
     loss = max(0.0, min(1.0, float(win_percent_loss or 0.0)))
+
+    # A verified sacrifice that forces mate remains Brilliant; do not
+    # downgrade it to "best" merely because the resulting position is mate.
+    if is_mate and mate_won and is_sacrifice and is_best and loss <= 0.01:
+        return "brilliant"
 
     if is_mate:
         return "best" if mate_won and loss <= 0.02 else "blunder"
