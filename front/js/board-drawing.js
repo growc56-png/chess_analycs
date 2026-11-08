@@ -361,7 +361,38 @@
     boards.forEach((state, boardId) => clear(boardId));
   }
 
-  window.ChessBoardDrawing = { init, clear, clearAll };
+  function squareToPoint(square, orientation) {
+    if (!/^[a-h][1-8]$/.test(square || '')) return null;
+    const file = square.charCodeAt(0) - 97;
+    const rank = Number(square[1]) - 1;
+    const col = orientation === 'black' ? 7 - file : file;
+    const row = orientation === 'black' ? rank : 7 - rank;
+    return { point: { x: col + 0.5, y: row + 0.5 }, cell: { col, row }, key: col + ':' + row };
+  }
+
+  // Used by the opening trainer to show piece-specific strategic ideas.
+  function setArrows(boardId, entries) {
+    const state = boards.get(boardId);
+    if (!state || !Array.isArray(entries)) return false;
+    const orientation = state.board.dataset.orientation || 'white';
+    state.arrows = entries.map(entry => {
+      const from = squareToPoint(entry.from, orientation);
+      const to = squareToPoint(entry.to, orientation);
+      if (!from || !to) return null;
+      return {
+        from: from.point, to: to.point,
+        fromCell: from.cell, toCell: to.cell,
+        fromKey: from.key, toKey: to.key,
+        color: entry.color || palette.green,
+        key: from.key + '>' + to.key
+      };
+    }).filter(Boolean);
+    state.preview = null;
+    render(state);
+    return true;
+  }
+
+  window.ChessBoardDrawing = { init, clear, clearAll, setArrows };
   window.initRightClickDrawing = init;
   window.clearUserDrawings = clear;
 })();
