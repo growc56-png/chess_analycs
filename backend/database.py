@@ -5,7 +5,7 @@ from config import DATABASE_URL
 
 if not DATABASE_URL:
     raise RuntimeError(
-        "Не задан DATABASE_URL в файле .env"
+        "DATABASE_URL не задан. Укажи переменную окружения или создай корневой .env по образцу .env.example."
     )
 
 engine = create_engine(
