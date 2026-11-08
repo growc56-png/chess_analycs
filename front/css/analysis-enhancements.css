@@ -1295,3 +1295,55 @@
   }
   #tab-analysis .right-panel .move-table .col-num { width: 32px; }
 }
+
+
+/* Live Stockfish engine health in the analysis header. */
+.analysis-engine-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 7px 10px;
+  border: 1px solid rgba(143,160,171,.22);
+  border-radius: 8px;
+  background: rgba(143,160,171,.08);
+  color: #aab7c0;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: normal;
+  text-align: center;
+}
+.analysis-engine-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: #91a0aa;
+}
+.analysis-engine-status.is-ready {
+  border-color: rgba(140,189,118,.32);
+  background: rgba(140,189,118,.10);
+  color: #c5e5b5;
+}
+.analysis-engine-status.is-ready::before {
+  background: #8cbd76;
+  box-shadow: 0 0 0 3px rgba(140,189,118,.12);
+}
+.analysis-engine-status.is-error {
+  border-color: rgba(225,130,120,.32);
+  background: rgba(225,130,120,.09);
+  color: #efb1aa;
+}
+.analysis-engine-status.is-error::before {
+  background: #df8278;
+  box-shadow: 0 0 0 3px rgba(225,130,120,.12);
+}
+@media (max-width: 640px) {
+  #tab-analysis > .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .analysis-engine-status { max-width: 100%; text-align: left; }
+}
