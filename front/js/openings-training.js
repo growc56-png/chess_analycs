@@ -403,7 +403,12 @@
     fen[1] = color;
     game.load(fen.join(' '));
     const board = game.board();
-    const pieces = board.flat().filter(piece => piece && piece.color === color && piece.type !== 'k');
+    const pieces = [];
+    board.forEach((row, rankIndex) => row.forEach((piece, fileIndex) => {
+      if (piece && piece.color === color && piece.type !== 'k') {
+        pieces.push({ ...piece, square: 'abcdefgh'[fileIndex] + (8 - rankIndex) });
+      }
+    }));
     const centerScore = square => {
       const file = square.charCodeAt(0) - 97;
       const rank = Number(square[1]) - 1;
@@ -428,7 +433,7 @@
         if (piece.type === 'b') score += toScore * 0.35;
         if (piece.type === 'r') {
           const file = move.to[0];
-          const ownPawnsOnFile = board.flat().filter(p => p && p.type === 'p' && p.color === color && p.square[0] === file).length;
+          const ownPawnsOnFile = pieces.filter(p => p.type === 'p' && p.square[0] === file).length;
           score += ownPawnsOnFile === 0 ? 1.2 : ownPawnsOnFile === 1 ? 0.5 : 0;
         }
         if (move.san.includes('+') || move.san.includes('#')) score += 0.25;
