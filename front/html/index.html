@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
 <link rel="stylesheet" href="/css/index.css?v=20261102-analysis-v1">
 <link rel="stylesheet" href="/css/index-layout.css?v=20261102-analysis-v3">
-<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261102-analysis-layout-v10">
+<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261108-engine-status-v1">
 <link rel="stylesheet" href="/css/coach.css?v=20261107-weekly-explanations-v1">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
 <link rel="stylesheet" href="/css/site-refinement.css?v=20261104-daily-v1">
@@ -20,7 +20,7 @@
 <script src="/js/chess-premove.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/board-drawing.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261107-analysis-icons-pgn-v2" defer></script>
+<script src="/js/index.js?v=20261108-engine-status-v1" defer></script>
 <script src="/js/daily-dashboard.js?v=20261107-weekly-progress-v1" defer></script>
 <script src="/js/diary-ui.js" defer></script>
 <script src="/js/coach.js?v=20261107-weekly-explanations-v1" defer></script>
@@ -371,7 +371,7 @@
       </section>
 
       <section id="tab-analysis" class="tab-content">
-        <div class="section-heading"><div><div class="section-kicker">РАЗБОР ИГРЫ</div><h2>Анализ партий</h2><p>Загружай партии с Chess.com, Lichess или PGN и разбирай каждый ход</p></div></div>
+        <div class="section-heading"><div><div class="section-kicker">РАЗБОР ИГРЫ</div><h2>Анализ партий</h2><p>Загружай партии с Chess.com, Lichess или PGN и разбирай каждый ход</p></div><span id="analysisEngineStatus" class="section-badge analysis-engine-status" role="status" aria-live="polite">Проверяем Stockfish…</span></div>
         <details class="analysis-source-dropdown" id="analysisSourceDetails">
           <summary><span class="analysis-source-summary-title">Загрузить партию</span><span class="analysis-source-summary-value" id="analysisSourceSummaryValue">Chess.com</span></summary>
           <div class="analysis-source-body">
