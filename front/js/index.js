@@ -136,10 +136,52 @@ function clearUserDrawings(boardId) {
   }
 }
 
+async function loadStockfishStatus() {
+  const badge = document.getElementById('analysisEngineStatus');
+  if (!badge) return;
+
+  badge.classList.remove('is-ready', 'is-error');
+  badge.textContent = 'Проверяем Stockfish…';
+  badge.title = '';
+
+  try {
+    const response = await fetch('/api/engine/status', {
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
+    });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const status = await response.json();
+
+    if (!status.available) {
+      badge.classList.add('is-error');
+      badge.textContent = 'Stockfish не найден';
+      badge.title = status.error || 'Проверь установку движка и STOCKFISH_PATH.';
+      return;
+    }
+
+    const engine = String(status.engine || 'Stockfish');
+    const threads = Number(status.threads) || 1;
+    const hash = Number(status.hash_mb) || 0;
+    badge.classList.add('is-ready');
+    badge.textContent = hash
+      ? engine + ' · ' + threads + ' пот. · ' + hash + ' МБ'
+      : engine + ' · готов';
+    badge.title = 'Движок готов. Глубина быстрой оценки: ' +
+      (Number(status.analysis_depth) || '—') +
+      '. Время на позицию: ' + (Number(status.analysis_time) || '—') + ' с.';
+  } catch (error) {
+    badge.classList.add('is-error');
+    badge.textContent = 'Статус движка недоступен';
+    badge.title = 'Не удалось проверить Stockfish: ' + error.message;
+  }
+}
+
 async function initApp() {
   try {
     const todayName = getTodayInfo();
-    
+    // Не блокируем загрузку тренажёра, если служебная проверка движка недоступна.
+    loadStockfishStatus();
+
     const [planRes, puzzlesRes, endgamesRes, openingsRes, recRes] = await Promise.all([
       fetch('/api/plan'), fetch('/api/puzzles'), fetch('/api/endgames'), fetch('/api/openings'), fetch('/api/recommendations')
     ]);
