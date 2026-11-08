@@ -78,12 +78,19 @@ def get_sacrifice_details(board_before, move):
             "attacker_value": PIECE_VALUES.get(attacker.piece_type, 0),
         })
 
-    # A real offer must give the opponent a legal way to take the piece.
-    # The only exception is a checking sacrifice: the opponent may be forced
-    # to answer the check before the offered piece can be captured. A quiet
-    # interposition such as ...Ne7 is not an offer when the king protects e7
-    # and no legal capture exists.
-    if not capture_replies and not after.is_check():
+    # A material offer should be capturable by a cheaper piece. If the
+    # only recapturer is equal-or-more valuable, this is normally a hanging
+    # piece or an ordinary exchange, not a sacrifice candidate for Brilliant.
+    # The engine still verifies every legal recapture before classification.
+    cheaper_recaptures = [
+        reply for reply in capture_replies
+        if reply["attacker_value"] < moving_value
+    ]
+
+    # A checking sacrifice is the exception: the opponent may be forced to
+    # answer the check before the offered piece can be captured. A quiet
+    # interposition such as ...Ne7 is not an offer when no legal capture exists.
+    if not cheaper_recaptures and not after.is_check():
         return None
 
     return {
