@@ -65,9 +65,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 CPU_COUNT = os.cpu_count() or 2
 # On a shared web server, leave at least one logical CPU available to the OS.
 _DEFAULT_ENGINE_THREADS = max(1, min(4, CPU_COUNT - 1))
-ENGINE_THREADS = _int_setting("CHESS_ENGINE_THREADS", _DEFAULT_ENGINE_THREADS, 1, 64)
+ENGINE_THREADS = min(CPU_COUNT, _int_setting("CHESS_ENGINE_THREADS", _DEFAULT_ENGINE_THREADS, 1, 64))
 ENGINE_HASH_MB = _int_setting("CHESS_ENGINE_HASH_MB", 256, 16, 4096)
-BOT_ENGINE_THREADS = _int_setting("CHESS_BOT_ENGINE_THREADS", 1, 1, 16)
+BOT_ENGINE_THREADS = min(CPU_COUNT, _int_setting("CHESS_BOT_ENGINE_THREADS", 1, 1, 16))
 BOT_ENGINE_HASH_MB = _int_setting("CHESS_BOT_ENGINE_HASH_MB", 64, 16, 1024)
 
 ANALYSIS_DEPTH = _int_setting("CHESS_ANALYSIS_DEPTH", 18, 8, 40)
