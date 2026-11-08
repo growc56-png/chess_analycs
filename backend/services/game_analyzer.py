@@ -30,6 +30,7 @@ from services.stockfish import (
     get_best_move_info,
     get_second_best_gap,
     safe_engine_quit,
+    configure_engine,
 )
 
 from services.move_classifier import (
@@ -341,13 +342,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     detail=f"Ошибка запуска Stockfish: {e}"
                 )
 
-            try:
-                engine.configure({
-                    "Threads": max(1, min(4, os.cpu_count() or 1)),
-                    "Hash": 256
-                })
-            except Exception:
-                pass
+            engine_config = configure_engine(engine, profile="analysis")
 
             prev_infos = get_position_analysis(engine, board)
 
@@ -888,7 +883,10 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 "brilliant_analysis_depth": BRILLIANT_ANALYSIS_DEPTH,
                 "brilliant_analysis_time": BRILLIANT_ANALYSIS_TIME,
                 "deep_positions_checked": deep_positions_checked,
-                "analysis_profile": "two_pass_expected_points_v6_compensated_sacrifice"
+                "analysis_profile": "two_pass_expected_points_v7_configurable_stockfish",
+                "engine_threads": engine_config["threads"],
+                "engine_hash_mb": engine_config["hash_mb"],
+                "engine_name": (getattr(engine, "id", {}) or {}).get("name", "Stockfish"),
             }
 
         except HTTPException:
