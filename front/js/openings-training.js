@@ -298,6 +298,7 @@
     byId('openingTrainerSelect').value = String(summary.id);
     describeOpening();
     resetGame();
+    clearPostTheoryGuide();
     setMode('idle');
     refreshBoardClickToMove();
     renderCatalogList();
@@ -382,11 +383,85 @@
     if (boardElement) boardElement.dataset.orientation = state.side;
   }
 
+  const POST_THEORY_COLORS = {
+    p: '#e7b93f', n: '#42a5f5', b: '#42c98a',
+    r: '#f28c45', q: '#bd83f5'
+  };
+  const PIECE_NAMES = { p: 'Пешка', n: 'Конь', b: 'Слон', r: 'Ладья', q: 'Ферзь' };
+
+  function clearPostTheoryGuide() {
+    byId('openingPostTheoryGuide').hidden = true;
+    if (window.ChessBoardDrawing?.clear) window.ChessBoardDrawing.clear('openingTrainerBoard');
+  }
+
+  function buildPostTheoryIdeas() {
+    if (!state.game) return [];
+    const game = new Chess(state.game.fen());
+    const color = userColor();
+    const board = game.board();
+    const pieces = board.flat().filter(piece => piece && piece.color === color && piece.type !== 'k');
+    const centerScore = square => {
+      const file = square.charCodeAt(0) - 97;
+      const rank = Number(square[1]) - 1;
+      return 7 - (Math.abs(file - 3.5) + Math.abs(rank - 3.5));
+    };
+    const ideas = [];
+    const usedTypes = new Set();
+
+    // One clear candidate per piece type, chosen only from legal moves.
+    // These are positional prompts, not engine-certified best moves.
+    for (const piece of pieces) {
+      if (usedTypes.has(piece.type)) continue;
+      const moves = game.moves({ square: piece.square, verbose: true })
+        .filter(move => !move.captured && !move.promotion && !String(move.flags).includes('e'));
+      if (!moves.length) continue;
+      const scored = moves.map(move => {
+        const fromScore = centerScore(move.from);
+        const toScore = centerScore(move.to);
+        let score = toScore - fromScore * 0.12;
+        if (piece.type === 'p') score += (color === 'w' ? 1 : -1) * (Number(move.to[1]) - Number(move.from[1])) * 0.55;
+        if (piece.type === 'n') score += toScore * 0.65;
+        if (piece.type === 'b') score += toScore * 0.35;
+        if (piece.type === 'r') {
+          const file = move.to[0];
+          const ownPawnsOnFile = board.flat().filter(p => p && p.type === 'p' && p.color === color && p.square[0] === file).length;
+          score += ownPawnsOnFile === 0 ? 1.2 : ownPawnsOnFile === 1 ? 0.5 : 0;
+        }
+        if (move.san.includes('+') || move.san.includes('#')) score += 0.25;
+        return { move, score };
+      }).sort((a, b) => b.score - a.score);
+      const chosen = scored[0]?.move;
+      if (!chosen) continue;
+      usedTypes.add(piece.type);
+      ideas.push({
+        from: chosen.from, to: chosen.to,
+        color: POST_THEORY_COLORS[piece.type],
+        name: PIECE_NAMES[piece.type],
+        san: chosen.san
+      });
+    }
+    return ideas;
+  }
+
+  function showPostTheoryGuide() {
+    const panel = byId('openingPostTheoryGuide');
+    if (!panel || !state.opening || !state.game) return;
+    const ideas = buildPostTheoryIdeas();
+    const plan = state.side === 'white' ? state.opening.plans_white : state.opening.plans_black;
+    byId('openingPostTheoryPlan').textContent = plan || 'Сохраняй контроль над центром и улучшай положение наименее активной фигуры.';
+    byId('openingPostTheoryMoves').innerHTML = ideas.length
+      ? ideas.map(item => `<li><span class="opening-piece-dot" style="--piece-idea-color:${item.color}"></span><strong>${escapeHtml(item.name)}:</strong> ${escapeHtml(item.san)} <small>(${escapeHtml(item.from)} → ${escapeHtml(item.to)})</small></li>`).join('')
+      : '<li>Сначала найди безопасное развитие фигур и защити короля.</li>';
+    panel.hidden = false;
+    window.ChessBoardDrawing?.setArrows?.('openingTrainerBoard', ideas);
+  }
+
   function startStudy() {
     if (!state.opening || !Array.isArray(state.opening.moves) || !state.opening.moves.length) return;
     state.runId++;
     state.botThinking = false;
     resetGame();
+    clearPostTheoryGuide();
     setMode('study');
     refreshBoardClickToMove();
     byId('openingStudyStep').textContent = 'Позиция перед первым ходом';
@@ -416,7 +491,8 @@
     byId('openingStudyNext').disabled = finished;
     byId('openingStartPractice').hidden = !finished;
     byId('openingStartDeviation').hidden = !finished;
-    setMessage(finished ? 'Теория просмотрена. Теперь попробуй повторить дебют без подсказок.' : 'Посмотри, как изменилось положение фигур, и переходи к следующему ходу.', 'success');
+    if (finished) showPostTheoryGuide();
+    setMessage(finished ? 'Теория пройдена. Стрелки показывают возможные маршруты фигур, а ниже — план продолжения.' : 'Посмотри, как изменилось положение фигур, и переходи к следующему ходу.', 'success');
   }
 
   function studyPrev() {
@@ -424,6 +500,7 @@
     state.game.undo();
     state.moveIndex--;
     updateBoard();
+    clearPostTheoryGuide();
     updateProgress();
     byId('openingStudyStep').textContent = state.moveIndex ? `Возврат к ходу ${state.moveIndex}` : 'Позиция перед первым ходом';
     byId('openingStudyPrev').disabled = state.moveIndex === 0;
@@ -439,6 +516,7 @@
     const run = state.runId;
     state.botThinking = false;
     resetGame();
+    clearPostTheoryGuide();
     state.deviationTraining = Boolean(withDeviations);
     setMode('practice');
     refreshBoardClickToMove();
