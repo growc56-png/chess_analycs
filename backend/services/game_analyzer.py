@@ -494,13 +494,36 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             depth=(BRILLIANT_ANALYSIS_DEPTH if is_sacrifice else DEEP_ANALYSIS_DEPTH),
                             time_limit=(BRILLIANT_ANALYSIS_TIME if is_sacrifice else DEEP_ANALYSIS_TIME),
                         )
-                        deep_before_infos = engine.analyse(
-                            before_board,
-                            deep_limit,
-                            multipv=min(3, before_board.legal_moves.count()),
+                        # Search the principal move separately with MultiPV=1.
+                        # MultiPV alternatives are retained for near-equal move
+                        # acceptance, but do not decide the primary best move.
+                        deep_alternative_infos = _normalise_engine_infos(
+                            engine.analyse(
+                                before_board,
+                                deep_limit,
+                                multipv=min(3, before_board.legal_moves.count()),
+                            )
                         )
-                        deep_before_infos = _normalise_engine_infos(deep_before_infos)
-                        deep_best_info = get_best_move_info(deep_before_infos)
+                        try:
+                            deep_single_infos = _normalise_engine_infos(
+                                engine.analyse(before_board, deep_limit, multipv=1)
+                            )
+                        except Exception:
+                            deep_single_infos = []
+
+                        deep_best_info = get_best_move_info(deep_single_infos)
+                        if deep_best_info is None:
+                            deep_before_infos = deep_alternative_infos
+                            deep_best_info = get_best_move_info(deep_before_infos)
+                        else:
+                            best_pv_for_root = deep_best_info.get("pv") or []
+                            best_root_uci = best_pv_for_root[0].uci() if best_pv_for_root else None
+                            deep_before_infos = [deep_best_info] + [
+                                info for info in deep_alternative_infos
+                                if (info.get("pv") or [])
+                                and info["pv"][0].uci() != best_root_uci
+                            ]
+
                         deep_after_info = engine.analyse(
                             board,
                             deep_limit,
