@@ -25,24 +25,27 @@ jobs:
           python -m compileall -q .
       - name: Prevent secrets and database files from entering Git
         run: |
-          forbidden=$(git ls-files | grep -E '(^|/)\\.env($|\\.)|\\.(db|sqlite|sqlite3)          node --check front/js/index.js
-          node --check front/js/bots.js
-          node --check front/js/coach.js
-          node --check front/js/errors.js
-          node --check front/js/openings-data.js
-          node --check front/js/openings-training.js
- | grep -v -E '(^|/)\\.env\\.example          node --check front/js/index.js
-          node --check front/js/bots.js
-          node --check front/js/coach.js
-          node --check front/js/errors.js
-          node --check front/js/openings-data.js
-          node --check front/js/openings-training.js
- || true)
-          if [ -n "$forbidden" ]; then
-            echo "Sensitive/local files must not be committed:"
-            echo "$forbidden"
-            exit 1
-          fi
+          python - <<'PY'
+          import subprocess
+          import sys
+          from pathlib import PurePosixPath
+
+          tracked = subprocess.check_output(["git", "ls-files"], text=True).splitlines()
+          forbidden = []
+          for value in tracked:
+              path = PurePosixPath(value)
+              name = path.name
+              is_env_example = name == ".env.example"
+              is_env_file = name == ".env" or (name.startswith(".env.") and not is_env_example)
+              is_database = path.suffix.lower() in {".db", ".sqlite", ".sqlite3"}
+              if is_env_file or is_database:
+                  forbidden.append(value)
+
+          if forbidden:
+              print("Sensitive/local files must not be committed:")
+              print("\\n".join(forbidden))
+              sys.exit(1)
+          PY
       - name: Check installer and frontend syntax
         run: |
           python -m py_compile scripts/install_stockfish.py
