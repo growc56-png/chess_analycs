@@ -18,6 +18,7 @@ from services.stockfish import (
     get_engine_limit,
     parse_score,
     safe_engine_quit,
+    configure_engine,
 )
 
 try:
@@ -320,6 +321,44 @@ def analyze_game(body: AnalyzeBody):
     return repair_mate_classifications(result)
 
 
+@router.get("/api/engine/status")
+def get_engine_status():
+    """Проверяет доступность установленного движка и показывает его UCI-версию."""
+    if not os.path.isfile(STOCKFISH_PATH):
+        return {
+            "available": False,
+            "engine": None,
+            "path": os.path.basename(str(STOCKFISH_PATH)),
+            "error": "Stockfish не найден. Запусти scripts/install_stockfish.py или задай STOCKFISH_PATH.",
+        }
+
+    with ENGINE_LOCK:
+        engine = None
+        try:
+            engine = chess.engine.SimpleEngine.popen_uci(str(STOCKFISH_PATH), timeout=10)
+            settings = configure_engine(engine, profile="analysis")
+            identity = getattr(engine, "id", {}) or {}
+            return {
+                "available": True,
+                "engine": identity.get("name", "Stockfish"),
+                "author": identity.get("author"),
+                "path": os.path.basename(str(STOCKFISH_PATH)),
+                "threads": settings["threads"],
+                "hash_mb": settings["hash_mb"],
+                "analysis_depth": EVALUATE_DEPTH,
+                "analysis_time": EVALUATE_TIME,
+            }
+        except Exception:
+            return {
+                "available": False,
+                "engine": None,
+                "path": os.path.basename(str(STOCKFISH_PATH)),
+                "error": "Не удалось запустить Stockfish. Проверь путь, права запуска и совместимость сборки.",
+            }
+        finally:
+            safe_engine_quit(engine)
+
+
 @router.post("/api/evaluate")
 def evaluate_position(body: EvaluateBody):
     """Оценивает FEN и возвращает до трёх лучших продолжений Stockfish."""
@@ -338,13 +377,7 @@ def evaluate_position(body: EvaluateBody):
                 raise HTTPException(status_code=500, detail="Stockfish не найден")
 
             engine = chess.engine.SimpleEngine.popen_uci(str(STOCKFISH_PATH))
-            try:
-                engine.configure({
-                    "Threads": max(1, min(4, os.cpu_count() or 1)),
-                    "Hash": 256,
-                })
-            except Exception:
-                pass
+            engine_config = configure_engine(engine, profile="analysis")
 
             # Сначала получаем основную оценку позиции. Даже если движок
             # не сможет построить MultiPV-линии, численная оценка останется доступна.
