@@ -7,8 +7,9 @@ import uuid
 import chess.pgn
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from config import MAX_PENDING_ANALYSES
 from services.game_analyzer import analyze_game
 
 
@@ -23,7 +24,7 @@ _book_move_checker = None
 
 
 class AnalyzeStartBody(BaseModel):
-    pgn: str
+    pgn: str = Field(min_length=1, max_length=200_000)
 
 
 def configure_analysis_router(book_move_checker):
@@ -161,6 +162,17 @@ def start_analysis(body: AnalyzeStartBody):
 
         for key in expired:
             del analysis_jobs[key]
+
+        active_jobs = sum(
+            1 for job in analysis_jobs.values()
+            if job.get("status") in ("queued", "running")
+        )
+        if active_jobs >= MAX_PENDING_ANALYSES:
+            raise HTTPException(
+                status_code=429,
+                detail="Сервер уже анализирует несколько партий. Дождись завершения одной и повтори запрос.",
+                headers={"Retry-After": "15"},
+            )
 
         analysis_jobs[job_id] = {
             "status": "queued",
