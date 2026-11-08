@@ -223,6 +223,7 @@
   }
 
   function resetGame() {
+    clearPostTheoryGuide();
     if (byId('openingBotResult')) byId('openingBotResult').hidden = true;
     state.premoveQueue = [];
     state.virtualGame = null;
@@ -398,6 +399,9 @@
     if (!state.game) return [];
     const game = new Chess(state.game.fen());
     const color = userColor();
+    const fen = game.fen().split(' ');
+    fen[1] = color;
+    game.load(fen.join(' '));
     const board = game.board();
     const pieces = board.flat().filter(piece => piece && piece.color === color && piece.type !== 'k');
     const centerScore = square => {
