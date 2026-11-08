@@ -10,6 +10,10 @@ from config import (
     ANALYSIS_TIME,
     EVALUATE_DEPTH,
     EVALUATE_TIME,
+    ENGINE_THREADS,
+    ENGINE_HASH_MB,
+    BOT_ENGINE_THREADS,
+    BOT_ENGINE_HASH_MB,
 )
 
 # Общая блокировка движка для анализа партий и отдельных позиций.
@@ -27,10 +31,47 @@ MATE_SCORE = 10000
 
 
 def get_engine_limit(depth=None, time_limit=None):
-    return chess.engine.Limit(
-        depth=depth or ANALYSIS_DEPTH,
-        time=time_limit or ANALYSIS_TIME
-    )
+    """Build a limit without accidentally replacing explicit zero/None values."""
+    selected_depth = ANALYSIS_DEPTH if depth is None else depth
+    selected_time = ANALYSIS_TIME if time_limit is None else time_limit
+    return chess.engine.Limit(depth=selected_depth, time=selected_time)
+
+
+def configure_engine(engine, profile="analysis"):
+    """Apply one consistent, capability-aware Stockfish configuration.
+
+    Analysis uses a few threads and a reusable hash table. Bot games use a
+    smaller footprint so several interactive users do not exhaust server RAM.
+    Options are filtered against the engine's advertised UCI capabilities,
+    which keeps older Stockfish builds compatible.
+    """
+    if profile == "bot":
+        threads, hash_mb = BOT_ENGINE_THREADS, BOT_ENGINE_HASH_MB
+        move_overhead = 30
+    else:
+        threads, hash_mb = ENGINE_THREADS, ENGINE_HASH_MB
+        move_overhead = 20
+
+    requested = {
+        "Threads": threads,
+        "Hash": hash_mb,
+        "UCI_ShowWDL": True,
+        "Move Overhead": move_overhead,
+    }
+    advertised = getattr(engine, "options", None)
+    if advertised is not None:
+        try:
+            requested = {
+                name: value for name, value in requested.items()
+                if name in advertised
+            }
+        except TypeError:
+            pass
+
+    if requested:
+        engine.configure(requested)
+
+    return {"threads": threads, "hash_mb": hash_mb, "profile": profile}
 
 
 def parse_score(score_obj):
