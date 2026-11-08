@@ -75,10 +75,26 @@ def safe_binary_name(name: str) -> bool:
     return base.startswith("stockfish") and (base.endswith(".exe") or "." not in base)
 
 
+def copy_nnue_assets(members, open_member) -> None:
+    """Keep the official NNUE network beside the engine when the archive ships one."""
+    for member in members:
+        name = member.filename if hasattr(member, "filename") else member.name
+        size = member.file_size if hasattr(member, "file_size") else member.size
+        if not name.lower().endswith(".nnue") or size < 1_000_000:
+            continue
+        destination = ROOT / Path(name).name
+        source = open_member(member)
+        if source is None:
+            continue
+        with source, destination.open("wb") as output:
+            shutil.copyfileobj(source, output)
+
+
 def install_from_zip(archive: Path, target: Path) -> None:
     with zipfile.ZipFile(archive) as bundle:
+        members = bundle.infolist()
         matches = [
-            item for item in bundle.infolist()
+            item for item in members
             if not item.is_dir() and safe_binary_name(item.filename) and item.file_size > 1_000_000
         ]
         if not matches:
@@ -86,12 +102,14 @@ def install_from_zip(archive: Path, target: Path) -> None:
         selected = sorted(matches, key=lambda item: (0 if "universal" in item.filename.lower() else 1, len(item.filename)))[0]
         with bundle.open(selected) as source, target.open("wb") as output:
             shutil.copyfileobj(source, output)
+        copy_nnue_assets(members, bundle.open)
 
 
 def install_from_tar(archive: Path, target: Path) -> None:
     with tarfile.open(archive, "r:gz") as bundle:
+        members = bundle.getmembers()
         matches = [
-            item for item in bundle.getmembers()
+            item for item in members
             if item.isfile() and safe_binary_name(item.name) and item.size > 1_000_000
         ]
         if not matches:
@@ -102,6 +120,7 @@ def install_from_tar(archive: Path, target: Path) -> None:
             raise RuntimeError("Не удалось прочитать исполняемый файл из архива.")
         with source, target.open("wb") as output:
             shutil.copyfileobj(source, output)
+        copy_nnue_assets(members, bundle.extractfile)
 
 
 def main() -> None:
