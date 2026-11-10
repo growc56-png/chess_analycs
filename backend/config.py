@@ -43,10 +43,16 @@ def _resolve_stockfish_path() -> Path:
 
     # Prefer repository-local releases installed by scripts/install_stockfish.py.
     candidates = (
+        # Support both the repository root (installer default) and backend/,
+        # where users may already keep the Windows executable.
         BASE_DIR / "stockfish-windows-x86-64-universal.exe",
+        BACKEND_DIR / "stockfish-windows-x86-64-universal.exe",
         BASE_DIR / "stockfish-windows-arm64-universal.exe",
+        BACKEND_DIR / "stockfish-windows-arm64-universal.exe",
         BASE_DIR / "stockfish.exe",
+        BACKEND_DIR / "stockfish.exe",
         BASE_DIR / "stockfish",
+        BACKEND_DIR / "stockfish",
     )
     for candidate in candidates:
         if candidate.is_file():
