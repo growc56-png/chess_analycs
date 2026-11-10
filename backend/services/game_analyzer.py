@@ -344,6 +344,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
             engine_config = configure_engine(engine, profile="analysis")
 
+            if progress_callback:
+                progress_callback(0, total_moves, "initial_position")
+
             prev_infos = get_position_analysis(engine, board)
 
             if not prev_infos:
@@ -474,6 +477,13 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     deep_reason = "missed_tactic"
                 elif preliminary_mate:
                     deep_reason = "mate_position"
+
+                if (
+                    progress_callback
+                    and deep_reason
+                    and deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES
+                ):
+                    progress_callback(len(moves_data), total_moves, "deep_check")
 
                 deep_analysis_performed = False
                 sacrifice_confirmed = False
@@ -886,7 +896,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 if progress_callback:
                     progress_callback(
                         len(moves_data),
-                        total_moves
+                        total_moves,
+                        "move"
                     )
 
                 if not prev_infos:

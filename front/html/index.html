@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
 <link rel="stylesheet" href="/css/index.css?v=20261102-analysis-v1">
 <link rel="stylesheet" href="/css/index-layout.css?v=20261102-analysis-v3">
-<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261108-engine-status-v1">
+<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261110-live-analysis-progress-v1">
 <link rel="stylesheet" href="/css/coach.css?v=20261107-weekly-explanations-v1">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
 <link rel="stylesheet" href="/css/site-refinement.css?v=20261104-daily-v1">
@@ -20,7 +20,7 @@
 <script src="/js/chess-premove.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/board-drawing.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/auth.js?v=20261102-auth-v6" defer></script>
-<script src="/js/index.js?v=20261108-engine-status-v1" defer></script>
+<script src="/js/index.js?v=20261110-live-analysis-progress-v1" defer></script>
 <script src="/js/daily-dashboard.js?v=20261107-weekly-progress-v1" defer></script>
 <script src="/js/diary-ui.js" defer></script>
 <script src="/js/coach.js?v=20261107-weekly-explanations-v1" defer></script>
@@ -393,6 +393,19 @@
           </div>
         </details>
         <div class="analysis-download-row"><button type="button" id="analysisDownloadPgnBtn" class="action-btn analysis-download-pgn" title="Скачать исходную партию в формате PGN" disabled>⬇ Скачать PGN</button></div>
+        <section class="analysis-job-progress" id="analysisJobProgress" hidden aria-live="polite" aria-atomic="true">
+          <div class="analysis-job-progress-head">
+            <strong id="analysisJobProgressLabel">Подготовка Stockfish…</strong>
+            <span id="analysisJobProgressValue">0%</span>
+          </div>
+          <div class="analysis-job-progress-track" id="analysisJobProgressTrack" role="progressbar" aria-label="Прогресс анализа партии" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span class="analysis-job-progress-fill" id="analysisJobProgressFill"></span>
+          </div>
+          <div class="analysis-job-progress-foot">
+            <span id="analysisJobProgressMeta">Подготовка партии</span>
+            <strong id="analysisJobProgressRemaining">Оцениваем время…</strong>
+          </div>
+        </section>
         <div class="analysis-container">
           <div class="left-panel"><div class="eval-bar-wrapper"><div class="eval-text" id="evalText">0.0</div><div class="eval-bar-vertical"><div class="eval-bar-white" id="evalBarWhite" style="height:50%"></div></div></div><div class="analysis-board-column"><div id="topPlayer" class="player-name"><span>Black Player</span><span class="player-clock" id="topClock">10:00</span></div><div class="board-area" oncontextmenu="return false;"><div id="analysisBoard"></div><svg id="userDraw_analysisBoard" class="user-draw-overlay"></svg><svg id="arrowOverlay" class="analysis-arrow-overlay" aria-hidden="true"></svg><div id="analysisMoveEffect" class="analysis-move-effect" aria-hidden="true"><span id="analysisMoveEffectPulse"></span></div></div><div id="bottomPlayer" class="player-name"><span>White Player</span><span class="player-clock" id="bottomClock">10:00</span></div><div class="btn-row analysis-navigation"><button class="action-btn" id="analysisStart">⏮</button><button class="action-btn" id="analysisPrev" title="Предыдущий ход" aria-label="Предыдущий ход">⏴</button><button class="action-btn analysis-play-btn" id="analysisPlay" title="Воспроизвести партию" aria-label="Воспроизвести партию">▶</button><button class="action-btn" id="analysisNext" title="Следующий ход" aria-label="Следующий ход">⏵</button><button class="action-btn" id="analysisEnd">⏭</button><button class="action-btn" id="flipBoardBtn" aria-label="Перевернуть доску" title="Перевернуть доску">⤾</button></div></div></div>
           <div class="right-panel"><div class="move-list-container"><div class="move-list-toolbar"><strong>Ходы партии</strong><div class="move-list-toolbar-actions"><button type="button" id="analysisSendToDrillsBtn" class="action-btn move-jump-btn" title="Сохранить ошибки этой партии как тактические задания" disabled>⚡ В тактику</button><button type="button" id="analysisMoveTop" class="action-btn move-jump-btn" title="К первому ходу">⏮ В начало</button><button type="button" id="analysisMoveBottom" class="action-btn move-jump-btn" title="К последнему ходу">В конец ⏭</button></div></div><div class="move-headers"><div class="header-num">№</div><div class="header-white" id="headerWhite">Белые</div><div class="header-black" id="headerBlack">Чёрные</div></div><div class="move-eval-legend"><span>Оценка справа от каждого хода — позиция после него; «+» означает преимущество белых.</span></div><table class="move-table" id="moveTable"><tbody id="moveTableBody"></tbody></table></div><div class="graph-container"><canvas id="evalGraph" width="420" height="100"></canvas>

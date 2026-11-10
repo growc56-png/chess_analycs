@@ -2850,8 +2850,157 @@ function playMoveSound() {
   moveSound.play().catch(e => console.log("Звук не воспроизведен:", e));
 }
 
+
+function formatAnalysisDuration(seconds) {
+  const value = Math.max(0, Math.ceil(Number(seconds) || 0));
+  if (value >= 3600) {
+    const hours = Math.floor(value / 3600);
+    const minutes = Math.floor((value % 3600) / 60);
+    return minutes ? `${hours} ч ${minutes} мин` : `${hours} ч`;
+  }
+  if (value >= 60) {
+    const minutes = Math.floor(value / 60);
+    const rest = value % 60;
+    return rest ? `${minutes} мин ${rest} сек` : `${minutes} мин`;
+  }
+  return `${value} сек`;
+}
+
+function updateAnalysisJobProgress(snapshot) {
+  const container = document.getElementById('analysisJobProgress');
+  const fill = document.getElementById('analysisJobProgressFill');
+  const value = document.getElementById('analysisJobProgressValue');
+  const label = document.getElementById('analysisJobProgressLabel');
+  const meta = document.getElementById('analysisJobProgressMeta');
+  const remaining = document.getElementById('analysisJobProgressRemaining');
+  const track = document.getElementById('analysisJobProgressTrack');
+  if (!container || !fill || !value || !label || !meta || !remaining || !track) return;
+
+  container.hidden = false;
+  const status = String(snapshot.status || 'running');
+  const processed = Math.max(0, Number(snapshot.processed) || 0);
+  const total = Math.max(0, Number(snapshot.total) || 0);
+  const percent = status === 'completed'
+    ? 100
+    : Math.max(0, Math.min(100, Number(snapshot.percent) || 0));
+  const elapsed = Math.max(0, Number(snapshot.elapsed_seconds) || 0);
+  const eta = snapshot.eta_seconds === null || snapshot.eta_seconds === undefined
+    ? null
+    : Math.max(0, Number(snapshot.eta_seconds) || 0);
+
+  fill.style.width = percent + '%';
+  fill.classList.toggle('is-running', status === 'queued' || status === 'running');
+  track.setAttribute('aria-valuenow', String(Math.round(percent)));
+  value.textContent = Math.round(percent) + '%';
+
+  const stageLabels = {
+    queued: 'Ожидание свободного движка',
+    starting: 'Запуск Stockfish и подготовка анализа',
+    initial_position: 'Оценка стартовой позиции',
+    deep_check: 'Глубокая проверка тактической позиции',
+    move: 'Stockfish анализирует ходы партии',
+    finalizing: 'Собираем результаты анализа',
+    completed: snapshot.cached ? 'Анализ загружен из кеша' : 'Анализ завершён',
+    failed: 'Не удалось завершить анализ'
+  };
+  label.textContent = stageLabels[snapshot.stage] || stageLabels[status] || 'Stockfish анализирует партию';
+
+  const progressText = total
+    ? `Обработано ходов: ${Math.min(processed, total)} из ${total}`
+    : 'Подготовка партии';
+  meta.textContent = elapsed > 0
+    ? progressText + ' · Прошло ' + formatAnalysisDuration(elapsed)
+    : progressText;
+
+  if (status === 'completed') {
+    remaining.textContent = 'Готово — можно разбирать каждый ход';
+  } else if (status === 'failed') {
+    remaining.textContent = snapshot.error ? 'Ошибка: ' + snapshot.error : 'Проверь консоль backend';
+  } else if (eta !== null && processed > 0 && eta > 0) {
+    remaining.textContent = 'Осталось примерно ' + formatAnalysisDuration(eta);
+  } else if (eta === 0 && processed > 0 && processed < total) {
+    remaining.textContent = 'Идёт расчёт сложной позиции — уточняем время…';
+  } else if (status === 'queued') {
+    remaining.textContent = 'Задача начнётся, когда движок освободится';
+  } else {
+    remaining.textContent = 'Оцениваем оставшееся время по первым ходам…';
+  }
+}
+
+async function requestAnalysisJson(url, options = {}) {
+  const response = await fetch(url, options);
+  const raw = await response.text();
+  let payload = null;
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch (error) {
+      throw new Error('Backend вернул не JSON (HTTP ' + response.status + '). Проверь окно PowerShell.');
+    }
+  }
+  if (!response.ok) {
+    const detail = payload && (payload.detail || payload.error);
+    throw new Error(detail || 'Ошибка сервера HTTP ' + response.status);
+  }
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Backend вернул пустой ответ.');
+  }
+  return payload;
+}
+
+async function runBackgroundGameAnalysis(pgn) {
+  const start = await requestAnalysisJson('/api/analyze/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify({ pgn })
+  });
+  if (!start.job_id) throw new Error('Сервер не вернул идентификатор задачи анализа.');
+
+  updateAnalysisJobProgress({
+    status: 'queued',
+    processed: 0,
+    total: start.total || 0,
+    percent: 0,
+    elapsed_seconds: 0,
+    eta_seconds: null
+  });
+
+  while (true) {
+    await new Promise(resolve => window.setTimeout(resolve, 1000));
+    const status = await requestAnalysisJson(
+      '/api/analyze/status/' + encodeURIComponent(start.job_id),
+      { headers: { 'Accept': 'application/json' }, cache: 'no-store' }
+    );
+    updateAnalysisJobProgress(status);
+
+    if (status.status === 'completed') {
+      if (!status.result || !Array.isArray(status.result.moves)) {
+        throw new Error('Анализ завершился, но сервер не вернул список ходов.');
+      }
+      return status.result;
+    }
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Stockfish не смог завершить анализ партии.');
+    }
+    if (status.status !== 'queued' && status.status !== 'running') {
+      throw new Error('Неизвестный статус задачи анализа: ' + status.status);
+    }
+  }
+}
+
 async function analyzePGN(pgn, gameUrl) {
+  if (isAnalyzing) {
+    console.warn('Анализ уже выполняется. Дождись завершения текущей партии.');
+    return;
+  }
+
   currentAnalysisPgn = typeof pgn === 'string' ? pgn.trim() : '';
+  if (!currentAnalysisPgn) {
+    alert('PGN пустой или не распознан.');
+    return;
+  }
+
   const downloadPgnButton = document.getElementById('analysisDownloadPgnBtn');
   if (downloadPgnButton) {
     downloadPgnButton.disabled = !currentAnalysisPgn;
@@ -2859,7 +3008,7 @@ async function analyzePGN(pgn, gameUrl) {
   }
   cancelCurrentPositionEvaluation();
   document.getElementById('evalText').textContent = 'Анализ...';
-  document.getElementById('topLinesList').innerHTML = '<span style="color:#81b64c; font-weight:600;">Анализ...</span>';
+  document.getElementById('topLinesList').innerHTML = '<span style="color:#81b64c; font-weight:600;">Stockfish анализирует партию...</span>';
   document.getElementById('moveTableBody').innerHTML = '';
   const moveListContainer = document.querySelector('.move-list-container');
   if (moveListContainer) moveListContainer.scrollTop = 0;
@@ -2874,37 +3023,71 @@ async function analyzePGN(pgn, gameUrl) {
   if (overlay) overlay.innerHTML = '';
   isAnalyzing = true;
   updateAnalysisProgress(-1, 'running');
+  updateAnalysisJobProgress({
+    status: 'starting',
+    stage: 'starting',
+    processed: 0,
+    total: 0,
+    percent: 0,
+    elapsed_seconds: 0,
+    eta_seconds: null
+  });
   stopAnalysisPlayback();
 
-  const ANALYSIS_VERSION = 'v14-move-evaluations-deeper-analysis';
-  const cacheKey = `analysis_${ANALYSIS_VERSION}_${gameUrl || pgn.slice(0, 50)}`;
-  const cachedData = localStorage.getItem(cacheKey);
+  const ANALYSIS_VERSION = 'v15-background-analysis-live-eta';
+  const cacheKey = `analysis_${ANALYSIS_VERSION}_${gameUrl || currentAnalysisPgn.slice(0, 50)}`;
+  let cachedData = null;
+  try {
+    cachedData = localStorage.getItem(cacheKey);
+  } catch (cacheError) {
+    console.warn('Локальный кеш анализа недоступен:', cacheError);
+  }
+
   if (cachedData) {
     try {
       const data = JSON.parse(cachedData);
       if (data && Array.isArray(data.moves) && data.moves.every(move => Object.prototype.hasOwnProperty.call(move, 'next_top_moves'))) {
-        saveMyEndgameFromPgn(pgn, gameUrl, data);
+        updateAnalysisJobProgress({
+          status: 'completed',
+          stage: 'completed',
+          cached: true,
+          processed: data.moves.length,
+          total: data.moves.length,
+          percent: 100,
+          elapsed_seconds: 0,
+          eta_seconds: 0
+        });
+        saveMyEndgameFromPgn(currentAnalysisPgn, gameUrl, data);
         loadAnalysisData(data);
         isAnalyzing = false;
         return;
       }
-      // Старый кеш без линий Stockfish не используем: он оставлял блок Топ-3 пустым.
+      // Старый кеш без линий Stockfish не используем.
     } catch (cacheError) {
       console.warn('Кеш анализа повреждён, запускаю новый анализ.', cacheError);
     }
-    localStorage.removeItem(cacheKey);
   }
 
   try {
-    const res = await fetch('/api/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({pgn}) });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Ошибка анализа');
-    if (!data || !Array.isArray(data.moves)) throw new Error('Сервер вернул некорректный результат анализа');
-    localStorage.setItem(cacheKey, JSON.stringify(data));
-    saveMyEndgameFromPgn(pgn, gameUrl, data);
+    const data = await runBackgroundGameAnalysis(currentAnalysisPgn);
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(data));
+    } catch (cacheError) {
+      console.warn('Не удалось сохранить кеш анализа:', cacheError);
+    }
+    saveMyEndgameFromPgn(currentAnalysisPgn, gameUrl, data);
     loadAnalysisData(data);
   } catch (e) {
-    alert('Ошибка: ' + e.message);
+    updateAnalysisJobProgress({
+      status: 'failed',
+      stage: 'failed',
+      error: e.message,
+      processed: 0,
+      total: 0,
+      percent: 0,
+      eta_seconds: null
+    });
+    alert('Ошибка анализа: ' + e.message);
     document.getElementById('evalText').textContent = '0.0';
     document.getElementById('topLinesList').textContent = 'Ошибка анализа';
     updateAnalysisProgress(-1, 'error');

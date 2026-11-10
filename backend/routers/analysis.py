@@ -32,14 +32,13 @@ def configure_analysis_router(book_move_checker):
     _book_move_checker = book_move_checker
 
 
-def update_job_progress(job_id, processed, total, started_at):
+def update_job_progress(job_id, processed, total, started_at, stage="move"):
     elapsed = time.time() - started_at
     eta = None
 
     if processed > 0 and total > processed:
-        eta = int(
-            (elapsed / processed) * (total - processed)
-        )
+        # ETA is an estimate from the average time per completed half-move.
+        eta = max(0, round((elapsed / processed) * (total - processed)))
 
     with analysis_jobs_lock:
         job = analysis_jobs.get(job_id)
@@ -51,6 +50,7 @@ def update_job_progress(job_id, processed, total, started_at):
         job["total"] = total
         job["elapsed_seconds"] = round(elapsed)
         job["eta_seconds"] = eta
+        job["stage"] = stage
 
 
 def run_analysis_job(job_id, pgn, total):
@@ -62,16 +62,18 @@ def run_analysis_job(job_id, pgn, total):
             "started_at": started_at,
             "processed": 0,
             "total": total,
-            "eta_seconds": None
+            "eta_seconds": None,
+            "stage": "starting"
         })
 
     try:
-        def progress_callback(processed, total_moves):
+        def progress_callback(processed, total_moves, stage="move"):
             update_job_progress(
                 job_id,
                 processed,
                 total_moves,
-                started_at
+                started_at,
+                stage
             )
 
         result = analyze_game(
@@ -92,6 +94,7 @@ def run_analysis_job(job_id, pgn, total):
                     "total": total,
                     "elapsed_seconds": elapsed,
                     "eta_seconds": 0,
+                    "stage": "completed",
                     "result": result,
                     "error": None
                 })
@@ -103,6 +106,7 @@ def run_analysis_job(job_id, pgn, total):
             if job is not None:
                 job.update({
                     "status": "failed",
+                    "stage": "failed",
                     "error": str(e.detail)
                 })
 
@@ -113,6 +117,7 @@ def run_analysis_job(job_id, pgn, total):
             if job is not None:
                 job.update({
                     "status": "failed",
+                    "stage": "failed",
                     "error": str(e)
                 })
 
@@ -182,6 +187,7 @@ def start_analysis(body: AnalyzeStartBody):
             "started_at": None,
             "elapsed_seconds": 0,
             "eta_seconds": None,
+            "stage": "queued",
             "result": None,
             "error": None
         }
@@ -229,20 +235,29 @@ def get_analysis_status(job_id: str):
         percent = 0
 
     elapsed = snapshot.get("elapsed_seconds", 0)
+    eta_seconds = snapshot.get("eta_seconds")
 
     if snapshot["status"] == "running":
         started_at = snapshot.get("started_at")
 
         if started_at:
-            elapsed = round(time.time() - started_at)
+            elapsed = max(0, round(time.time() - started_at))
+
+        # Recalculate on every poll instead of leaving the UI with a stale ETA
+        # while Stockfish spends extra time on a difficult tactical position.
+        if processed > 0 and total > processed and elapsed > 0:
+            eta_seconds = max(0, round((elapsed / processed) * (total - processed)))
+    elif snapshot["status"] == "completed":
+        eta_seconds = 0
 
     return {
         "status": snapshot["status"],
+        "stage": snapshot.get("stage", snapshot["status"]),
         "processed": processed,
         "total": total,
         "percent": percent,
         "elapsed_seconds": elapsed,
-        "eta_seconds": snapshot["eta_seconds"],
+        "eta_seconds": eta_seconds,
         "result": snapshot["result"],
         "error": snapshot["error"]
     }
