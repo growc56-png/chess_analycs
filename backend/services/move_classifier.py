@@ -78,18 +78,21 @@ def get_sacrifice_details(board_before, move):
             "attacker_value": PIECE_VALUES.get(attacker.piece_type, 0),
         })
 
-    # A material offer should be capturable by a cheaper piece. If the
-    # only recapturer is equal-or-more valuable, this is normally a hanging
-    # piece or an ordinary exchange, not a sacrifice candidate for Brilliant.
-    # The engine still verifies every legal recapture before classification.
+    # Ignore equal-value exchanges (e.g. rook for rook), but retain both
+    # cheaper and more valuable attackers. In particular, a queen taking a
+    # knight can still lose to a forced mating attack, so Stockfish decides
+    # whether the material offer is sound.
+    capture_replies = [
+        reply for reply in capture_replies
+        if reply["attacker_value"] != moving_value
+    ]
     cheaper_recaptures = [
         reply for reply in capture_replies
         if reply["attacker_value"] < moving_value
     ]
 
-    # A checking sacrifice is the exception: the opponent may be forced to
-    # answer the check before the offered piece can be captured. A quiet
-    # interposition such as ...Ne7 is not an offer when no legal capture exists.
+    # A checking sacrifice may have no immediate legal capture because the
+    # opponent must answer check first.
     if not capture_replies and not after.is_check():
         return None
 
