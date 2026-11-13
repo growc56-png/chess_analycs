@@ -118,10 +118,10 @@ def _line_from_info(board: chess.Board, info: dict, rank: int):
 
 
 def get_multipv_lines_robust(engine, board: chess.Board, depth=None, multipv=3):
-    """Возвращает три уникальных легальных варианта, даже если MultiPV недоступен.
+    """Возвращает уникальные легальные варианты, даже если MultiPV недоступен.
 
     Сначала используем штатный MultiPV. Если UCI-движок/обёртка вернули меньше
-    трёх линий, повторяем запрос с явным списком root_moves, а в крайнем случае
+    нужного числа линий, повторяем запрос с явным списком root_moves, а в крайнем случае
     оцениваем легальные первые ходы по одному на коротком лимите.
     """
     if board.is_game_over(claim_draw=False):
@@ -159,7 +159,7 @@ def get_multipv_lines_robust(engine, board: chess.Board, depth=None, multipv=3):
 
     # Pass 2: explicitly constrain roots. Some Stockfish wrappers only return
     # one line unless root_moves is supplied, even if multipv=3 was requested.
-    if len(candidates) < 3:
+    if len(candidates) < requested_count:
         try:
             collect(engine.analyse(
                 board,
