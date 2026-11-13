@@ -81,7 +81,7 @@
   function renderCatalogList() {
     const host = byId('openingCatalogList');
     if (!host) return;
-    const filtered = state.openings.filter(item => item.side === state.catalogSide);
+    const filtered = state.openings.filter(item => item.side === state.catalogSide && startsWithCatalogMove(item));
     if (!filtered.length) {
       host.innerHTML = `<div class="opening-catalog-empty">Для хода 1.${state.catalogFirstMove} пока нет вариантов для этой стороны.</div>`;
       return;
@@ -116,7 +116,7 @@
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
-    const next = state.openings.find(item => item.side === side);
+    const next = state.openings.find(item => item.side === side && startsWithCatalogMove(item));
     if (next) {
       byId('openingTrainerSelect').value = String(next.id);
       selectOpening(next.id);
