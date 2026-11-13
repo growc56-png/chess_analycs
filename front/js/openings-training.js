@@ -4,7 +4,7 @@
 
   const PIECE_THEME = '/img/pieces/{piece}.png';
   const state = {
-    openings: [], opening: null, side: 'white', catalogSide: 'white', level: 'medium',
+    openings: [], opening: null, side: 'white', catalogSide: 'white', catalogFirstMove: 'e4', level: 'medium',
     game: null, board: null, mode: 'idle', moveIndex: 0,
     botThinking: false, runId: 0, loadToken: 0, lastError: '',
     premoveQueue: [], virtualGame: null, deviationTraining: false,
@@ -24,6 +24,27 @@
   function installRightClickArrows(boardId) {
     if (window.initRightClickDrawing) return window.initRightClickDrawing(boardId);
     return false;
+  }
+
+  function startsWithCatalogMove(opening) {
+    return Array.isArray(opening?.moves) && opening.moves[0] === state.catalogFirstMove;
+  }
+
+  function setCatalogFirstMove(move) {
+    if (!['e4', 'd4'].includes(move)) return;
+    state.catalogFirstMove = move;
+    document.querySelectorAll('[data-opening-first-move]').forEach(button => {
+      const active = button.dataset.openingFirstMove === move;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    const next = state.openings.find(item => item.side === state.catalogSide && startsWithCatalogMove(item));
+    if (next) {
+      byId('openingTrainerSelect').value = String(next.id);
+      selectOpening(next.id);
+    } else {
+      renderCatalogList();
+    }
   }
 
   function validateLine(opening) {
@@ -111,6 +132,11 @@
   function setCatalogSide(side) {
     if (!['white', 'black'].includes(side)) return;
     state.catalogSide = side;
+    document.querySelectorAll('[data-opening-first-move]').forEach(button => {
+      const active = button.dataset.openingFirstMove === state.catalogFirstMove;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       const active = button.dataset.openingCategory === side;
       button.classList.toggle('active', active);
@@ -129,6 +155,7 @@
     const opening = state.openings.find(item => String(item.id) === String(id));
     if (!opening) return;
     state.catalogSide = opening.side === 'black' ? 'black' : 'white';
+    if (Array.isArray(opening.moves) && ['e4', 'd4'].includes(opening.moves[0])) state.catalogFirstMove = opening.moves[0];
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       const active = button.dataset.openingCategory === state.catalogSide;
       button.classList.toggle('active', active);
@@ -296,6 +323,7 @@
     state.botThinking = false;
     state.opening = summary;
     state.catalogSide = summary.side === 'black' ? 'black' : 'white';
+    if (Array.isArray(summary.moves) && ['e4', 'd4'].includes(summary.moves[0])) state.catalogFirstMove = summary.moves[0];
     byId('openingTrainerSelect').value = String(summary.id);
     describeOpening();
     resetGame();
@@ -1068,6 +1096,9 @@
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       button.addEventListener('click', () => setCatalogSide(button.dataset.openingCategory));
     });
+    document.querySelectorAll('[data-opening-first-move]').forEach(button => {
+      button.addEventListener('click', () => setCatalogFirstMove(button.dataset.openingFirstMove));
+    });
     const catalog = byId('openingCatalogList');
     catalog.addEventListener('click', event => {
       const item = event.target.closest('[data-opening-id]');
@@ -1136,7 +1167,8 @@
       readPersonalOpeningLines().forEach(item => { state.openings.push(item); state.detailCache.set(String(item.id), item); });
       renderOpeningOptions();
       state.catalogSide = state.openings.some(item => item.side === 'white') ? 'white' : 'black';
-      const first = state.openings.find(item => item.side === state.catalogSide) || state.openings[0];
+      state.catalogFirstMove = 'e4';
+      const first = state.openings.find(item => item.side === state.catalogSide && startsWithCatalogMove(item)) || state.openings.find(item => item.side === state.catalogSide) || state.openings[0];
       state.side = state.catalogSide;
       document.querySelectorAll('[data-opening-side]').forEach(button => {
         const active = button.dataset.openingSide === state.side;
