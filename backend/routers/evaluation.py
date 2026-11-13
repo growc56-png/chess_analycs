@@ -43,6 +43,11 @@ class EvaluateBody(BaseModel):
     fen: str
 
 
+class OpeningVariationsBody(BaseModel):
+    fen: str
+    limit: int = 15
+
+
 def configure_engine_router(book_move_checker: Callable) -> None:
     """Передаёт анализатору проверку дебютных ходов."""
     global _book_move_checker
@@ -112,7 +117,7 @@ def _line_from_info(board: chess.Board, info: dict, rank: int):
     }
 
 
-def get_multipv_lines_robust(engine, board: chess.Board, depth=None):
+def get_multipv_lines_robust(engine, board: chess.Board, depth=None, multipv=3):
     """Возвращает три уникальных легальных варианта, даже если MultiPV недоступен.
 
     Сначала используем штатный MultiPV. Если UCI-движок/обёртка вернули меньше
@@ -131,6 +136,7 @@ def get_multipv_lines_robust(engine, board: chess.Board, depth=None):
     if not legal_moves:
         return []
 
+    requested_count = max(1, min(int(multipv or 3), 15, len(legal_moves)))
     candidates = {}
 
     def collect(infos):
@@ -147,7 +153,7 @@ def get_multipv_lines_robust(engine, board: chess.Board, depth=None):
 
     # Pass 1: the normal UCI MultiPV request.
     try:
-        collect(engine.analyse(board, limit, multipv=min(3, len(legal_moves))))
+        collect(engine.analyse(board, limit, multipv=requested_count))
     except Exception:
         pass
 
@@ -158,7 +164,7 @@ def get_multipv_lines_robust(engine, board: chess.Board, depth=None):
             collect(engine.analyse(
                 board,
                 limit,
-                multipv=min(3, len(legal_moves)),
+                multipv=requested_count,
                 root_moves=legal_moves,
             ))
         except Exception:
@@ -166,13 +172,13 @@ def get_multipv_lines_robust(engine, board: chess.Board, depth=None):
 
     # Pass 3: fallback for engines that reject MultiPV/root_moves together.
     # It is only used when necessary and analyses each legal first move briefly.
-    if len(candidates) < min(3, len(legal_moves)):
+    if len(candidates) < requested_count:
         fallback_depth = max(8, min(int(depth or EVALUATE_DEPTH), 11))
         fallback_limit = chess.engine.Limit(
             depth=fallback_depth,
             time=max(0.045, min(0.10, float(EVALUATE_TIME or 1.0) / 14.0)),
         )
-        for move in legal_moves:
+        for move in legal_moves[:requested_count]:
             if move.uci() in candidates:
                 continue
             try:
@@ -181,7 +187,7 @@ def get_multipv_lines_robust(engine, board: chess.Board, depth=None):
             except Exception:
                 continue
 
-    result = sorted(candidates.values(), key=lambda item: item["_sort"], reverse=True)[:3]
+    result = sorted(candidates.values(), key=lambda item: item["_sort"], reverse=True)[:requested_count]
     for rank, line in enumerate(result, start=1):
         line["rank"] = rank
         line.pop("_sort", None)
@@ -409,6 +415,38 @@ def evaluate_position(body: EvaluateBody):
                 status_code=500,
                 detail=f"Ошибка оценки позиции: {str(exc)}",
             )
+        finally:
+            safe_engine_quit(engine)
+
+
+
+@router.post("/api/openings/variations")
+def get_opening_variations(body: OpeningVariationsBody):
+    """Возвращает до 15 лучших легальных ответвлений из Stockfish."""
+    with ENGINE_LOCK:
+        engine = None
+        try:
+            try:
+                board = chess.Board(body.fen)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Некорректный FEN")
+            if not board.is_valid():
+                raise HTTPException(status_code=400, detail="Позиция некорректна")
+            if board.is_game_over(claim_draw=False):
+                return {"moves": []}
+            if not os.path.isfile(STOCKFISH_PATH):
+                raise HTTPException(status_code=500, detail="Stockfish не найден")
+            engine = chess.engine.SimpleEngine.popen_uci(str(STOCKFISH_PATH))
+            configure_engine(engine, profile="analysis")
+            depth = max(8, min(int(EVALUATE_DEPTH or 12), 12))
+            moves = get_multipv_lines_robust(
+                engine, board, depth=depth, multipv=max(1, min(body.limit, 15))
+            )
+            return {"moves": moves}
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Не удалось построить варианты: {exc}")
         finally:
             safe_engine_quit(engine)
 
