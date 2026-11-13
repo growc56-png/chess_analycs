@@ -1,5 +1,6 @@
 const daysMap = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 const monthsMap = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+const BRILLIANT_DIAMOND_ICON = "<svg class=\"brilliant-diamond-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M12 1.8 22.1 10.5 12 22.2 1.9 10.5Z\" fill=\"#28c6df\" stroke=\"#b8f7ff\" stroke-width=\"1.1\"/><path d=\"M12 2.8v18.1M2.9 10.5h18.2M12 2.8l-4.1 7.7L12 20.9l4.1-10.4L12 2.8Z\" fill=\"none\" stroke=\"#0b729a\" stroke-width=\".9\" opacity=\".9\"/></svg>";
 
 let PLAN = [], currentDay = 1, totalDays = 0;
 let GOAL_PROFILE = null;
@@ -2661,7 +2662,7 @@ function drawBoardBadge(moveData) {
   if (!squareEl) return;
 
   const classMap = {
-    brilliant: { text: '!!', title: 'Бриллиантовый ход', css: 'badge-brilliant' },
+    brilliant: { html: BRILLIANT_DIAMOND_ICON, title: 'Бриллиантовый ход', css: 'badge-brilliant' },
     great: { text: '!', title: 'Замечательный ход', css: 'badge-great' },
     best: { text: '★', title: 'Лучший ход', css: 'badge-best' },
     excellent: { text: '✓', title: 'Отличный ход', css: 'badge-excellent' },
@@ -2682,11 +2683,15 @@ function drawBoardBadge(moveData) {
   badge.style.right = '3px';
   badge.style.left = 'auto';
   badge.style.transform = 'none';
-  badge.textContent = marker ? marker.text : (
-    moveData.is_mate
-      ? (moveData.mate_in > 0 ? 'М' + moveData.mate_in : '-М' + Math.abs(moveData.mate_in))
-      : (Number(moveData.eval) > 0 ? '+' : '') + Number(moveData.eval || 0).toFixed(1)
-  );
+  if (marker && marker.html) {
+    badge.innerHTML = marker.html;
+  } else {
+    badge.textContent = marker ? marker.text : (
+      moveData.is_mate
+        ? (moveData.mate_in > 0 ? 'М' + moveData.mate_in : '-М' + Math.abs(moveData.mate_in))
+        : (Number(moveData.eval) > 0 ? '+' : '') + Number(moveData.eval || 0).toFixed(1)
+    );
+  }
 
   const sacrifice = moveData.sacrifice_details;
   badge.title = marker ? marker.title + ' · клетка ' + toSquare : 'Оценка после хода: ' + badge.text;
@@ -3114,7 +3119,7 @@ function formatSpentTime(seconds) {
 }
 
 const ANALYSIS_CLASS_ROWS = [
-  { key: 'brilliant', label: 'Бриллиантовый', icon: '💎', className: 'brilliant' },
+  { key: 'brilliant', label: 'Бриллиантовый', icon: BRILLIANT_DIAMOND_ICON, className: 'brilliant' },
   { key: 'great', label: 'Замечательный', icon: '✨', className: 'great' },
   { key: 'best', label: 'Лучший', icon: '★', className: 'best' },
   { key: 'excellent', label: 'Отличный', icon: '✓', className: 'excellent' },
@@ -4048,11 +4053,21 @@ function renderAnalysisMoveInsight(moveData) {
 
   if (moveData.classification === 'brilliant' && moveData.sacrifice_details) {
     const sacrifice = moveData.sacrifice_details;
-    messages.push(
-      'Это тихая жертва: ты предложил сопернику взять ' + sacrifice.piece
-      + '. Возможное взятие: ' + sacrifice.recapture_san
-      + '. Глубокая проверка Stockfish подтвердила, что ход сохраняет оценку.'
-    );
+    if (moveData.sacrifice_mate_trap_verified) {
+      const matingCaptures = (moveData.sacrifice_mate_trap_replies || [])
+        .map(reply => reply.san + (reply.mate_in ? ' → мат в ' + reply.mate_in : ''))
+        .join('; ');
+      messages.push(
+        'Это жертва-ловушка: ты оставил ' + sacrifice.piece
+        + ' под взятие. Stockfish проверил ответы и подтвердил, что после принятия жертвы соперник получает форсированный мат'
+        + (matingCaptures ? ' (' + matingCaptures + ')' : '') + '.'
+      );
+    } else {
+      messages.push(
+        'Это качественная жертва: ты предложил сопернику взять ' + sacrifice.piece
+        + '. Глубокая проверка Stockfish подтвердила достаточную компенсацию.'
+      );
+    }
   } else if (moveData.is_sacrifice && moveData.sacrifice_details) {
     const sacrifice = moveData.sacrifice_details;
     messages.push(

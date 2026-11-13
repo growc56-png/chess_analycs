@@ -218,6 +218,20 @@ def _calculate_loss_metrics(before_score, after_score, mover):
     )
 
 
+def _forced_mate_in_for(score_obj, color):
+    """Return a positive mate distance only when this side can force mate."""
+    if score_obj is None:
+        return None
+    try:
+        side_score = score_obj.pov(color)
+        mate_distance = side_score.mate()
+        if side_score.is_mate() and mate_distance is not None and mate_distance > 0:
+            return int(mate_distance)
+    except (AttributeError, TypeError, ValueError):
+        pass
+    return None
+
+
 def _classify_game_phase(board):
     """Approximate phase from remaining non-pawn material."""
     phase_weights = {
@@ -481,18 +495,21 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 if (
                     progress_callback
                     and deep_reason
-                    and deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES
+                    and (deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES or is_sacrifice)
                 ):
                     progress_callback(len(moves_data), total_moves, "deep_check")
 
                 deep_analysis_performed = False
                 sacrifice_confirmed = False
+                sacrifice_mate_trap_verified = False
+                sacrifice_mate_trap_replies = []
                 played_move_forces_mate = False
                 played_move_mate_score = None
+                played_info = None
                 analysis_depth_used = int(best_info.get("depth") or ANALYSIS_DEPTH)
                 if (
                     deep_reason
-                    and deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES
+                    and (deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES or is_sacrifice)
                     and before_board.legal_moves.count() > 0
                 ):
                     deep_positions_checked += 1
@@ -511,7 +528,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             engine.analyse(
                                 before_board,
                                 deep_limit,
-                                multipv=min(3, before_board.legal_moves.count()),
+                                multipv=min(5, before_board.legal_moves.count()),
                             )
                         )
                         try:
@@ -556,12 +573,23 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                 played_info.get("score") if played_info else None
                             )
                             if played_move_mate_score is not None:
-                                played_side_score = played_move_mate_score.pov(mover)
-                                played_move_forces_mate = bool(
-                                    played_side_score.is_mate()
-                                    and played_side_score.mate() is not None
-                                    and played_side_score.mate() > 0
+                                played_move_forces_mate = (
+                                    _forced_mate_in_for(played_move_mate_score, mover) is not None
                                 )
+
+                            # Keep the independently searched played move as a candidate
+                            # even when shallow MultiPV ranked it outside the first lines.
+                            played_pv = (played_info or {}).get("pv") or []
+                            if (
+                                played_pv
+                                and played_pv[0] == move
+                                and (played_info or {}).get("score") is not None
+                                and not any(
+                                    (info.get("pv") or []) and info["pv"][0] == move
+                                    for info in deep_before_infos
+                                )
+                            ):
+                                deep_before_infos.append(played_info)
 
                         # A piece being attacked is not enough for a Brilliant.
                         # Test every legal capture of the offered piece at the
@@ -593,12 +621,13 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                         capture_points.append(
                                             expected_points_from_score(capture_score, mover)
                                         )
-                                        mover_score = capture_score.pov(mover)
-                                        capture_forced_mates.append(
-                                            mover_score.is_mate()
-                                            and mover_score.mate() is not None
-                                            and mover_score.mate() > 0
-                                        )
+                                        mate_distance = _forced_mate_in_for(capture_score, mover)
+                                        capture_forced_mates.append(mate_distance is not None)
+                                        if mate_distance is not None:
+                                            sacrifice_mate_trap_replies.append({
+                                                "san": board.san(capture_move),
+                                                "mate_in": mate_distance,
+                                            })
                                 except Exception:
                                     continue
 
@@ -621,8 +650,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                         for points in capture_points
                                     )
                                 )
+                                sacrifice_mate_trap_verified = bool(all_acceptances_mated)
                                 sacrifice_confirmed = (
-                                    all_acceptances_mated or all_acceptances_refuted
+                                    sacrifice_mate_trap_verified or all_acceptances_refuted
                                 )
                             else:
                                 # No immediate capture is possible (often a
@@ -662,9 +692,12 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             after_expected = expected_points_from_score(
                                 deep_after_info["score"], mover
                             )
-                            sacrifice_confirmed = (
-                                before_expected < 0.90
-                                and after_expected >= 0.45
+                            sacrifice_confirmed = bool(
+                                sacrifice_mate_trap_verified
+                                or (
+                                    before_expected < 0.90
+                                    and after_expected >= 0.45
+                                )
                             )
 
                         if deep_best_info and deep_after_info.get("score") is not None:
@@ -765,6 +798,15 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     win_points_loss = 0.0
                     centipawn_loss = 0
 
+                # The played move was independently searched and all legal
+                # acceptances of the offered piece were refuted by forced mate.
+                if (
+                    sacrifice_mate_trap_verified
+                    and deep_analysis_performed
+                    and win_points_loss <= 0.02
+                ):
+                    is_best = True
+
                 # Only a deep-engine-confirmed sacrifice can be Brilliant.
                 is_sacrifice = bool(
                     is_sacrifice
@@ -817,6 +859,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         is_mate=curr_parsed["is_mate"],
                         mate_won=mate_won,
                         missed_tactic=missed_tactic,
+                        verified_mate_trap=sacrifice_mate_trap_verified,
                     )
 
                 time_pressure = _is_time_pressure(
@@ -877,6 +920,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     "clock_before": clock_before,
                     "is_sacrifice": is_sacrifice,
                     "brilliant_sacrifice_verified": bool(sacrifice_confirmed),
+                    "sacrifice_mate_trap_verified": bool(sacrifice_mate_trap_verified),
+                    "sacrifice_mate_trap_replies": sacrifice_mate_trap_replies,
                     "sacrifice_details": sacrifice_details,
                     "fen": board.fen(),
                     "next_top_moves": next_top_moves,
@@ -917,7 +962,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 "brilliant_analysis_depth": BRILLIANT_ANALYSIS_DEPTH,
                 "brilliant_analysis_time": BRILLIANT_ANALYSIS_TIME,
                 "deep_positions_checked": deep_positions_checked,
-                "analysis_profile": "two_pass_expected_points_v7_configurable_stockfish",
+                "analysis_profile": "deep_two_pass_mate_trap_v8_stockfish",
                 "engine_threads": engine_config["threads"],
                 "engine_hash_mb": engine_config["hash_mb"],
                 "engine_name": (getattr(engine, "id", {}) or {}).get("name", "Stockfish"),

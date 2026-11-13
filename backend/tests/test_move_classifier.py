@@ -16,6 +16,7 @@ from services.move_classifier import (
 from services.game_analyzer import (
     _classify_game_phase,
     _parse_time_control,
+    _forced_mate_in_for,
 )
 from services.stockfish import (
     calc_expected_points,
@@ -50,6 +51,17 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertIsNotNone(details)
         self.assertEqual(details["piece"], "queen")
         self.assertEqual(details["capture_uci"], [])
+
+    def test_offer_captured_by_more_valuable_piece_is_still_checked(self):
+        # A queen can take the offered knight; Stockfish decides whether that
+        # capture loses by force instead of filtering it by material value.
+        board = chess.Board("7k/8/8/8/7q/5N2/8/K7 w - - 0 1")
+        move = board.parse_san("Ng5")
+        details = get_sacrifice_details(board, move)
+
+        self.assertIsNotNone(details)
+        self.assertIn("Qxg5", [reply["san"] for reply in details["capture_replies"]])
+        self.assertEqual(details["cheaper_capture_uci"], [])
 
     def test_king_protected_check_interposition_is_not_a_sacrifice(self):
         # After 11.Qxe6+, ...Ne7 blocks the check. The knight on e7 is
@@ -104,6 +116,36 @@ class MoveClassificationTests(unittest.TestCase):
                 mate_won=True,
             ),
             "brilliant",
+        )
+
+    def test_verified_mate_trap_is_brilliant_even_when_multipv_missed_the_move(self):
+        self.assertEqual(
+            classify_move(
+                win_percent_loss=0.015,
+                is_best=False,
+                is_sacrifice=True,
+                is_forced=False,
+                prev_eval=0.0,
+                curr_eval=0.0,
+                second_best_gap=0.0,
+                verified_mate_trap=True,
+            ),
+            "brilliant",
+        )
+
+    def test_mate_trap_does_not_override_a_large_objective_loss(self):
+        self.assertEqual(
+            classify_move(
+                win_percent_loss=0.15,
+                is_best=False,
+                is_sacrifice=True,
+                is_forced=False,
+                prev_eval=0.0,
+                curr_eval=-2.0,
+                second_best_gap=0.0,
+                verified_mate_trap=True,
+            ),
+            "mistake",
         )
 
     def test_an_ordinary_capture_cannot_become_brilliant_without_sacrifice_flag(self):
@@ -229,6 +271,13 @@ class AnalysisMetricTests(unittest.TestCase):
         self.assertEqual(len(lines), 3)
         self.assertEqual(lines[0]["rank"], 1)
         self.assertEqual(lines[0]["uci"], infos[0]["pv"][0].uci())
+
+    def test_forced_mate_helper_uses_the_player_perspective(self):
+        winning_for_white = chess.engine.PovScore(chess.engine.Mate(3), chess.WHITE)
+        losing_for_white = chess.engine.PovScore(chess.engine.Mate(-2), chess.WHITE)
+        self.assertEqual(_forced_mate_in_for(winning_for_white, chess.WHITE), 3)
+        self.assertIsNone(_forced_mate_in_for(winning_for_white, chess.BLACK))
+        self.assertIsNone(_forced_mate_in_for(losing_for_white, chess.WHITE))
 
     def test_expected_points_loss_is_non_negative_and_uses_player_pov(self):
         from services.game_analyzer import _calculate_loss_metrics

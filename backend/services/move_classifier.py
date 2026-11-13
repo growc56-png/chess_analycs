@@ -90,7 +90,7 @@ def get_sacrifice_details(board_before, move):
     # A checking sacrifice is the exception: the opponent may be forced to
     # answer the check before the offered piece can be captured. A quiet
     # interposition such as ...Ne7 is not an offer when no legal capture exists.
-    if not cheaper_recaptures and not after.is_check():
+    if not capture_replies and not after.is_check():
         return None
 
     return {
@@ -106,6 +106,7 @@ def get_sacrifice_details(board_before, move):
         "recapture_san": capture_replies[0]["san"] if capture_replies else None,
         "attacker": capture_replies[0]["attacker"] if capture_replies else None,
         "capture_uci": [item["uci"] for item in capture_replies],
+        "cheaper_capture_uci": [item["uci"] for item in cheaper_recaptures],
         "capture_replies": capture_replies,
         "material_difference": moving_value - captured_value,
     }
@@ -127,6 +128,7 @@ def classify_move(
     is_mate=False,
     mate_won=True,
     missed_tactic=False,
+    verified_mate_trap=False,
 ):
     """Classify a played move using the expected-points loss.
 
@@ -136,6 +138,11 @@ def classify_move(
     CAPS2 formula.
     """
     loss = max(0.0, min(1.0, float(win_percent_loss or 0.0)))
+
+    # A deep-engine-confirmed mate trap is Brilliant even when shallow MultiPV
+    # missed the move. Keep a small objective-loss guard.
+    if verified_mate_trap and is_sacrifice and loss <= 0.02:
+        return "brilliant"
 
     # A verified sacrifice that forces mate remains Brilliant; do not
     # downgrade it to "best" merely because the resulting position is mate.
