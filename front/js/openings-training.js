@@ -83,7 +83,7 @@
     if (!host) return;
     const filtered = state.openings.filter(item => item.side === state.catalogSide);
     if (!filtered.length) {
-      host.innerHTML = '<div class="opening-catalog-empty">Для этой стороны пока нет добавленных дебютов.</div>';
+      host.innerHTML = `<div class="opening-catalog-empty">Для хода 1.${state.catalogFirstMove} пока нет вариантов для этой стороны.</div>`;
       return;
     }
     const groups = new Map();
