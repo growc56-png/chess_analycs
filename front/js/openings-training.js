@@ -503,9 +503,16 @@
     const fen = state.game.fen();
     host.innerHTML = '<p class="opening-variation-loading">Загружаю популярные продолжения из партий мастеров…</p>';
     try {
-      const url = 'https://explorer.lichess.ovh/masters?fen=' + encodeURIComponent(fen) + '&moves=15&topGames=0';
-      const response = await fetch(url, {headers: {'Accept': 'application/json'}});
-      if (!response.ok) throw new Error(response.status === 429 ? 'Слишком много запросов. Подожди минуту.' : 'HTTP ' + response.status);
+      const response = await fetch('/api/openings/variations', {
+        method: 'POST',
+        headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+        body: JSON.stringify({fen, limit: 15})
+      });
+      if (!response.ok) {
+        let detail = '';
+        try { detail = (await response.json()).detail || ''; } catch (_) {}
+        throw new Error(detail || 'HTTP ' + response.status);
+      }
       const payload = await response.json();
       if (requestId !== state.explorerRequestId || state.mode !== 'study' || state.game.fen() !== fen) return;
       const candidates = Array.isArray(payload.moves) ? payload.moves : [];
@@ -517,15 +524,13 @@
         host.innerHTML = '<p class="opening-variation-empty">В базе мастеров для этой позиции пока нет продолжений. Можно изучать выбранную линию кнопкой «Далее».</p>';
         return;
       }
-      host.innerHTML = '<div class="opening-variation-heading"><strong>Ответвления из этой позиции</strong><span>до 15 ходов мастеров</span></div>' +
+      host.innerHTML = '<div class="opening-variation-heading"><strong>Варианты из этой позиции</strong><span>до 15 ходов Stockfish</span></div>' +
         '<div class="opening-variation-list">' + legalMoves.map((item, index) => {
-          const games = Number(item.white || 0) + Number(item.draws || 0) + Number(item.black || 0);
-          const winrate = games ? Math.round((Number(item.white || 0) + Number(item.draws || 0) * 0.5) / games * 100) : null;
+          const evaluation = Number.isFinite(Number(item.eval)) ? (Number(item.eval) > 0 ? '+' : '') + Number(item.eval).toFixed(2) : '—';
           return '<button type="button" class="opening-variation-choice" data-variation-san="' + escapeHtml(item.san) + '">' +
             '<span class="opening-variation-rank">' + (index + 1) + '</span><strong>' + escapeHtml(item.san) + '</strong>' +
-            '<small>' + (games ? games.toLocaleString('ru-RU') + ' партий' : 'ход из базы') +
-            (winrate !== null ? ' · ' + winrate + '% результат белых' : '') + '</small></button>';
-        }).join('') + '</div><p class="opening-variation-note">Порядок основан на частоте ходов в базе партий мастеров Lichess, а не на оценке Stockfish.</p>';
+            '<small>Оценка Stockfish: ' + evaluation + '</small></button>';
+        }).join('') + '</div><p class="opening-variation-note">Варианты отсортированы по оценке Stockfish. Это аналитические кандидаты, а не статистика сыгранных партий.</p>';
       host.querySelectorAll('[data-variation-san]').forEach(button => {
         button.addEventListener('click', () => chooseStudyVariation(button.dataset.variationSan));
       });
