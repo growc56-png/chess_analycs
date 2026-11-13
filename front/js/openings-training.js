@@ -509,10 +509,9 @@
       const payload = await response.json();
       if (requestId !== state.explorerRequestId || state.mode !== 'study' || state.game.fen() !== fen) return;
       const candidates = Array.isArray(payload.moves) ? payload.moves : [];
-      const probe = new Chess(fen);
       const legalMoves = candidates.filter(item => {
         if (!item || !item.san) return false;
-        try { return Boolean(probe.move(item.san)); } catch (_) { return false; }
+        try { return Boolean(new Chess(fen).move(item.san)); } catch (_) { return false; }
       }).slice(0, 15);
       if (!legalMoves.length) {
         host.innerHTML = '<p class="opening-variation-empty">В базе мастеров для этой позиции пока нет продолжений. Можно изучать выбранную линию кнопкой «Далее».</p>';
@@ -525,7 +524,7 @@
           return '<button type="button" class="opening-variation-choice" data-variation-san="' + escapeHtml(item.san) + '">' +
             '<span class="opening-variation-rank">' + (index + 1) + '</span><strong>' + escapeHtml(item.san) + '</strong>' +
             '<small>' + (games ? games.toLocaleString('ru-RU') + ' партий' : 'ход из базы') +
-            (winrate !== null ? ' · ' + winrate + '% за белых' : '') + '</small></button>';
+            (winrate !== null ? ' · ' + winrate + '% результат белых' : '') + '</small></button>';
         }).join('') + '</div><p class="opening-variation-note">Порядок основан на частоте ходов в базе партий мастеров Lichess, а не на оценке Stockfish.</p>';
       host.querySelectorAll('[data-variation-san]').forEach(button => {
         button.addEventListener('click', () => chooseStudyVariation(button.dataset.variationSan));
