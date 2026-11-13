@@ -8,7 +8,8 @@
     game: null, board: null, mode: 'idle', moveIndex: 0,
     botThinking: false, runId: 0, loadToken: 0, lastError: '',
     premoveQueue: [], virtualGame: null, deviationTraining: false,
-    detailCache: new Map(), openingBotVariants: [], openingBotFamily: '', openingBotSaved: false
+    detailCache: new Map(), openingBotVariants: [], openingBotFamily: '', openingBotSaved: false,
+    studyLine: [], explorerRequestId: 0
   };
 
   const $ = (id) => document.getElementById(id);
@@ -177,7 +178,9 @@
   function renderMoveChips() {
     const host = byId('openingTrainerMoves');
     if (!host || !state.opening) return;
-    const moves = state.mode === 'opening-bot' && state.game ? state.game.history() : (Array.isArray(state.opening.moves) ? state.opening.moves : []);
+    const moves = state.mode === 'opening-bot' && state.game ? state.game.history() :
+      state.mode === 'study' && Array.isArray(state.studyLine) ? state.studyLine :
+      (Array.isArray(state.opening.moves) ? state.opening.moves : []);
     const game = new Chess();
     const chunks = [];
     moves.forEach((san, index) => {
@@ -272,7 +275,7 @@
       renderMoveChips();
       return;
     }
-    const total = state.opening?.moves?.length || 0;
+    const total = state.mode === 'study' ? (state.studyLine?.length || 0) : (state.opening?.moves?.length || 0);
     const done = Math.min(state.moveIndex, total);
     const percent = total ? Math.round(done / total * 100) : 0;
     byId('openingTrainerProgressFill').style.width = `${percent}%`;
@@ -493,11 +496,77 @@
     window.ChessBoardDrawing?.setArrows?.('openingTrainerBoard', ideas);
   }
 
+  async function loadExplorerVariations() {
+    const host = byId('openingStudyVariations');
+    if (!host || state.mode !== 'study' || !state.game) return;
+    const requestId = ++state.explorerRequestId;
+    const fen = state.game.fen();
+    host.innerHTML = '<p class="opening-variation-loading">Загружаю популярные продолжения из партий мастеров…</p>';
+    try {
+      const url = 'https://explorer.lichess.ovh/masters?fen=' + encodeURIComponent(fen) + '&moves=15&topGames=0';
+      const response = await fetch(url, {headers: {'Accept': 'application/json'}});
+      if (!response.ok) throw new Error(response.status === 429 ? 'Слишком много запросов. Подожди минуту.' : 'HTTP ' + response.status);
+      const payload = await response.json();
+      if (requestId !== state.explorerRequestId || state.mode !== 'study' || state.game.fen() !== fen) return;
+      const candidates = Array.isArray(payload.moves) ? payload.moves : [];
+      const probe = new Chess(fen);
+      const legalMoves = candidates.filter(item => {
+        if (!item || !item.san) return false;
+        try { return Boolean(probe.move(item.san)); } catch (_) { return false; }
+      }).slice(0, 15);
+      if (!legalMoves.length) {
+        host.innerHTML = '<p class="opening-variation-empty">В базе мастеров для этой позиции пока нет продолжений. Можно изучать выбранную линию кнопкой «Далее».</p>';
+        return;
+      }
+      host.innerHTML = '<div class="opening-variation-heading"><strong>Ответвления из этой позиции</strong><span>до 15 ходов мастеров</span></div>' +
+        '<div class="opening-variation-list">' + legalMoves.map((item, index) => {
+          const games = Number(item.white || 0) + Number(item.draws || 0) + Number(item.black || 0);
+          const winrate = games ? Math.round((Number(item.white || 0) + Number(item.draws || 0) * 0.5) / games * 100) : null;
+          return '<button type="button" class="opening-variation-choice" data-variation-san="' + escapeHtml(item.san) + '">' +
+            '<span class="opening-variation-rank">' + (index + 1) + '</span><strong>' + escapeHtml(item.san) + '</strong>' +
+            '<small>' + (games ? games.toLocaleString('ru-RU') + ' партий' : 'ход из базы') +
+            (winrate !== null ? ' · ' + winrate + '% за белых' : '') + '</small></button>';
+        }).join('') + '</div><p class="opening-variation-note">Порядок основан на частоте ходов в базе партий мастеров Lichess, а не на оценке Stockfish.</p>';
+      host.querySelectorAll('[data-variation-san]').forEach(button => {
+        button.addEventListener('click', () => chooseStudyVariation(button.dataset.variationSan));
+      });
+    } catch (error) {
+      if (requestId !== state.explorerRequestId) return;
+      host.innerHTML = '<p class="opening-variation-empty">Не удалось загрузить варианты: ' + escapeHtml(error.message) +
+        '. Основная линия дебюта остаётся доступна.</p>';
+    }
+  }
+
+  function chooseStudyVariation(san) {
+    if (state.mode !== 'study' || !state.game) return;
+    let move = null;
+    try { move = state.game.move(san); } catch (_) {}
+    if (!move) {
+      setMessage('Этот вариант не удалось применить к позиции.', 'error');
+      return;
+    }
+    const prefix = state.studyLine.slice(0, state.moveIndex);
+    const expected = state.studyLine[state.moveIndex];
+    if (expected !== move.san) state.studyLine = prefix.concat(move.san);
+    state.moveIndex++;
+    updateBoard();
+    updateProgress();
+    clearPostTheoryGuide();
+    byId('openingStudyStep').textContent = 'Выбрано ответвление: ' + move.san;
+    byId('openingStudyPrev').disabled = false;
+    byId('openingStudyNext').disabled = state.moveIndex >= state.studyLine.length;
+    byId('openingStartPractice').hidden = true;
+    byId('openingStartDeviation').hidden = true;
+    setMessage('Вариант выбран. Теперь выбери продолжение из новой позиции.', 'success');
+    loadExplorerVariations();
+  }
+
   function startStudy() {
     if (!state.opening || !Array.isArray(state.opening.moves) || !state.opening.moves.length) return;
     state.runId++;
     state.botThinking = false;
     resetGame();
+    state.studyLine = [...state.opening.moves];
     clearPostTheoryGuide();
     setMode('study');
     refreshBoardClickToMove();
@@ -506,13 +575,14 @@
     byId('openingStudyNext').disabled = false;
     byId('openingStartPractice').hidden = true;
     byId('openingStartDeviation').hidden = true;
-    setMessage('Просматривай линию ход за ходом. Обрати внимание на планы обеих сторон.', 'info');
+    setMessage('Просматривай линию и выбирай альтернативные ходы из базы партий мастеров.', 'info');
     updateProgress();
+    loadExplorerVariations();
   }
 
   function studyNext() {
-    if (state.mode !== 'study' || state.moveIndex >= state.opening.moves.length) return;
-    const san = state.opening.moves[state.moveIndex];
+    if (state.mode !== 'study' || state.moveIndex >= state.studyLine.length) return;
+    const san = state.studyLine[state.moveIndex];
     let move = null;
     try { move = state.game.move(san); } catch (_) {}
     if (!move) {
@@ -524,12 +594,13 @@
     updateProgress();
     byId('openingStudyStep').textContent = `${state.moveIndex}. ${move.color === 'w' ? 'Белые' : 'Чёрные'} сыграли ${move.san}`;
     byId('openingStudyPrev').disabled = false;
-    const finished = state.moveIndex >= state.opening.moves.length;
+    const finished = state.moveIndex >= state.studyLine.length;
     byId('openingStudyNext').disabled = finished;
     byId('openingStartPractice').hidden = !finished;
     byId('openingStartDeviation').hidden = !finished;
     if (finished) showPostTheoryGuide();
-    setMessage(finished ? 'Теория пройдена. Стрелки показывают возможные маршруты фигур, а ниже — план продолжения.' : 'Посмотри, как изменилось положение фигур, и переходи к следующему ходу.', 'success');
+    setMessage(finished ? 'Эта ветка пройдена. Можешь выбрать другое ответвление или перейти к тренировке.' : 'Посмотри, как изменилась позиция, и переходи к следующему ходу.', 'success');
+    loadExplorerVariations();
   }
 
   function studyPrev() {
@@ -545,6 +616,7 @@
     byId('openingStartPractice').hidden = true;
     byId('openingStartDeviation').hidden = true;
     setMessage('Можешь ещё раз просмотреть этот фрагмент теории.', 'info');
+    loadExplorerVariations();
   }
 
   function startPractice(withDeviations = false) {

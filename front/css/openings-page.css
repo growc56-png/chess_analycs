@@ -255,3 +255,18 @@ body.openings-page-body {
   .opening-post-theory-heading { align-items:flex-start; flex-direction:column; }
   .opening-post-theory-columns { grid-template-columns:1fr; gap:12px; }
 }
+
+
+/* Ветвящиеся продолжения дебютной теории из базы партий мастеров. */
+.opening-study-variations { margin: 12px 0; padding: 12px; border: 1px solid rgba(114,174,206,.18); border-radius: 12px; background: rgba(4,16,26,.34); }
+.opening-variation-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:9px; color:#e4f0f7; font-size:11px; }
+.opening-variation-heading span,.opening-variation-note { color:#819bad; font-size:9px; }
+.opening-variation-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.opening-variation-choice { display:grid; grid-template-columns:22px 1fr; grid-template-rows:auto auto; align-items:center; gap:2px 7px; min-width:0; padding:8px; border:1px solid rgba(130,169,194,.16); border-radius:8px; color:#e8f3f8; background:rgba(23,48,65,.58); text-align:left; cursor:pointer; }
+.opening-variation-choice:hover { border-color:rgba(100,198,162,.6); background:rgba(35,75,78,.52); }
+.opening-variation-rank { grid-row:1/3; color:#78c9a8; font-size:10px; }
+.opening-variation-choice strong { font-size:12px; }
+.opening-variation-choice small { overflow:hidden; color:#8fa7b8; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
+.opening-variation-loading,.opening-variation-empty { margin:0; color:#9bb0bf; font-size:10px; line-height:1.5; }
+.opening-variation-note { margin:9px 0 0; line-height:1.45; }
+@media(max-width:420px) { .opening-variation-list { grid-template-columns:1fr; } }
