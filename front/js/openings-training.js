@@ -501,7 +501,7 @@
     if (!host || state.mode !== 'study' || !state.game) return;
     const requestId = ++state.explorerRequestId;
     const fen = state.game.fen();
-    host.innerHTML = '<p class="opening-variation-loading">Загружаю популярные продолжения из партий мастеров…</p>';
+    host.innerHTML = '<p class="opening-variation-loading">Stockfish анализирует позицию и ищет варианты…</p>';
     try {
       const response = await fetch('/api/openings/variations', {
         method: 'POST',
@@ -521,7 +521,7 @@
         try { return Boolean(new Chess(fen).move(item.san)); } catch (_) { return false; }
       }).slice(0, 15);
       if (!legalMoves.length) {
-        host.innerHTML = '<p class="opening-variation-empty">В базе мастеров для этой позиции пока нет продолжений. Можно изучать выбранную линию кнопкой «Далее».</p>';
+        host.innerHTML = '<p class="opening-variation-empty">Stockfish не нашёл дополнительных вариантов для этой позиции. Можно продолжить изучение основной линии кнопкой «Далее».</p>';
         return;
       }
       host.innerHTML = '<div class="opening-variation-heading"><strong>Варианты из этой позиции</strong><span>до 15 ходов Stockfish</span></div>' +
@@ -529,8 +529,8 @@
           const evaluation = Number.isFinite(Number(item.eval)) ? (Number(item.eval) > 0 ? '+' : '') + Number(item.eval).toFixed(2) : '—';
           return '<button type="button" class="opening-variation-choice" data-variation-san="' + escapeHtml(item.san) + '">' +
             '<span class="opening-variation-rank">' + (index + 1) + '</span><strong>' + escapeHtml(item.san) + '</strong>' +
-            '<small>Оценка Stockfish: ' + evaluation + '</small></button>';
-        }).join('') + '</div><p class="opening-variation-note">Варианты отсортированы по оценке Stockfish. Это аналитические кандидаты, а не статистика сыгранных партий.</p>';
+            '<small>Оценка для белых: ' + evaluation + '</small></button>';
+        }).join('') + '</div><p class="opening-variation-note">Варианты рассчитаны Stockfish и отсортированы по силе. Это рекомендации движка, а не статистика сыгранных партий.</p>';
       host.querySelectorAll('[data-variation-san]').forEach(button => {
         button.addEventListener('click', () => chooseStudyVariation(button.dataset.variationSan));
       });
