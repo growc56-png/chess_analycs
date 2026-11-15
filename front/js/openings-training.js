@@ -32,7 +32,7 @@
   }
 
   function setCatalogFirstMove(move) {
-    if (!['e4', 'd4'].includes(move)) return;
+    if (!['e4', 'd4', 'Nf3', 'c4'].includes(move)) return;
     state.catalogFirstMove = move;
     document.querySelectorAll('[data-opening-first-move]').forEach(button => {
       const active = button.dataset.openingFirstMove === move;
