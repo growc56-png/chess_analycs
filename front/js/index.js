@@ -765,6 +765,8 @@ function finishMyEndgamePractice(result, message) {
   myEndgamePracticeQueue = [];
   myEndgamePracticeVersion++;
   myEndgamePracticeBotActive = false;
+  const retryButton = document.getElementById('myEndgamePracticeRetry');
+  if (retryButton) retryButton.hidden = true;
   setMyEndgamePracticeFeedback(message, result);
   updateMyEndgamePracticeControls();
   renderMyEndgamePracticeBoard();
@@ -1288,7 +1290,8 @@ function selectEndgame(eg) {
   if (!eg) return;
   stopEndgamePracticeTimer();
   endgamePracticeActive = true;
-  endgamePracticeTimeLeft = getEndgamePracticeTime();
+  try { endgamePracticeTimeLeft = getEndgamePracticeTime(); }
+  catch (error) { endgamePracticeTimeLeft = 300; }
   setEndgamePracticeClock();
   const retryButton = document.getElementById('endgameRetryBotBtn');
   if (retryButton) retryButton.hidden = true;
@@ -1495,6 +1498,7 @@ function executeEndgamePremove() {
     endgamePremoveQueue = [];
     renderEndgameBoard();
     setEndgameFeedback('Премув отменён: после ответа соперника ход больше невозможен.', 'err');
+    startEndgamePracticeTimer();
     return;
   }
 
