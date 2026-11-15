@@ -17,6 +17,7 @@ from services.game_analyzer import (
     _classify_game_phase,
     _parse_time_control,
     _forced_mate_in_for,
+    get_tactical_motifs,
 )
 from services.stockfish import (
     calc_expected_points,
@@ -202,6 +203,23 @@ class MoveClassificationTests(unittest.TestCase):
             "forced",
         )
 
+
+
+class KnightForkDetectionTests(unittest.TestCase):
+    def test_knight_check_forking_queen_is_a_winning_fork(self):
+        board = chess.Board("3q3k/8/8/4N3/8/8/8/K7 w - - 0 1")
+        move = board.parse_san("Nf7+")
+        self.assertIn("fork", get_tactical_motifs(board, move))
+
+    def test_knight_fork_is_rejected_when_bishop_can_capture_knight(self):
+        board = chess.Board("3q3k/8/4b3/4N3/8/8/8/K7 w - - 0 1")
+        move = board.parse_san("Nf7+")
+        self.assertNotIn("fork", get_tactical_motifs(board, move))
+
+    def test_rook_double_attack_is_not_labeled_as_knight_fork(self):
+        board = chess.Board("k2q3r/8/8/4R3/8/8/8/K7 w - - 0 1")
+        move = board.parse_san("Re8")
+        self.assertNotIn("fork", get_tactical_motifs(board, move))
 
 
 class AnalysisMetricTests(unittest.TestCase):
