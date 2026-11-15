@@ -33,6 +33,16 @@ class OpeningCatalogTests(unittest.TestCase):
                     break
         self.assertEqual(failures, [], "Некорректные линии дебютов:\n" + "\n".join(failures))
 
+    def test_repertoire_includes_zukertort_colle_and_petrov(self):
+        families = {opening.get("family") for opening in self.openings}
+        self.assertIn("Дебют Цукерторта", families)
+        self.assertIn("Система Колле", families)
+        self.assertIn("Защита Петрова", families)
+
+        first_moves = {opening["moves"][0] for opening in self.openings if opening.get("side") == "white"}
+        self.assertIn("Nf3", first_moves)
+        self.assertIn("c4", first_moves)
+
     def test_opening_ids_are_unique_and_lines_are_long_enough(self):
         ids = [opening.get("id") for opening in self.openings]
         self.assertEqual(len(ids), len(set(ids)))
