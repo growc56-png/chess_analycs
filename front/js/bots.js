@@ -10,6 +10,7 @@ let timeControlMode = "unlimited";
 let baseTime = 0, increment = 0, whiteTime = 0, blackTime = 0;
 let clockInterval = null, turnStartTime = 0, gameActive = false;
 let currentGameSaveState = 'idle';
+let botMoveRequestVersion = 0;
 let savedGamesOffset = 0;
 const SAVED_GAMES_PAGE_SIZE = 10;
 
@@ -333,6 +334,8 @@ function switchTurn() {
 }
 
 function handleTimeout(side) {
+  botMoveRequestVersion++;
+  document.getElementById('retryBotMoveBtn')?.setAttribute('hidden', '');
   stopClock(); gameActive = false; updateClocksUI();
   const isPlayerTimeout = (side === playerColor);
   updateStatus(isPlayerTimeout ? "⏰ Время вышло! Победил бот." : "⏰ У бота кончилось время! Ты победил!", "gameover");
@@ -476,25 +479,66 @@ function executePremoves() {
 }
 
 async function makeBotMove() {
-  if(game.game_over()||!gameActive||game.turn()===playerColor||isBotThinking)return;
-  isBotThinking=true;updateStatus(premoveQueue.length?'Бот думает. Премув ожидает ответа…':'Бот думает…','thinking');
-  try{
-    const res=await fetch('/api/bot_move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fen:game.fen(),level:parseInt(botLevelEl.value,10),mode:timeControlMode==='unlimited'?'unlimited':(timeControlMode==='1+0'?'bullet':'blitz')})});
-    const data=await res.json();if(!res.ok)throw new Error(data.detail||'Ошибка движка');
-    if(!data.move)throw new Error('Бот не вернул ход');
-    const applied=game.move({from:data.move.slice(0,2),to:data.move.slice(2,4),promotion:data.move[4]||'q'});
-    if(!applied)throw new Error('Бот вернул нелегальный ход');
-    playSound(applied.flags.includes('c')||applied.flags.includes('e')?'capture':'move');updateBoardVisuals();updateMaterial();
-  }catch(error){
-    const moves=game.moves({verbose:true});
-    if(moves.length){const first=moves[0];const applied=game.move({from:first.from,to:first.to,promotion:first.promotion||'q'});if(applied){playSound(applied.flags.includes('c')?'capture':'move');updateBoardVisuals();updateMaterial();}}
-    else updateStatus(`Ошибка хода бота: ${error.message}`,'error');
-  }finally{
-    isBotThinking=false;
-    if(gameActive&&!checkGameOver()){
-      switchTurn();
-      if(premoveQueue.length)executePremoves();
-      else updateStatus('Твой ход. Можно выбрать фигуру или заранее поставить премув.');
+  if (game.game_over() || !gameActive || game.turn() === playerColor || isBotThinking) return;
+
+  const requestVersion = ++botMoveRequestVersion;
+  const requestedFen = game.fen();
+  let moveApplied = false;
+  const retryButton = document.getElementById('retryBotMoveBtn');
+  if (retryButton) retryButton.hidden = true;
+
+  isBotThinking = true;
+  updateTurnIndicator();
+  updateStatus(premoveQueue.length ? 'Бот думает. Премув ожидает ответа…' : 'Бот думает…', 'thinking');
+
+  try {
+    const response = await fetch('/api/bot_move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fen: requestedFen,
+        level: parseInt(botLevelEl.value, 10),
+        mode: timeControlMode === 'unlimited' ? 'unlimited' : (timeControlMode === '1+0' ? 'bullet' : 'blitz')
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || 'Ошибка движка');
+    if (!data.move) throw new Error('Stockfish не вернул ход');
+
+    // Ignore late replies after a restart, timeout, resignation or position change.
+    if (requestVersion !== botMoveRequestVersion || !gameActive || game.fen() !== requestedFen) return;
+
+    const applied = game.move({
+      from: data.move.slice(0, 2),
+      to: data.move.slice(2, 4),
+      promotion: data.move[4] || 'q'
+    });
+    if (!applied) throw new Error('Stockfish вернул нелегальный ход');
+
+    moveApplied = true;
+    playSound(applied.flags.includes('c') || applied.flags.includes('e') ? 'capture' : 'move');
+    updateBoardVisuals();
+    updateMaterial();
+  } catch (error) {
+    if (requestVersion !== botMoveRequestVersion || !gameActive || game.fen() !== requestedFen) return;
+
+    // Never invent a bot move when the engine is unavailable. Pause the clock
+    // so a server failure cannot make either side lose on time.
+    stopClock();
+    if (retryButton) retryButton.hidden = false;
+    updateStatus(`Stockfish не смог сделать ход: ${error.message}. Партия приостановлена.`, 'error');
+  } finally {
+    if (requestVersion === botMoveRequestVersion) {
+      isBotThinking = false;
+      if (moveApplied && gameActive && !checkGameOver()) {
+        switchTurn();
+        if (premoveQueue.length) executePremoves();
+        else updateStatus('Твой ход. Можно выбрать фигуру или заранее поставить премув.');
+      } else {
+        updateBoardVisuals();
+        updateTurnIndicator();
+      }
     }
   }
 }
@@ -536,6 +580,9 @@ function checkGameOver() {
 }
 
 function startNewGame() {
+  botMoveRequestVersion++;
+  const retryButton = document.getElementById('retryBotMoveBtn');
+  if (retryButton) retryButton.hidden = true;
   stopClock();
   game = new Chess(); isBotThinking = false; premoveQueue = []; selectedSquare = null;
   currentGameSaveState = 'idle';
@@ -573,6 +620,8 @@ function startNewGame() {
 document.getElementById('modalCloseBtn').onclick = () => document.getElementById('gameOverModal').classList.remove('active');
 document.getElementById('resignBtn').onclick = () => {
   if (!gameActive) return;
+  botMoveRequestVersion++;
+  document.getElementById('retryBotMoveBtn')?.setAttribute('hidden', '');
   gameActive = false; stopClock(); premoveQueue = [];
   saveCurrentGame('loss', 'resign');
   updateBoardVisuals();
@@ -580,6 +629,8 @@ document.getElementById('resignBtn').onclick = () => {
 };
 document.getElementById('drawBtn').onclick = () => {
   if (!gameActive) return;
+  botMoveRequestVersion++;
+  document.getElementById('retryBotMoveBtn')?.setAttribute('hidden', '');
   gameActive = false; stopClock(); premoveQueue = [];
   saveCurrentGame('draw', 'draw_agreement');
   updateBoardVisuals();
@@ -590,6 +641,13 @@ document.getElementById('downloadPgnBtn').onclick = () => {
   const pgn = game.pgn();
   downloadPGN(pgn, 'chess_game_' + new Date().toISOString().slice(0,10) + '.pgn');
 };
+
+document.getElementById('retryBotMoveBtn')?.addEventListener('click', () => {
+  if (!gameActive || isBotThinking || game.turn() === playerColor) return;
+  document.getElementById('retryBotMoveBtn').hidden = true;
+  startClock();
+  makeBotMove();
+});
 
 document.getElementById('refreshGamesBtn')?.addEventListener('click', () => loadSavedGames(0));
 document.getElementById('gamesPrevBtn')?.addEventListener('click', () => loadSavedGames(Math.max(0, savedGamesOffset - SAVED_GAMES_PAGE_SIZE)));
