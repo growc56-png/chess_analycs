@@ -4207,12 +4207,12 @@ function renderAnalysisMoveInsight(moveData) {
       ? 'Лучший ход Stockfish: ' + moveData.best_move_san
       : 'Для этой позиции нет сохранённой лучшей линии.';
 
+  const actualDepth = Number(moveData.analysis_depth_used);
   const meta = [
     accuracy.toFixed(1) + '% точность хода',
     phase,
-    moveData.deep_analysis
-      ? 'перепроверено на глубине ' + (moveData.analysis_depth_used || '—')
-      : 'быстрый проход',
+    'Stockfish · глубина ' + (Number.isFinite(actualDepth) && actualDepth > 0 ? actualDepth : '—'),
+    moveData.deep_analysis ? 'дополнительная глубокая проверка' : null,
     moveData.is_time_pressure ? 'ход в цейтноте' : null,
     moveData.time_spent != null ? 'время на ход: ' + Math.round(moveData.time_spent) + ' с' : null
   ].filter(Boolean);
