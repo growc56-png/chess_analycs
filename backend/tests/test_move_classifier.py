@@ -82,14 +82,23 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertIsNone(get_sacrifice_details(board, move))
         self.assertFalse(is_true_sacrifice(board, move))
 
-    def test_capturing_a_pawn_with_queen_is_not_a_brilliant_sacrifice(self):
-        # Qxa7 wins a pawn, but the queen is attacked by the rook on a8.
-        # This must not be mistaken for a sacrifice/Brilliant move.
-        board = chess.Board("r6k/p7/8/8/8/8/8/Q6K w - - 0 1")
-        move = board.parse_san("Qxa7")
+    def test_taking_a_pawn_with_every_non_king_piece_is_not_a_sacrifice(self):
+        # The black rook on a8 attacks a7 after the white piece captures
+        # the pawn there. None of these ordinary pawn captures is a sacrifice.
+        cases = (
+            ("bishop", "r6k/p7/8/8/8/1B6/8/7K w - - 0 1", "Bxa7"),
+            ("knight", "r6k/p7/8/1N6/8/8/8/7K w - - 0 1", "Nxa7"),
+            ("rook", "r6k/p7/8/8/8/8/8/R6K w - - 0 1", "Rxa7"),
+            ("queen", "r6k/p7/8/8/8/1Q6/8/7K w - - 0 1", "Qxa7"),
+            ("pawn", "r6k/p7/8/8/8/8/1P6/7K w - - 0 1", "bxa7"),
+        )
 
-        self.assertIsNone(get_sacrifice_details(board, move))
-        self.assertFalse(is_true_sacrifice(board, move))
+        for piece_name, fen, san in cases:
+            with self.subTest(piece=piece_name):
+                board = chess.Board(fen)
+                move = board.parse_san(san)
+                self.assertIsNone(get_sacrifice_details(board, move))
+                self.assertFalse(is_true_sacrifice(board, move))
 
     def test_pawn_move_is_not_a_brilliant_material_sacrifice(self):
         board = chess.Board("7k/8/8/1p6/8/8/P7/7K w - - 0 1")
