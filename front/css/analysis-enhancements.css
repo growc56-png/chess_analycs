@@ -268,23 +268,6 @@
   flex: 0 0 auto;
   filter: drop-shadow(0 1px 1px rgba(0,0,0,.28));
 }
-.analysis-category-icon.icon-brilliant {
-  background: transparent;
-  box-shadow: none;
-}
-.analysis-category-icon.icon-brilliant .brilliant-diamond-icon {
-  width: 22px;
-  height: 22px;
-}
-.move-class-icon.cls-brilliant {
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-}
-.move-class-icon.cls-brilliant .brilliant-diamond-icon {
-  width: 17px;
-  height: 17px;
-}
 .icon-critical { background: #367fc2; }
 .icon-great { background: #3f83d8; }
 .icon-best { background: #79ac3d; font-size: 15px; }
@@ -337,6 +320,41 @@
 /* Эффекты на клетке хода: бирюзово-золотой, синий и красный. */
 .board-area {
   position: relative;
+}
+
+/* Подсветка обеих клеток хода в цвет его шахматной оценки. */
+#tab-analysis #analysisBoard .analysis-square-brilliant {
+  box-shadow: inset 0 0 0 999px rgba(27, 172, 166, .52) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-great {
+  box-shadow: inset 0 0 0 999px rgba(92, 139, 176, .52) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-best {
+  box-shadow: inset 0 0 0 999px rgba(150, 188, 75, .52) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-excellent {
+  box-shadow: inset 0 0 0 999px rgba(129, 182, 76, .48) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-good {
+  box-shadow: inset 0 0 0 999px rgba(113, 141, 81, .48) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-inaccuracy {
+  box-shadow: inset 0 0 0 999px rgba(247, 198, 49, .55) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-mistake {
+  box-shadow: inset 0 0 0 999px rgba(229, 143, 42, .56) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-miss {
+  box-shadow: inset 0 0 0 999px rgba(167, 126, 219, .55) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-blunder {
+  box-shadow: inset 0 0 0 999px rgba(202, 52, 49, .58) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-book {
+  box-shadow: inset 0 0 0 999px rgba(185, 138, 103, .48) !important;
+}
+#tab-analysis #analysisBoard .analysis-square-forced {
+  box-shadow: inset 0 0 0 999px rgba(119, 125, 134, .48) !important;
 }
 
 .analysis-move-effect {
