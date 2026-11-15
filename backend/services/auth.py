@@ -13,7 +13,7 @@ from models.user import AuthSession, User
 
 
 SESSION_COOKIE_NAME = "chess_session"
-SESSION_LIFETIME_DAYS = 30
+SESSION_LIFETIME_DAYS = 3650
 PBKDF2_ITERATIONS = 310_000
 
 
@@ -71,6 +71,24 @@ def create_session(db: Session, user: User) -> str:
     db.add(session)
     db.commit()
     return token
+
+
+def refresh_session(db: Session, token: str | None) -> bool:
+    """Refresh an existing session so the user stays signed in between visits."""
+    if not token:
+        return False
+    session = db.get(AuthSession, token_digest(token))
+    if session is None:
+        return False
+    now = datetime.now(timezone.utc)
+    expires_at = session.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= now:
+        return False
+    session.expires_at = now + timedelta(days=SESSION_LIFETIME_DAYS)
+    db.commit()
+    return True
 
 
 def remove_session(db: Session, token: str | None) -> None:
@@ -132,6 +150,7 @@ __all__ = [
     "verify_password",
     "create_session",
     "remove_session",
+    "refresh_session",
     "get_current_user",
     "set_session_cookie",
 ]
