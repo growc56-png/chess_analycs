@@ -107,6 +107,9 @@
   function render() {
     const t = translations[language];
     const status = getStatus();
+    const user = window.getChessTrainerUser ? window.getChessTrainerUser() : null;
+    const activePlan = user && user.is_premium ? 'premium' : 'free';
+    document.documentElement.lang = language;
     const items = [
       { id: 'free', name: t.free, desc: t.freeDesc, features: t.freeFeatures },
       { id: 'premium', name: t.premium, desc: t.premiumDesc, features: t.premiumFeatures, popular: true },
@@ -135,6 +138,7 @@
           const amount = plans[plan.id][language][billing];
           const price = money(amount);
           const suffix = plan.id === 'free' ? '' : (billing === 'month' ? t.month : t.year);
+          const isCurrent = plan.id === activePlan;
           const monthly = billing === 'year' && plan.id !== 'free'
             ? '<small>' + money(amount / 12) + ' ' + t.monthlyEquivalent + '</small>' : '';
           return `
@@ -145,8 +149,8 @@
               <div class="subscription-price">${price}<span>${suffix}</span></div>
               ${monthly}
               <ul>${plan.features.map(feature => '<li><span>✓</span>' + feature + '</li>').join('')}</ul>
-              <button type="button" class="subscription-choose" data-plan="${plan.id}" ${plan.id === 'free' ? 'disabled' : ''}>
-                ${plan.id === 'free' ? t.currentPlan : t.choose}
+              <button type="button" class="subscription-choose" data-plan="${plan.id}" ${isCurrent ? 'disabled' : ''}>
+                ${isCurrent ? t.currentPlan : t.choose}
               </button>
             </article>`;
         }).join('')}
