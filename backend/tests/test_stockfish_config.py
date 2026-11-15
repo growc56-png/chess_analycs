@@ -1,7 +1,7 @@
 """Tests for capability-aware Stockfish configuration."""
 import unittest
 
-from services.stockfish import configure_engine
+from services.stockfish import configure_engine, get_engine_limit
 
 
 class FakeEngine:
@@ -14,6 +14,14 @@ class FakeEngine:
 
 
 class StockfishConfigurationTests(unittest.TestCase):
+    def test_default_analysis_limit_uses_max_depth_without_time_cutoff(self):
+        from config import ANALYSIS_DEPTH
+
+        limit = get_engine_limit()
+        self.assertEqual(ANALYSIS_DEPTH, 40)
+        self.assertEqual(limit.depth, 40)
+        self.assertIsNone(limit.time)
+
     def test_analysis_profile_uses_configured_threads_and_hash(self):
         from config import ENGINE_THREADS, ENGINE_HASH_MB
 
