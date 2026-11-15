@@ -1,7 +1,7 @@
 """add admin security and premium subscriptions
 
 Revision ID: 9a7d3c1e5f20
-Revises: f0e3310eff99
+Revises: b7c4a2d913ef
 Create Date: 2026-11-15
 """
 from typing import Sequence, Union
