@@ -21,6 +21,7 @@ from services.auth import (
     get_current_user,
     hash_password,
     remove_session,
+    refresh_session,
     set_session_cookie,
     verify_password,
 )
@@ -188,7 +189,15 @@ def login(
 
 
 @router.get("/api/auth/me")
-def current_account(user: User = Depends(get_current_user)):
+def current_account(
+    request: Request,
+    response: Response,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    if token and refresh_session(db, token):
+        set_session_cookie(response, token, secure=_secure_cookie(request))
     return {"user": _user_payload(user)}
 
 
@@ -252,8 +261,7 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 
 class PremiumBody(BaseModel):
-    days: int | None = Field(default=None, ge=1, le=3650)
-    forever: bool = False
+    days: int = Field(ge=1, le=730)
 
 
 @router.get("/api/admin/users")
@@ -283,20 +291,19 @@ def admin_grant_premium(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    if not body.forever and body.days is None:
-        raise HTTPException(status_code=422, detail="Укажи количество дней или выбери бессрочный Premium.")
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден.")
-    if body.forever:
-        target.premium_expires_at = datetime(9998, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
-    else:
-        now = datetime.now(timezone.utc)
-        current = target.premium_expires_at
-        if current is not None and current.tzinfo is None:
-            current = current.replace(tzinfo=timezone.utc)
-        base = current if current and current > now else now
-        target.premium_expires_at = base + timedelta(days=body.days)
+    now = datetime.now(timezone.utc)
+    current = target.premium_expires_at
+    if current is not None and current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    base = current if current and current > now else now
+    # Premium must never be extended beyond two years from today.
+    target.premium_expires_at = min(
+        base + timedelta(days=body.days),
+        now + timedelta(days=730),
+    )
     db.commit()
     return {"ok": True, "username": target.username, "premium_expires_at": target.premium_expires_at.isoformat()}
 
