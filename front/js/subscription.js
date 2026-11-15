@@ -13,6 +13,8 @@
       language: 'Язык интерфейса',
       monthly: 'На месяц',
       yearly: 'На год · выгоднее',
+      twoYears: 'На 2 года',
+      twoYearsSuffix: '/ 2 года',
       free: 'Free',
       premium: 'Premium',
       pro: 'Pro',
@@ -45,6 +47,8 @@
       language: 'Interface language',
       monthly: 'Monthly',
       yearly: 'Yearly · best value',
+      twoYears: '2 years',
+      twoYearsSuffix: '/ 2 years',
       free: 'Free',
       premium: 'Premium',
       pro: 'Pro',
@@ -72,9 +76,9 @@
   };
 
   const plans = {
-    free: { ru: { month: 0, year: 0 }, en: { month: 0, year: 0 } },
-    premium: { ru: { month: 399, year: 3290 }, en: { month: 5.99, year: 49.99 } },
-    pro: { ru: { month: 699, year: 5490 }, en: { month: 9.99, year: 79.99 } }
+    free: { ru: { month: 0, year: 0, twoYears: 0 }, en: { month: 0, year: 0, twoYears: 0 } },
+    premium: { ru: { month: 399, year: 3290, twoYears: 6580 }, en: { month: 5.99, year: 49.99, twoYears: 99.98 } },
+    pro: { ru: { month: 699, year: 5490, twoYears: 10980 }, en: { month: 9.99, year: 79.99, twoYears: 159.98 } }
   };
 
   let language = localStorage.getItem('chessTrainerLanguage') === 'en' ? 'en' : 'ru';
@@ -131,16 +135,18 @@
         <div class="subscription-billing" role="group" aria-label="Billing period">
           <button type="button" data-billing="month" class="${billing === 'month' ? 'active' : ''}">${t.monthly}</button>
           <button type="button" data-billing="year" class="${billing === 'year' ? 'active' : ''}">${t.yearly}</button>
+          <button type="button" data-billing="twoYears" class="${billing === 'twoYears' ? 'active' : ''}">${t.twoYears}</button>
         </div>
       </section>
       <div class="subscription-plans">
         ${items.map(plan => {
           const amount = plans[plan.id][language][billing];
           const price = money(amount);
-          const suffix = plan.id === 'free' ? '' : (billing === 'month' ? t.month : t.year);
+          const suffix = plan.id === 'free' ? '' : (billing === 'month' ? t.month : (billing === 'year' ? t.year : t.twoYearsSuffix));
           const isCurrent = plan.id === activePlan;
-          const monthly = billing === 'year' && plan.id !== 'free'
-            ? '<small>' + money(amount / 12) + ' ' + t.monthlyEquivalent + '</small>' : '';
+          const periodMonths = billing === 'twoYears' ? 24 : 12;
+          const monthly = billing !== 'month' && plan.id !== 'free'
+            ? '<small>' + money(amount / periodMonths) + ' ' + t.monthlyEquivalent + '</small>' : '';
           return `
             <article class="subscription-card ${plan.popular ? 'featured' : ''}">
               ${plan.popular ? '<div class="subscription-popular">' + t.popular + '</div>' : ''}
