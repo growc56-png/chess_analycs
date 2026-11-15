@@ -4225,6 +4225,12 @@ window.showAnalysisMove = function(index) {
   cancelCurrentPositionEvaluation();
   currentAnalysisIndex = targetIndex;
   const moveData = analysisMoves[targetIndex];
+  const isMissedTacticalOpportunity = Boolean(
+    moveData?.missed_tactic
+    && moveData.best_move_uci
+    && moveData.uci
+    && moveData.best_move_uci !== moveData.uci
+  );
 
   document.querySelectorAll('.move-cell').forEach(el => el.classList.remove('active'));
   const selectedCell = document.querySelector(`.move-cell[data-move-index="${targetIndex}"]`);
@@ -4239,12 +4245,16 @@ window.showAnalysisMove = function(index) {
     }
   }
 
-  // The backend already returns the resulting FEN for each move. Prefer it;
-  // replay SAN only for older cached records without FEN.
+  // For a missed tactic, show the position BEFORE the played move. Both
+  // the engine's green suggestion and the played red move then start from
+  // the correct piece placement. Other moves keep the usual resulting FEN.
   let nextGame = null;
-  if (moveData && typeof moveData.fen === 'string' && moveData.fen.trim()) {
+  const displayFen = isMissedTacticalOpportunity
+    ? moveData.before_fen
+    : moveData?.fen;
+  if (typeof displayFen === 'string' && displayFen.trim()) {
     try {
-      const candidate = new Chess(moveData.fen);
+      const candidate = new Chess(displayFen);
       if (candidate && candidate.board) nextGame = candidate;
     } catch (error) {
       console.warn('Некорректный FEN хода; восстанавливаю позицию по SAN.', error);
@@ -4252,9 +4262,10 @@ window.showAnalysisMove = function(index) {
   }
   if (!nextGame) {
     nextGame = new Chess();
-    for (let i = 0; i <= targetIndex; i++) {
+    const lastMoveIndex = isMissedTacticalOpportunity ? targetIndex : targetIndex + 1;
+    for (let i = 0; i < lastMoveIndex; i++) {
       if (!analysisMoves[i]?.san || !nextGame.move(analysisMoves[i].san)) {
-        console.error('Не удалось восстановить позицию после хода', i + 1);
+        console.error('Не удалось восстановить позицию до/после хода', i + 1);
         return;
       }
     }
@@ -4273,12 +4284,6 @@ window.showAnalysisMove = function(index) {
   updateAnalysisRetryButton(moveData);
 
   const savedEngineLines = normaliseEngineLines(moveData.next_top_moves || []);
-  const isMissedTacticalOpportunity = Boolean(
-    moveData.missed_tactic
-    && moveData.best_move_uci
-    && moveData.uci
-    && moveData.best_move_uci !== moveData.uci
-  );
   if (isMissedTacticalOpportunity) {
     const tacticalArrows = [
       { uci: moveData.best_move_uci, color: 'green' },
