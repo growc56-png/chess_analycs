@@ -2607,8 +2607,12 @@ function drawArrows(lines) {
   const boardEl = document.getElementById('analysisBoard');
   if (!svg || !boardEl) return;
 
-  // На доске показываем только основную (первую) линию Stockfish.
-  analysisArrowLines = normaliseEngineLines(lines).slice(0, 1);
+  // Для обычного анализа показываем одну линию Stockfish. Если выбран
+  // пропущенный тактический шанс — две стрелки: зелёная рекомендация и
+  // красный фактически сыгранный ход.
+  const missedOpportunityArrows = Array.isArray(lines)
+    && lines.some(line => line && typeof line === 'object' && line.color);
+  analysisArrowLines = normaliseEngineLines(lines).slice(0, missedOpportunityArrows ? 2 : 1);
   svg.replaceChildren();
 
   const host = svg.parentElement;
@@ -2635,6 +2639,10 @@ function drawArrows(lines) {
     { fill: '#3194f4', stroke: 'rgba(8,37,83,.55)' },
     { fill: '#b879e8', stroke: 'rgba(53,24,77,.55)' }
   ];
+  const missedColors = {
+    green: { fill: '#35b86b', stroke: 'rgba(10,75,35,.68)' },
+    red: { fill: '#e34d59', stroke: 'rgba(100,18,25,.68)' }
+  };
 
   analysisArrowLines.forEach((line, index) => {
     const fromFile = files.indexOf(line.uci[0].toLowerCase());
@@ -2693,9 +2701,10 @@ function drawArrows(lines) {
 
     const polygon = document.createElementNS(ns, 'polygon');
     polygon.setAttribute('points', points);
-    polygon.setAttribute('fill', colors[index].fill);
+    const arrowColor = missedColors[line.color] || colors[index] || colors[0];
+    polygon.setAttribute('fill', arrowColor.fill);
     polygon.setAttribute('fill-opacity', index === 0 ? '0.9' : index === 1 ? '0.83' : '0.76');
-    polygon.setAttribute('stroke', colors[index].stroke);
+    polygon.setAttribute('stroke', arrowColor.stroke);
     polygon.setAttribute('stroke-width', String(Math.max(2, cell * 0.026)));
     polygon.setAttribute('stroke-linejoin', 'round');
     polygon.style.filter = 'drop-shadow(0 1px 2px rgba(0,0,0,.55))';
@@ -4264,7 +4273,20 @@ window.showAnalysisMove = function(index) {
   updateAnalysisRetryButton(moveData);
 
   const savedEngineLines = normaliseEngineLines(moveData.next_top_moves || []);
-  if (savedEngineLines.length === 3) {
+  const isMissedTacticalOpportunity = Boolean(
+    moveData.missed_tactic
+    && moveData.best_move_uci
+    && moveData.uci
+    && moveData.best_move_uci !== moveData.uci
+  );
+  if (isMissedTacticalOpportunity) {
+    const tacticalArrows = [
+      { uci: moveData.best_move_uci, color: 'green' },
+      { uci: moveData.uci, color: 'red' }
+    ];
+    requestAnimationFrame(() => drawArrows(tacticalArrows));
+    if (savedEngineLines.length) renderTopLines(savedEngineLines);
+  } else if (savedEngineLines.length === 3) {
     renderTopLines(savedEngineLines);
     requestAnimationFrame(() => drawArrows(savedEngineLines));
   } else {
