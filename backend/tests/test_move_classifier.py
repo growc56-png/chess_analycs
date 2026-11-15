@@ -41,9 +41,6 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertTrue(is_true_sacrifice(board, move))
 
     def test_checking_queen_offer_is_detected_without_immediate_legal_capture(self):
-        # Qd7+ is attacked by the rook on e7, but that rook is pinned
-        # to the king by the white rook on e1. Capturing the queen would
-        # expose the black king, so there is no legal immediate capture.
         board = chess.Board("4k3/4r3/2PQ4/8/8/8/8/4R2K w - - 0 1")
         move = board.parse_san("Qd7+")
 
@@ -54,8 +51,6 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertEqual(details["capture_uci"], [])
 
     def test_offer_captured_by_more_valuable_piece_is_still_checked(self):
-        # A queen can take the offered knight; Stockfish decides whether that
-        # capture loses by force instead of filtering it by material value.
         board = chess.Board("7k/8/8/8/7q/5N2/8/K7 w - - 0 1")
         move = board.parse_san("Ng5")
         details = get_sacrifice_details(board, move)
@@ -65,8 +60,6 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertEqual(details["cheaper_capture_uci"], [])
 
     def test_king_protected_check_interposition_is_not_a_sacrifice(self):
-        # After 11.Qxe6+, ...Ne7 blocks the check. The knight on e7 is
-        # protected by the king on e8, so White has no legal capture of it.
         board = chess.Board(
             "r1b1kbnr/pp1n2pp/3qQp2/3p3b/3P3P/3B1P1N/PPPN2P1/R1B2K1R b - - 0 11"
         )
@@ -86,10 +79,10 @@ class SacrificeDetectionTests(unittest.TestCase):
         # The black rook on a8 attacks a7 after the white piece captures
         # the pawn there. None of these ordinary pawn captures is a sacrifice.
         cases = (
-            ("bishop", "r6k/p7/8/8/8/1B6/8/7K w - - 0 1", "Bxa7"),
+            ("bishop", "r6k/p7/1B6/8/8/8/8/7K w - - 0 1", "Bxa7"),
             ("knight", "r6k/p7/8/1N6/8/8/8/7K w - - 0 1", "Nxa7"),
             ("rook", "r6k/p7/8/8/8/8/8/R6K w - - 0 1", "Rxa7"),
-            ("queen", "r6k/p7/8/8/8/1Q6/8/7K w - - 0 1", "Qxa7"),
+            ("queen", "r6k/p7/1Q6/8/8/8/8/7K w - - 0 1", "Qxa7"),
             ("pawn", "r6k/p7/8/8/8/1P6/8/7K w - - 0 1", "bxa7"),
         )
 
@@ -290,7 +283,6 @@ class AnalysisMetricTests(unittest.TestCase):
                         chess.WHITE,
                     )
                     infos.append({"pv": [move], "score": score})
-                # Simulate an engine wrapper that ignores MultiPV on the first call.
                 return infos[:1] if self.calls == 1 else infos[:multipv]
 
         engine = FakeEngine()
