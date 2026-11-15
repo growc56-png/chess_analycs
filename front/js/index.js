@@ -1,6 +1,5 @@
 const daysMap = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 const monthsMap = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-const BRILLIANT_DIAMOND_ICON = "<svg class=\"brilliant-diamond-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M12 1.8 22.1 10.5 12 22.2 1.9 10.5Z\" fill=\"#28c6df\" stroke=\"#b8f7ff\" stroke-width=\"1.1\"/><path d=\"M12 2.8v18.1M2.9 10.5h18.2M12 2.8l-4.1 7.7L12 20.9l4.1-10.4L12 2.8Z\" fill=\"none\" stroke=\"#0b729a\" stroke-width=\".9\" opacity=\".9\"/></svg>";
 
 let PLAN = [], currentDay = 1, totalDays = 0;
 let GOAL_PROFILE = null;
@@ -2608,7 +2607,8 @@ function drawArrows(lines) {
   const boardEl = document.getElementById('analysisBoard');
   if (!svg || !boardEl) return;
 
-  analysisArrowLines = normaliseEngineLines(lines).slice(0, 3);
+  // На доске показываем только основную (первую) линию Stockfish.
+  analysisArrowLines = normaliseEngineLines(lines).slice(0, 1);
   svg.replaceChildren();
 
   const host = svg.parentElement;
@@ -2723,27 +2723,36 @@ function drawBoardBadge(moveData) {
   const boardEl = document.getElementById('analysisBoard');
   if (!boardEl) return;
 
-  // Старый плавающий слой мог позиционироваться относительно страницы,
-  // а не самой доски. Удаляем его и прикрепляем отметку прямо к клетке.
+  // Сбрасываем прежнюю цветовую отметку и значок выбранного хода.
   boardEl.querySelector('.custom-overlay')?.remove();
   boardEl.querySelectorAll('.board-badge').forEach(node => node.remove());
+  boardEl.querySelectorAll('[class*="analysis-square-"]').forEach(square => {
+    [...square.classList].filter(name => name.startsWith('analysis-square-')).forEach(name => square.classList.remove(name));
+  });
 
   if (!moveData || !moveData.uci || moveData.uci.length < 4) return;
-  const toSquare = moveData.uci.slice(2, 4);
-  if (!/^[a-h][1-8]$/.test(toSquare)) return;
+  const fromSquare = moveData.uci.slice(0, 2).toLowerCase();
+  const toSquare = moveData.uci.slice(2, 4).toLowerCase();
+  if (!/^[a-h][1-8]$/.test(fromSquare) || !/^[a-h][1-8]$/.test(toSquare)) return;
+
+  const squareClass = 'analysis-square-' + (moveData.classification || '');
+  if (moveData.classification) {
+    boardEl.querySelector('.square-' + fromSquare)?.classList.add(squareClass);
+    boardEl.querySelector('.square-' + toSquare)?.classList.add(squareClass);
+  }
 
   const squareEl = boardEl.querySelector('.square-' + toSquare);
   if (!squareEl) return;
 
   const classMap = {
-    brilliant: { html: BRILLIANT_DIAMOND_ICON, title: 'Бриллиантовый ход', css: 'badge-brilliant' },
+    brilliant: { text: '!!', title: 'Бриллиантовый ход', css: 'badge-brilliant' },
     great: { text: '!', title: 'Замечательный ход', css: 'badge-great' },
     best: { text: '★', title: 'Лучший ход', css: 'badge-best' },
     excellent: { text: '✓', title: 'Отличный ход', css: 'badge-excellent' },
-    good: { text: '✓', title: 'Хороший ход', css: 'badge-good' },
+    good: { text: '●', title: 'Хороший ход', css: 'badge-good' },
     inaccuracy: { text: '?!', title: 'Неточность', css: 'badge-inaccuracy' },
     mistake: { text: '?', title: 'Ошибка', css: 'badge-mistake' },
-    miss: { text: '✗', title: 'Промах', css: 'badge-miss' },
+    miss: { text: '✕', title: 'Промах', css: 'badge-miss' },
     blunder: { text: '??', title: 'Зевок', css: 'badge-blunder' },
     book: { text: '📖', title: 'Дебютный ход', css: 'badge-book' },
     forced: { text: '□', title: 'Вынужденный ход', css: 'badge-forced' }
@@ -3193,8 +3202,8 @@ function formatSpentTime(seconds) {
 }
 
 const ANALYSIS_CLASS_ROWS = [
-  { key: 'brilliant', label: 'Бриллиантовый', icon: BRILLIANT_DIAMOND_ICON, className: 'brilliant' },
-  { key: 'great', label: 'Замечательный', icon: '✨', className: 'great' },
+  { key: 'brilliant', label: 'Бриллиантовый', icon: '!!', className: 'brilliant' },
+  { key: 'great', label: 'Замечательный', icon: '!', className: 'great' },
   { key: 'best', label: 'Лучший', icon: '★', className: 'best' },
   { key: 'excellent', label: 'Отличный', icon: '✓', className: 'excellent' },
   { key: 'good', label: 'Хороший', icon: '●', className: 'good' },
