@@ -7,6 +7,7 @@
   let authPromise = null;
   let currentUser = null;
   let editingProfile = false;
+  let adminDialog = null;
 
   function setMessage(targetId, message, type) {
     const target = $(targetId);
@@ -34,7 +35,18 @@
     const chip = $('accountChip');
     if (actions && chip && user) {
       actions.hidden = false;
-      chip.textContent = user.username + ' · ' + (user.profile && user.profile.current_elo ? user.profile.current_elo + ' Elo' : 'аккаунт');
+      chip.textContent = user.username + ' · ' + (user.is_admin ? 'ADMIN' : (user.profile && user.profile.current_elo ? user.profile.current_elo + ' Elo' : 'аккаунт'));
+      let adminButton = $('adminPanelBtn');
+      if (user.is_admin && !adminButton) {
+        adminButton = document.createElement('button');
+        adminButton.type = 'button';
+        adminButton.id = 'adminPanelBtn';
+        adminButton.className = 'account-logout';
+        adminButton.textContent = 'Админ-панель';
+        adminButton.addEventListener('click', openAdminPanel);
+        actions.insertBefore(adminButton, $('accountLogoutBtn'));
+      }
+      if (!user.is_admin && adminButton) adminButton.remove();
     } else if (actions) {
       actions.hidden = true;
     }
@@ -170,6 +182,79 @@
     }
   }
 
+
+  async function openAdminPanel() {
+    if (!currentUser?.is_admin) return;
+    if (!adminDialog) {
+      adminDialog = document.createElement('dialog');
+      adminDialog.id = 'chessAdminDialog';
+      adminDialog.style.cssText = 'width:min(920px,94vw);max-height:85vh;overflow:auto;border:1px solid #526b77;border-radius:14px;padding:20px;background:#172832;color:#edf4f6;box-shadow:0 24px 80px #0009';
+      document.body.appendChild(adminDialog);
+    }
+    adminDialog.replaceChildren();
+    const heading = document.createElement('h2');
+    heading.textContent = 'Панель администратора';
+    const intro = document.createElement('p');
+    intro.textContent = 'Управление пользователями и Premium. Все действия проверяются сервером.';
+    const close = document.createElement('button');
+    close.type = 'button'; close.textContent = 'Закрыть'; close.className = 'account-logout';
+    close.addEventListener('click', () => adminDialog.close());
+    const status = document.createElement('p');
+    status.textContent = 'Загружаю пользователей…';
+    const list = document.createElement('div');
+    list.style.cssText = 'display:grid;gap:10px;margin-top:14px';
+    adminDialog.append(heading, intro, close, status, list);
+    adminDialog.showModal();
+    try {
+      const response = await fetch('/api/admin/users', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+      const data = await parseResponse(response);
+      status.textContent = 'Пользователей: ' + data.users.length;
+      data.users.forEach(user => {
+        const row = document.createElement('section');
+        row.style.cssText = 'display:grid;grid-template-columns:minmax(150px,1fr) minmax(130px,1fr) auto;gap:8px;align-items:center;padding:12px;border:1px solid #40545e;border-radius:9px';
+        const info = document.createElement('div');
+        const name = document.createElement('strong'); name.textContent = user.username + (user.is_admin ? ' · ADMIN' : '');
+        const email = document.createElement('small'); email.textContent = user.email; email.style.display = 'block';
+        const premium = document.createElement('small');
+        premium.textContent = user.is_premium ? 'Premium до: ' + new Date(user.premium_expires_at).toLocaleString() : 'Без Premium';
+        premium.style.display = 'block';
+        info.append(name, email, premium);
+        const days = document.createElement('input');
+        days.type = 'number'; days.min = '1'; days.max = '3650'; days.value = '30'; days.placeholder = 'Дней';
+        days.style.cssText = 'width:90px;padding:8px;border-radius:7px;border:1px solid #526b77;background:#10202a;color:white';
+        const actions = document.createElement('div');
+        actions.style.cssText = 'display:flex;gap:5px;flex-wrap:wrap';
+        const grant = document.createElement('button'); grant.type='button'; grant.textContent='Выдать';
+        const forever = document.createElement('button'); forever.type='button'; forever.textContent='Навсегда';
+        const revoke = document.createElement('button'); revoke.type='button'; revoke.textContent='Отозвать';
+        [grant, forever, revoke].forEach(button => { button.className='account-logout'; });
+        grant.addEventListener('click', () => adminPremiumAction(user.id, { days: Number(days.value) }));
+        forever.addEventListener('click', () => adminPremiumAction(user.id, { forever: true }));
+        revoke.addEventListener('click', () => adminPremiumAction(user.id, null, true));
+        actions.append(grant, forever, revoke);
+        row.append(info, days, actions);
+        list.append(row);
+      });
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  }
+
+  async function adminPremiumAction(userId, body, revoke = false) {
+    try {
+      const response = await fetch('/api/admin/users/' + encodeURIComponent(userId) + '/premium', {
+        method: revoke ? 'DELETE' : 'POST',
+        credentials: 'same-origin',
+        headers: body ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      await parseResponse(response);
+      await openAdminPanel();
+    } catch (error) {
+      window.alert(error.message);
+    }
+  }
+
   function bindEvents() {
     document.querySelector('.app-shell')?.classList.add('auth-pending');
     $('authLoginTab').addEventListener('click', () => {
@@ -190,6 +275,23 @@
       setMessage('authMessage', 'Ник: 3–24 символа. Пароль: минимум 10 символов.', '');
     });
 
+    // Дополнительный пароль вводится только владельцем админского аккаунта.
+    if (!$('authAdminPassword')) {
+      const label = document.createElement('label');
+      label.id = 'authAdminPasswordLabel';
+      const caption = document.createElement('span');
+      caption.textContent = 'Дополнительный пароль администратора (если есть)';
+      const input = document.createElement('input');
+      input.id = 'authAdminPassword';
+      input.type = 'password';
+      input.autocomplete = 'current-password';
+      input.minLength = 12;
+      input.maxLength = 128;
+      input.placeholder = 'Оставь пустым, если ты не администратор';
+      label.append(caption, input);
+      $('authLoginForm').insertBefore(label, $('authLoginForm').querySelector('button[type="submit"]'));
+    }
+
     $('authLoginForm').addEventListener('submit', async event => {
       event.preventDefault();
       const button = $('authLoginForm').querySelector('button[type="submit"]');
@@ -198,8 +300,10 @@
       try {
         await submitAuth('/api/auth/login', {
           email: $('authLoginEmail').value.trim(),
-          password: $('authLoginPassword').value
+          password: $('authLoginPassword').value,
+          admin_password: $('authAdminPassword')?.value || null
         });
+        if ($('authAdminPassword')) $('authAdminPassword').value = '';
       } catch (error) {
         setMessage('authMessage', error.message, 'error');
       } finally {
