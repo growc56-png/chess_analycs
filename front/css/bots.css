@@ -263,6 +263,36 @@ button:disabled {
     color: var(--green);
 }
 
+.bot-retry-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    margin: 0 auto 10px;
+    padding: 8px 14px;
+    border: 1px solid rgba(245, 190, 85, .45);
+    border-radius: 10px;
+    background: rgba(245, 190, 85, .12);
+    color: #f3cf83;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.bot-retry-button:hover {
+    background: rgba(245, 190, 85, .2);
+}
+
+.bot-retry-button:focus-visible {
+    outline: 2px solid #f3cf83;
+    outline-offset: 3px;
+}
+
+.bot-retry-button[hidden] {
+    display: none;
+}
+
 .turn-indicator {
     color: var(--muted);
     font-size: 11px;
