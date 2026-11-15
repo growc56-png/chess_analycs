@@ -16,7 +16,7 @@
     <script src="/js/chess-premove.js?v=20261103-unified-premove-v3"></script>
     <script src="/js/board-drawing.js?v=20261103-unified-premove-v3"></script>
     <script src="/js/shared.js?v=20261103-unified-board-arrows-v1"></script>
-    <script src="/js/bots.js?v=20261103-unified-premove-v3" defer></script>
+    <script src="/js/bots.js?v=20261115-bot-retry-v1" defer></script>
 </head>
 
 <body>
@@ -59,7 +59,7 @@
             </div>
 
             <div class="board-status-row">
-                <div id="gameStatus" class="game-status">
+                <div id="gameStatus" class="game-status" role="status" aria-live="polite">
                     Подготовка к партии
                 </div>
 
@@ -67,6 +67,9 @@
                     ● Ожидание
                 </div>
             </div>
+            <button id="retryBotMoveBtn" class="bot-retry-button" type="button" hidden>
+                Повторить ход Stockfish
+            </button>
 
             <!-- Никакой тёмной карточки или подложки за доской -->
             <div class="board-stage">
