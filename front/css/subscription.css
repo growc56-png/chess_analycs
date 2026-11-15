@@ -1,0 +1,31 @@
+.subscription-heading{align-items:flex-start}
+.subscription-language{display:grid;gap:6px;min-width:150px;color:var(--muted);font-size:11px;font-weight:750}
+.subscription-language select{min-height:39px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--text)}
+.subscription-status{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 18px;padding:17px 19px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(120deg,#1c2b35,#192832)}
+.subscription-status>div:first-child{display:grid;gap:4px}
+.subscription-status span{color:var(--muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.subscription-status strong{color:#dce9d2;font-size:14px}
+.subscription-billing{display:flex;gap:5px;padding:4px;border:1px solid var(--border);border-radius:9px;background:#111e27}
+.subscription-billing button{min-height:34px;padding:7px 12px;border:0;border-radius:6px;background:transparent;color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}
+.subscription-billing button.active{background:#30443b;color:#d9edc2}
+.subscription-plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+.subscription-card{position:relative;display:flex;flex-direction:column;min-width:0;padding:22px 19px 18px;border:1px solid var(--border);border-radius:13px;background:linear-gradient(155deg,#1d2b36,#17242e);box-shadow:var(--shadow)}
+.subscription-card.featured{border-color:#789b58;box-shadow:0 12px 32px rgba(0,0,0,.2),inset 0 0 0 1px rgba(145,189,91,.12)}
+.subscription-popular{align-self:flex-start;margin:-7px 0 12px;padding:5px 8px;border-radius:5px;background:rgba(145,189,91,.16);color:#c5e29f;font-size:9px;font-weight:900;letter-spacing:.07em}
+.subscription-plan-name{color:#eef4f6;font-size:19px;font-weight:900}
+.subscription-plan-desc{min-height:38px;margin:6px 0 16px;color:var(--muted);font-size:11px;line-height:1.55}
+.subscription-price{color:#e5f0dc;font-size:clamp(25px,3vw,34px);font-weight:950;letter-spacing:-1px;white-space:nowrap}
+.subscription-price span{margin-left:4px;color:var(--muted);font-size:10px;font-weight:650;letter-spacing:0}
+.subscription-card>small{min-height:17px;margin-top:3px;color:#91a1ae;font-size:10px}
+.subscription-card ul{display:grid;gap:11px;margin:20px 0 22px;padding:0;list-style:none}
+.subscription-card li{display:flex;gap:8px;color:#b9c7ce;font-size:11px;line-height:1.45}
+.subscription-card li span{flex:0 0 auto;color:#a7d179;font-weight:900}
+.subscription-choose{width:100%;min-height:41px;margin-top:auto;padding:10px 12px;border:1px solid #526b58;border-radius:8px;background:#263b30;color:#dff0d2;font-size:11px;font-weight:900;cursor:pointer}
+.subscription-card.featured .subscription-choose{border-color:transparent;background:linear-gradient(135deg,#a5ce70,#75a948);color:#14200e}
+.subscription-choose:disabled{border-color:var(--border);background:#202e38;color:#82929c;cursor:default}
+.subscription-note{margin-top:17px;padding:14px 16px;border:1px solid rgba(214,162,93,.25);border-left:3px solid #d6a25d;border-radius:9px;background:rgba(214,162,93,.06)}
+.subscription-note strong{color:#e5bd83;font-size:11px}
+.subscription-note p{margin:5px 0;color:#b3c0c7;font-size:11px;line-height:1.6}
+.subscription-note small{color:#82939d;font-size:10px}
+@media(max-width:900px){.subscription-plans{grid-template-columns:1fr 1fr}.subscription-card:last-child{grid-column:1/-1}}
+@media(max-width:620px){.subscription-heading{display:grid}.subscription-language{width:100%}.subscription-plans{grid-template-columns:1fr}.subscription-card:last-child{grid-column:auto}.subscription-card{padding:19px}.subscription-status{align-items:stretch}.subscription-billing{width:100%}.subscription-billing button{flex:1}}
