@@ -260,14 +260,6 @@
   box-shadow: 0 1px 3px rgba(0,0,0,.28);
 }
 
-.icon-brilliant { background: transparent; box-shadow: none; }
-.brilliant-diamond-icon {
-  display: block;
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,.28));
-}
 .icon-critical { background: #367fc2; }
 .icon-great { background: #3f83d8; }
 .icon-best { background: #79ac3d; font-size: 15px; }
@@ -857,22 +849,6 @@
   box-shadow: 0 2px 7px rgba(0,0,0,.42);
   pointer-events: none;
   white-space: nowrap;
-}
-#tab-analysis #analysisBoard .board-badge.badge-brilliant {
-  width: 27px !important;
-  height: 27px !important;
-  min-width: 27px !important;
-  min-height: 27px !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-#tab-analysis #analysisBoard .board-badge.badge-brilliant .brilliant-diamond-icon {
-  width: 26px;
-  height: 26px;
 }
 
 /* Линии движка остаются выше статистики, сразу под графиком. */
