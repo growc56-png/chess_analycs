@@ -78,6 +78,15 @@ def _valid_username(username: str) -> bool:
     return bool(re.fullmatch(r"[A-Za-z0-9_-]{3,24}", username))
 
 
+def _premium_active(user: User) -> bool:
+    expires = user.premium_expires_at
+    if expires is None:
+        return False
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    return expires > datetime.now(timezone.utc)
+
+
 def _user_payload(user: User) -> dict:
     profile_ready = bool(
         user.onboarding_completed
@@ -91,7 +100,7 @@ def _user_payload(user: User) -> dict:
         "username": user.username,
         "email": user.email,
         "is_admin": bool(user.is_admin),
-        "is_premium": bool(user.premium_expires_at and user.premium_expires_at > datetime.now(timezone.utc)),
+        "is_premium": _premium_active(user),
         "premium_expires_at": user.premium_expires_at.isoformat() if user.premium_expires_at else None,
         "needs_setup": not profile_ready,
         "profile": {
@@ -261,7 +270,7 @@ def admin_list_users(
             "email": user.email,
             "created_at": user.created_at.isoformat() if user.created_at else None,
             "is_admin": bool(user.is_admin),
-            "is_premium": bool(user.premium_expires_at and user.premium_expires_at > now),
+            "is_premium": _premium_active(user),
             "premium_expires_at": user.premium_expires_at.isoformat() if user.premium_expires_at else None,
         } for user in users]
     }
