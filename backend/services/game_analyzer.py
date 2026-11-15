@@ -130,6 +130,55 @@ def get_acceptable_move_candidates(board, infos, mover, expected_points_toleranc
 
 
 
+def _is_winning_knight_fork(board, move, after):
+    """Detect a knight fork only when every legal defence leaves a profitable capture."""
+    mover = board.turn
+    opponent = not mover
+    knight = after.piece_at(move.to_square)
+    if knight is None or knight.color != mover or knight.piece_type != chess.KNIGHT:
+        return False
+
+    values = {chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
+    targets = [
+        square for square, piece in after.piece_map().items()
+        if piece.color == opponent
+        and piece.piece_type in values
+        and move.to_square in after.attackers(mover, square)
+    ]
+    if len(targets) < 2 and not (after.is_check() and len(targets) == 1):
+        return False
+
+    replies = list(after.legal_moves)
+    if not replies:
+        return False
+
+    for reply in replies:
+        reply_board = after.copy(stack=False)
+        reply_board.push(reply)
+        remaining_knight = reply_board.piece_at(move.to_square)
+        if remaining_knight is None or remaining_knight.color != mover or remaining_knight.piece_type != chess.KNIGHT:
+            return False
+
+        profitable_capture = False
+        for square in targets:
+            target = reply_board.piece_at(square)
+            if target is None or target.color != opponent or target.piece_type not in values:
+                continue
+            capture = chess.Move(move.to_square, square)
+            if capture not in reply_board.legal_moves:
+                continue
+            after_capture = reply_board.copy(stack=False)
+            after_capture.push(capture)
+            can_recapture = any(candidate.to_square == square for candidate in after_capture.legal_moves)
+            material_gain = values[target.piece_type] - (values[chess.KNIGHT] if can_recapture else 0)
+            if material_gain > 0:
+                profitable_capture = True
+                break
+        if not profitable_capture:
+            return False
+    return True
+
+
 def get_tactical_motifs(board, move, mate_in=None):
     """Отмечает короткие тактические идеи в ходе: шах, мат, вилка, связка."""
     mover = board.turn
@@ -153,26 +202,8 @@ def get_tactical_motifs(board, move, mate_in=None):
         if "mate" not in motifs:
             motifs.append("mate_in_2")
 
-    if moved_piece is not None:
-        attacked_targets = []
-        for square, target_piece in after.piece_map().items():
-            if target_piece.color != opponent or target_piece.piece_type == chess.KING:
-                continue
-            if target_piece.piece_type not in (
-                chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN
-            ):
-                continue
-            if move.to_square in after.attackers(mover, square):
-                attacked_targets.append(square)
-
-        checked_king = after.king(opponent)
-        checking_piece_is_moved_piece = bool(
-            checked_king is not None
-            and move.to_square in after.attackers(mover, checked_king)
-        )
-        fork_targets = len(attacked_targets) + (1 if after.is_check() and checking_piece_is_moved_piece else 0)
-        if fork_targets >= 2:
-            motifs.append("fork")
+    if moved_piece is not None and _is_winning_knight_fork(board, move, after):
+        motifs.append("fork")
 
     newly_pinned = []
     for square, target_piece in after.piece_map().items():
