@@ -82,6 +82,15 @@ class SacrificeDetectionTests(unittest.TestCase):
         self.assertIsNone(get_sacrifice_details(board, move))
         self.assertFalse(is_true_sacrifice(board, move))
 
+    def test_capturing_a_pawn_with_queen_is_not_a_brilliant_sacrifice(self):
+        # Qxa7 wins a pawn, but the queen is attacked by the rook on a8.
+        # This must not be mistaken for a sacrifice/Brilliant move.
+        board = chess.Board("r6k/p7/8/8/8/8/8/Q6K w - - 0 1")
+        move = board.parse_san("Qxa7")
+
+        self.assertIsNone(get_sacrifice_details(board, move))
+        self.assertFalse(is_true_sacrifice(board, move))
+
     def test_pawn_move_is_not_a_brilliant_material_sacrifice(self):
         board = chess.Board("7k/8/8/1p6/8/8/P7/7K w - - 0 1")
         move = board.parse_san("a4")
@@ -204,7 +213,6 @@ class MoveClassificationTests(unittest.TestCase):
         )
 
 
-
 class KnightForkDetectionTests(unittest.TestCase):
     def test_knight_check_forking_queen_is_a_winning_fork(self):
         board = chess.Board("3q3k/8/8/4N3/8/8/8/K7 w - - 0 1")
@@ -255,8 +263,6 @@ class AnalysisMetricTests(unittest.TestCase):
         self.assertEqual(_classify_game_phase(chess.Board()), "opening")
         kings_only = chess.Board("7k/8/8/8/8/8/8/K7 w - - 0 40")
         self.assertEqual(_classify_game_phase(kings_only), "endgame")
-
-
 
     def test_multipv_fallback_recovers_three_unique_lines(self):
         board = chess.Board()
