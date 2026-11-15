@@ -4,7 +4,7 @@ import os
 import re
 import time
 from collections import defaultdict, deque
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
@@ -41,6 +41,7 @@ class RegisterBody(BaseModel):
 class LoginBody(BaseModel):
     email: str = Field(min_length=5, max_length=254)
     password: str = Field(min_length=1, max_length=128)
+    admin_password: str | None = Field(default=None, min_length=12, max_length=128)
 
 
 class ProfileBody(BaseModel):
@@ -89,6 +90,9 @@ def _user_payload(user: User) -> dict:
         "id": user.id,
         "username": user.username,
         "email": user.email,
+        "is_admin": bool(user.is_admin),
+        "is_premium": bool(user.premium_expires_at and user.premium_expires_at > datetime.now(timezone.utc)),
+        "premium_expires_at": user.premium_expires_at.isoformat() if user.premium_expires_at else None,
         "needs_setup": not profile_ready,
         "profile": {
             "current_elo": user.current_elo,
@@ -165,6 +169,9 @@ def login(
     # Не раскрываем, существует ли конкретная почта.
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Неверная почта или пароль.")
+    if user.is_admin:
+        if not user.admin_password_hash or not body.admin_password or not verify_password(body.admin_password, user.admin_password_hash):
+            raise HTTPException(status_code=401, detail="Для этого аккаунта требуется дополнительный пароль администратора.")
 
     token = create_session(db, user)
     set_session_cookie(response, token, secure=_secure_cookie(request))
@@ -226,6 +233,77 @@ def save_profile(
     db.commit()
     db.refresh(user)
     return {"ok": True, "user": _user_payload(user)}
+
+
+# Административные операции. Роль проверяется на сервере по записи пользователя.
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    if not user.is_admin or not user.admin_password_hash:
+        raise HTTPException(status_code=403, detail="Доступ только для администратора.")
+    return user
+
+
+class PremiumBody(BaseModel):
+    days: int | None = Field(default=None, ge=1, le=3650)
+    forever: bool = False
+
+
+@router.get("/api/admin/users")
+def admin_list_users(
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    users = db.query(User).order_by(User.created_at.desc()).limit(500).all()
+    now = datetime.now(timezone.utc)
+    return {
+        "users": [{
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "is_admin": bool(user.is_admin),
+            "is_premium": bool(user.premium_expires_at and user.premium_expires_at > now),
+            "premium_expires_at": user.premium_expires_at.isoformat() if user.premium_expires_at else None,
+        } for user in users]
+    }
+
+
+@router.post("/api/admin/users/{user_id}/premium")
+def admin_grant_premium(
+    user_id: int,
+    body: PremiumBody,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if not body.forever and body.days is None:
+        raise HTTPException(status_code=422, detail="Укажи количество дней или выбери бессрочный Premium.")
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+    if body.forever:
+        target.premium_expires_at = datetime.max.replace(tzinfo=timezone.utc)
+    else:
+        now = datetime.now(timezone.utc)
+        current = target.premium_expires_at
+        if current is not None and current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        base = current if current and current > now else now
+        target.premium_expires_at = base + timedelta(days=body.days)
+    db.commit()
+    return {"ok": True, "username": target.username, "premium_expires_at": target.premium_expires_at.isoformat()}
+
+
+@router.delete("/api/admin/users/{user_id}/premium")
+def admin_revoke_premium(
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден.")
+    target.premium_expires_at = None
+    db.commit()
+    return {"ok": True, "username": target.username}
 
 
 __all__ = ["router"]
