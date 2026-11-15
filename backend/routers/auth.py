@@ -289,7 +289,7 @@ def admin_grant_premium(
     if target is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден.")
     if body.forever:
-        target.premium_expires_at = datetime.max.replace(tzinfo=timezone.utc)
+        target.premium_expires_at = datetime(9998, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
     else:
         now = datetime.now(timezone.utc)
         current = target.premium_expires_at
