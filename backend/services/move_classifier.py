@@ -25,6 +25,13 @@ def get_sacrifice_details(board_before, move):
         PIECE_VALUES.get(captured_piece.piece_type, 0)
         if captured_piece is not None else 0
     )
+
+    # Capturing a pawn with a more valuable piece is an ordinary material
+    # gain, not a sacrifice. The attacked landing square alone must not turn
+    # QxP/RxP/NxP into a Brilliant move.
+    if captured_piece is not None and captured_piece.piece_type == chess.PAWN:
+        return None
+
     # Ordinary exchanges/captures are not sacrifices: the value offered
     # must be greater than the value won by the move.
     if moving_value <= captured_value:
