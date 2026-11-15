@@ -10,7 +10,7 @@
     miss: 'Промах'
   };
   const MOTIFS = {
-    fork: { label: 'Вилка', filter: 'fork' },
+    fork: { label: 'Конёвая вилка', filter: 'fork' },
     pin: { label: 'Связка', filter: 'pin' },
     discovered_check: { label: 'Вскрытый шах', filter: 'discovered_check' },
     mate: { label: 'Мат', filter: 'mate' },
