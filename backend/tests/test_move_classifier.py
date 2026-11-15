@@ -83,7 +83,7 @@ class SacrificeDetectionTests(unittest.TestCase):
             ("knight", "r6k/p7/8/1N6/8/8/8/7K w - - 0 1", "Nxa7"),
             ("rook", "r6k/p7/8/8/8/8/8/R6K w - - 0 1", "Rxa7"),
             ("queen", "r6k/p7/1Q6/8/8/8/8/7K w - - 0 1", "Qxa7"),
-            ("pawn", "r6k/p7/8/8/8/1P6/8/7K w - - 0 1", "bxa7"),
+            ("pawn", "r6k/p7/1P6/8/8/8/8/7K w - - 0 1", "bxa7"),
         )
 
         for piece_name, fen, san in cases:
