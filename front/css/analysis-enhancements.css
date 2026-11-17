@@ -1460,3 +1460,103 @@
   .analysis-job-progress-foot { flex-direction: column; gap: 5px; }
   .analysis-job-progress-foot strong { text-align: left; }
 }
+
+
+/* Собственная ветка в анализе: приглушаем рабочую область, чтобы отличать её от партии. */
+#tab-analysis .analysis-variation-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  color: #d4dce2;
+  background: #46515b;
+  border: 1px solid #687580;
+  border-left: 4px solid #a8b2ba;
+  border-radius: 9px;
+  font-size: 12px;
+}
+#tab-analysis .analysis-variation-notice[hidden],
+#tab-analysis .analysis-variation-panel[hidden] {
+  display: none !important;
+}
+#tab-analysis .analysis-variation-notice strong {
+  color: #fff;
+  letter-spacing: .6px;
+}
+#tab-analysis .analysis-container.is-variation-mode {
+  filter: grayscale(.92);
+  opacity: .86;
+}
+#tab-analysis .analysis-variation-panel {
+  padding: 12px;
+  background: var(--panel, #1b2934);
+  border: 1px solid var(--border, #354653);
+  border-radius: 10px;
+}
+#tab-analysis .analysis-variation-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 9px;
+  color: var(--text, #e8eef2);
+  font-size: 13px;
+}
+#tab-analysis .analysis-variation-panel-head small {
+  color: var(--muted, #9aabb6);
+  font-size: 11px;
+}
+#tab-analysis .analysis-variation-moves {
+  display: grid;
+  gap: 5px;
+}
+#tab-analysis .analysis-variation-move {
+  display: grid;
+  grid-template-columns: 38px minmax(35px, 1fr) 28px minmax(48px, auto);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  color: var(--text, #e8eef2);
+  background: #17232d;
+  border: 1px solid var(--border-soft, #2d3c47);
+  border-radius: 7px;
+  cursor: pointer;
+  text-align: left;
+}
+#tab-analysis .analysis-variation-move:hover,
+#tab-analysis .analysis-variation-move.is-current {
+  background: #273640;
+  border-color: #71808b;
+}
+#tab-analysis .analysis-variation-number,
+#tab-analysis .analysis-variation-eval {
+  color: var(--muted, #9aabb6);
+  font-family: Consolas, monospace;
+  font-size: 11px;
+}
+#tab-analysis .analysis-variation-san {
+  overflow: hidden;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+#tab-analysis .analysis-variation-pending {
+  color: #b9c3ca;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+@media (max-width: 720px) {
+  #tab-analysis .analysis-variation-notice {
+    align-items: flex-start;
+  }
+  #tab-analysis .analysis-variation-notice .action-btn {
+    width: 100%;
+  }
+}

@@ -12,13 +12,25 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from config import STOCKFISH_PATH, EVALUATE_DEPTH, EVALUATE_TIME
-from services.game_analyzer import analyze_game as run_game_analysis
+from services.game_analyzer import (
+    analyze_game as run_game_analysis,
+    get_acceptable_move_candidates,
+    get_tactical_motifs,
+    TACTICAL_MISS_MOTIFS,
+)
+from services.move_classifier import classify_move, get_sacrifice_details
 from services.stockfish import (
     ENGINE_LOCK,
     get_engine_limit,
     parse_score,
     safe_engine_quit,
     configure_engine,
+    score_to_cp,
+    expected_points_from_score,
+    accuracy_from_centipawn_loss,
+    get_position_analysis,
+    get_best_move_info,
+    get_second_best_gap,
 )
 
 try:
@@ -41,6 +53,11 @@ class AnalyzeBody(BaseModel):
 
 class EvaluateBody(BaseModel):
     fen: str
+
+
+class EvaluateMoveBody(BaseModel):
+    fen: str
+    move_uci: str
 
 
 class OpeningVariationsBody(BaseModel):
@@ -418,6 +435,141 @@ def evaluate_position(body: EvaluateBody):
         finally:
             safe_engine_quit(engine)
 
+
+
+@router.post("/api/evaluate/move")
+def evaluate_played_move(body: EvaluateMoveBody):
+    """Оценивает пользовательский ход и классифицирует его тем же классификатором, что и ход партии."""
+    with ENGINE_LOCK:
+        engine = None
+        try:
+            try:
+                board = chess.Board(body.fen)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Некорректный FEN")
+            if not board.is_valid():
+                raise HTTPException(status_code=400, detail="Позиция некорректна")
+
+            try:
+                move = chess.Move.from_uci(body.move_uci)
+            except (ValueError, TypeError):
+                raise HTTPException(status_code=400, detail="Некорректный ход UCI")
+            if move not in board.legal_moves:
+                raise HTTPException(status_code=400, detail="Этот ход нелегален в указанной позиции")
+            if not os.path.isfile(STOCKFISH_PATH):
+                raise HTTPException(status_code=500, detail="Stockfish не найден")
+
+            mover = board.turn
+            engine = chess.engine.SimpleEngine.popen_uci(str(STOCKFISH_PATH))
+            configure_engine(engine, profile="analysis")
+
+            before_infos = get_position_analysis(engine, board)
+            best_info = get_best_move_info(before_infos)
+            if best_info is None or best_info.get("score") is None:
+                raise HTTPException(status_code=500, detail="Stockfish не смог оценить позицию до хода")
+
+            before_score = best_info["score"]
+            best_cp = score_to_cp(before_score, mover)
+            best_expected = expected_points_from_score(before_score, mover)
+            best_pv = best_info.get("pv") or []
+            best_move = best_pv[0] if best_pv else None
+            best_move_uci = best_move.uci() if best_move else None
+
+            after_board = board.copy(stack=False)
+            after_board.push(move)
+            after_info = engine.analyse(
+                after_board,
+                get_engine_limit(depth=EVALUATE_DEPTH, time_limit=EVALUATE_TIME),
+            )
+            after_score = after_info.get("score") if isinstance(after_info, dict) else None
+            if after_score is None:
+                raise HTTPException(status_code=500, detail="Stockfish не смог оценить позицию после хода")
+
+            after_cp = score_to_cp(after_score, mover)
+            after_expected = expected_points_from_score(after_score, mover)
+            expected_loss = max(0.0, best_expected - after_expected)
+            centipawn_loss = max(0, best_cp - after_cp)
+
+            acceptable = get_acceptable_move_candidates(board, before_infos, mover)
+            acceptable_uci = [item.get("uci") for item in acceptable]
+            is_best = move.uci() in acceptable_uci
+            best_candidate = next(
+                (item for item in acceptable if item.get("uci") == best_move_uci),
+                None,
+            )
+            best_motifs = (
+                best_candidate.get("motifs", [])
+                if best_candidate else (get_tactical_motifs(board, best_move) if best_move else [])
+            )
+            missed_tactic = (
+                not is_best
+                and bool(set(best_motifs) & TACTICAL_MISS_MOTIFS)
+            )
+
+            sacrifice_details = get_sacrifice_details(board, move)
+            after_white = parse_score(_white_score(after_score))
+            mover_score = after_score.pov(mover)
+            mate_distance = mover_score.mate() if mover_score.is_mate() else None
+            mate_won = mate_distance is not None and mate_distance > 0
+            classification = classify_move(
+                win_percent_loss=expected_loss,
+                is_best=is_best,
+                is_sacrifice=bool(sacrifice_details),
+                is_forced=len(list(board.legal_moves)) == 1,
+                prev_eval=best_cp / 100.0,
+                curr_eval=after_cp / 100.0,
+                second_best_gap=get_second_best_gap(before_infos, mover),
+                is_mate=bool(after_white.get("is_mate")),
+                mate_won=mate_won,
+                missed_tactic=missed_tactic,
+                verified_mate_trap=False,
+            )
+
+            top_moves = get_multipv_lines_robust(
+                engine,
+                after_board,
+                depth=EVALUATE_DEPTH,
+            )
+            try:
+                san = board.san(move)
+                best_move_san = board.san(best_move) if best_move else None
+                best_line_san = _format_pv(board, best_pv)
+            except (ValueError, AssertionError):
+                san = move.uci()
+                best_move_san = best_move_uci
+                best_line_san = ""
+
+            return {
+                "uci": move.uci(),
+                "san": san,
+                "mover": "white" if mover == chess.WHITE else "black",
+                "fen_after": after_board.fen(),
+                "eval_after_white": after_white.get("eval", 0),
+                "is_mate": bool(after_white.get("is_mate")),
+                "mate_in": int(after_white.get("mate_in", 0) or 0),
+                "cp_loss": centipawn_loss,
+                "centipawn_loss": centipawn_loss,
+                "win_percent_loss": round(expected_loss * 100, 2),
+                "move_accuracy": accuracy_from_centipawn_loss(centipawn_loss),
+                "classification": classification,
+                "is_best": is_best,
+                "best_move_uci": best_move_uci,
+                "best_move_san": best_move_san,
+                "best_line_san": best_line_san,
+                "missed_tactic": missed_tactic,
+                "best_move_motifs": best_motifs,
+                "sacrifice": bool(sacrifice_details),
+                "top_moves": top_moves,
+            }
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Ошибка оценки хода Stockfish: {str(exc)}",
+            )
+        finally:
+            safe_engine_quit(engine)
 
 
 @router.post("/api/openings/variations")

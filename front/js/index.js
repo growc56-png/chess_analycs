@@ -39,6 +39,13 @@ let latestGamesCache = null;
 
 let analysisGame = new Chess();
 let currentAnalysisPgn = '';
+let analysisExpectedMoveIndex = 0;
+let analysisVariationActive = false;
+let analysisVariationBaseFen = '';
+let analysisVariationBaseIndex = -1;
+let analysisVariationBaseExpectedMoveIndex = 0;
+let analysisVariationMoves = [];
+let analysisVariationSessionId = 0;
 let activeAnalysisChallenge = null;
 let isAnalyzing = false;
 let currentWhitePlayer = "White";
@@ -2508,6 +2515,12 @@ document.getElementById('openingEnd').onclick = () => { if (currentOpening) { st
 
 // --- АНАЛИЗ (ВСПОМОГАТЕЛЬНЫЕ) ---
 function initAnalysis() {
+  const returnVariationButton = document.getElementById('analysisVariationReturnBtn');
+  if (returnVariationButton && !returnVariationButton.dataset.bound) {
+    returnVariationButton.addEventListener('click', restoreAnalysisVariationBase);
+    returnVariationButton.dataset.bound = '1';
+  }
+
   analysisBoard = Chessboard('analysisBoard', {
     position: 'start', draggable: true,
     onDragStart: (source, piece) => {
@@ -3517,7 +3530,211 @@ function stopAnalysisPlayback() {
   refreshAnalysisNavigation();
 }
 
+function resetAnalysisVariation() {
+  analysisVariationSessionId += 1;
+  analysisVariationActive = false;
+  analysisVariationBaseFen = '';
+  analysisVariationBaseIndex = -1;
+  analysisVariationBaseExpectedMoveIndex = 0;
+  analysisVariationMoves = [];
+  const workspace = document.querySelector('#tab-analysis .analysis-container');
+  if (workspace) workspace.classList.remove('is-variation-mode');
+  const notice = document.getElementById('analysisVariationNotice');
+  if (notice) notice.hidden = true;
+  const panel = document.getElementById('analysisVariationPanel');
+  if (panel) panel.hidden = true;
+  const list = document.getElementById('analysisVariationMoves');
+  if (list) list.replaceChildren();
+}
+
+function updateAnalysisVariationUI() {
+  const workspace = document.querySelector('#tab-analysis .analysis-container');
+  if (workspace) workspace.classList.toggle('is-variation-mode', analysisVariationActive);
+  const notice = document.getElementById('analysisVariationNotice');
+  if (notice) notice.hidden = !analysisVariationActive;
+  const panel = document.getElementById('analysisVariationPanel');
+  if (panel) panel.hidden = !analysisVariationActive || analysisVariationMoves.length === 0;
+  renderAnalysisVariationMoves();
+}
+
+function beginAnalysisVariation(beforeFen) {
+  if (!analysisVariationActive) {
+    analysisVariationActive = true;
+    analysisVariationBaseFen = beforeFen;
+    analysisVariationBaseIndex = currentAnalysisIndex;
+    analysisVariationBaseExpectedMoveIndex = analysisExpectedMoveIndex;
+    analysisVariationMoves = [];
+    currentAnalysisIndex = -1;
+    stopAnalysisPlayback();
+  }
+  updateAnalysisVariationUI();
+}
+
+function renderAnalysisVariationMoves() {
+  const list = document.getElementById('analysisVariationMoves');
+  if (!list) return;
+  list.replaceChildren();
+  const classMeta = Object.fromEntries(ANALYSIS_CLASS_ROWS.map(row => [row.key, row]));
+  analysisVariationMoves.forEach((move, index) => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'analysis-variation-move';
+    row.title = 'Показать позицию после этого хода';
+    const number = document.createElement('span');
+    number.className = 'analysis-variation-number';
+    number.textContent = String(move.moveNumber || index + 1) + (move.mover === 'black' ? '…' : '.');
+    const san = document.createElement('strong');
+    san.className = 'analysis-variation-san';
+    san.textContent = move.san || move.uci || 'Ход';
+    const meta = classMeta[move.classification];
+    const badge = document.createElement('span');
+    badge.className = meta ? 'move-class-icon cls-' + meta.className : 'analysis-variation-pending';
+    badge.textContent = meta ? meta.icon : (move.pending ? '…' : '—');
+    badge.title = meta ? meta.label : (move.error || 'Ожидание оценки Stockfish');
+    const score = document.createElement('span');
+    score.className = 'analysis-variation-eval';
+    score.textContent = move.eval_after_white == null
+      ? (move.error ? 'Ошибка оценки' : '…')
+      : formatEvalString(!!move.is_mate, Number(move.mate_in || 0), Number(move.eval_after_white));
+    row.append(number, san, badge, score);
+    row.classList.toggle('is-current', index === analysisVariationMoves.length - 1);
+    row.addEventListener('click', () => showAnalysisVariationMove(index));
+    list.appendChild(row);
+  });
+  updateAnalysisVariationUIStateOnly();
+}
+
+function updateAnalysisVariationUIStateOnly() {
+  const panel = document.getElementById('analysisVariationPanel');
+  if (panel) panel.hidden = !analysisVariationActive || analysisVariationMoves.length === 0;
+}
+
+function addAnalysisVariationMove(beforeFen, move) {
+  const fenParts = String(beforeFen || '').split(' ');
+  const mover = fenParts[1] === 'b' ? 'black' : 'white';
+  const moveNumber = Number(fenParts[5]) || 1;
+  const item = {
+    uci: move.uci || moveObjectToUci(move),
+    san: move.san || '',
+    mover,
+    moveNumber,
+    fen_after: analysisGame.fen(),
+    pending: true,
+    eval_after_white: null,
+    classification: null
+  };
+  analysisVariationMoves.push(item);
+  renderAnalysisVariationMoves();
+  evaluateAnalysisVariationMove(beforeFen, item, analysisVariationSessionId);
+}
+
+async function evaluateAnalysisVariationMove(beforeFen, item, sessionId) {
+  try {
+    const response = await fetch('/api/evaluate/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ fen: beforeFen, move_uci: item.uci })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Stockfish не смог оценить ход');
+    if (sessionId !== analysisVariationSessionId || !analysisVariationActive) return;
+    Object.assign(item, data, { pending: false, error: null });
+    renderAnalysisVariationMoves();
+
+    const isCurrentPosition = analysisVariationMoves[analysisVariationMoves.length - 1] === item
+      && analysisGame.fen() === item.fen_after;
+    if (isCurrentPosition) {
+      updateEvalBar(!!data.is_mate, Number(data.mate_in || 0), Number(data.eval_after_white || 0));
+      updatePlayerNamesAndMaterial(analysisGame.fen());
+      drawBoardBadge({
+        uci: item.uci,
+        classification: data.classification,
+        is_mate: data.is_mate,
+        mate_in: data.mate_in,
+        eval: data.eval_after_white
+      });
+      renderTopLines(data.top_moves || []);
+      requestAnimationFrame(() => drawArrows(data.top_moves || []));
+      const title = document.getElementById('analysisMoveInsightTitle');
+      const text = document.getElementById('analysisMoveInsightText');
+      const meta = document.getElementById('analysisMoveInsightMeta');
+      const best = document.getElementById('analysisMoveInsightBest');
+      const quality = (ANALYSIS_CLASS_ROWS.find(row => row.key === data.classification) || {}).label || 'Оценка';
+      if (title) title.textContent = quality + ' ход · ' + (item.san || item.uci);
+      if (text) {
+        text.textContent = data.classification === 'brilliant'
+          ? 'Stockfish подтвердил сильную жертву: ход сохраняет оценку позиции.'
+          : data.best_move_san && data.best_move_uci !== item.uci
+            ? 'Лучший вариант движка: ' + data.best_move_san + '. Потеря ожидаемого результата: ' + Number(data.win_percent_loss || 0).toFixed(1) + ' п.п.'
+            : 'Stockfish оценил этот ход как один из лучших в позиции.';
+      }
+      if (meta) meta.textContent = 'Точность хода: ' + Number(data.move_accuracy || 0).toFixed(1) + '% · потеря: ' + Number(data.cp_loss || 0) + ' cp';
+      if (best) best.textContent = data.best_move_san ? 'Лучший ход Stockfish: ' + data.best_move_san : '';
+    }
+  } catch (error) {
+    if (sessionId !== analysisVariationSessionId || !analysisVariationActive) return;
+    item.pending = false;
+    item.error = error.message || 'Ошибка оценки';
+    renderAnalysisVariationMoves();
+    console.error('Не удалось оценить ход в своей вариации:', error);
+  }
+}
+
+function showAnalysisVariationMove(index) {
+  if (!analysisVariationActive || !Number.isInteger(index) || !analysisVariationMoves[index]) return;
+  analysisVariationMoves = analysisVariationMoves.slice(0, index + 1);
+  const item = analysisVariationMoves[index];
+  try {
+    analysisGame = new Chess(item.fen_after);
+  } catch (error) {
+    console.error('Не удалось восстановить свою вариацию:', error);
+    return;
+  }
+  if (analysisBoard) analysisBoard.position(analysisGame.fen());
+  currentAnalysisIndex = -1;
+  drawArrows(null);
+  const overlay = document.querySelector('#analysisBoard .custom-overlay');
+  if (overlay) overlay.innerHTML = '';
+  updatePlayerNamesAndMaterial(analysisGame.fen());
+  renderAnalysisVariationMoves();
+  if (item.eval_after_white != null) {
+    updateEvalBar(!!item.is_mate, Number(item.mate_in || 0), Number(item.eval_after_white));
+    drawBoardBadge({
+      uci: item.uci,
+      classification: item.classification,
+      is_mate: item.is_mate,
+      mate_in: item.mate_in,
+      eval: item.eval_after_white
+    });
+    renderTopLines(item.top_moves || []);
+    requestAnimationFrame(() => drawArrows(item.top_moves || []));
+  } else {
+    evaluateCurrentPosition(analysisGame.fen(), null);
+  }
+}
+
+function restoreAnalysisVariationBase() {
+  if (!analysisVariationActive) return;
+  const baseIndex = analysisVariationBaseIndex;
+  const baseFen = analysisVariationBaseFen;
+  const expectedIndex = analysisVariationBaseExpectedMoveIndex;
+  resetAnalysisVariation();
+  if (baseIndex >= 0) {
+    window.showAnalysisMove(baseIndex);
+    return;
+  }
+  analysisExpectedMoveIndex = expectedIndex;
+  analysisGame = new Chess(baseFen || 'start');
+  if (analysisBoard) analysisBoard.position(analysisGame.fen());
+  currentAnalysisIndex = -1;
+  updatePlayerNamesAndMaterial(analysisGame.fen());
+  evaluateCurrentPosition(analysisGame.fen(), null);
+}
+
 function loadAnalysisData(data) {
+  resetAnalysisVariation();
+  analysisExpectedMoveIndex = 0;
   activeAnalysisChallenge = null;
   analysisMoves = Array.isArray(data.moves) ? data.moves : [];
   fullEvals = Array.isArray(data.evals) ? data.evals : [];
@@ -3552,15 +3769,13 @@ function loadAnalysisData(data) {
 
 function handleAnalysisDrop(source, target) {
   if (isAnalyzing) return 'snapback';
-  
+
   const moves = analysisGame.moves({ verbose: true });
   const isPromotion = moves.some(m => m.from === source && m.to === target && m.flags.includes('p'));
   if (isPromotion) {
     if (activeAnalysisChallenge) {
       const textEl = document.getElementById('analysisMoveInsightText');
-      if (textEl) {
-        textEl.textContent = 'В этой задаче лучший ход не требует превращения пешки. Попробуй другой вариант.';
-      }
+      if (textEl) textEl.textContent = 'В этой задаче лучший ход не требует превращения пешки. Попробуй другой вариант.';
       return 'snapback';
     }
     pendingPromotion = { source, target, context: 'analysis' };
@@ -3568,8 +3783,18 @@ function handleAnalysisDrop(source, target) {
     return 'snapback';
   }
 
+  const candidateUci = source + target;
+  if (!analysisVariationActive) {
+    const expectedMove = analysisMoves[analysisExpectedMoveIndex];
+    if (expectedMove && String(expectedMove.uci || '').slice(0, 4) === candidateUci) {
+      window.showAnalysisMove(analysisExpectedMoveIndex, { forceAfter: true });
+      return;
+    }
+  }
+
+  const beforeFen = analysisGame.fen();
   let move = null;
-  try { move = analysisGame.move({ from: source, to: target }); } catch(e) {}
+  try { move = analysisGame.move({ from: source, to: target }); } catch (error) {}
   if (!move) return 'snapback';
   const moveWithUci = { ...move, uci: moveObjectToUci(move) };
   if (activeAnalysisChallenge) {
@@ -3577,26 +3802,23 @@ function handleAnalysisDrop(source, target) {
     return solved ? undefined : 'snapback';
   }
 
-  currentAnalysisIndex = -1;
+  beginAnalysisVariation(beforeFen);
   playMoveSound();
   analysisBoard.position(analysisGame.fen());
   document.querySelectorAll('.move-cell').forEach(el => el.classList.remove('active'));
-  
   drawArrows(null);
   const overlay = document.querySelector('#analysisBoard .custom-overlay');
   if (overlay) overlay.innerHTML = '';
-  document.getElementById('topLinesList').innerHTML = 'Анализ вариации...';
-  stopAnalysisPlayback();
   const progressLabel = document.getElementById('analysisProgressLabel');
   const progressValue = document.getElementById('analysisProgressValue');
   const progressRemaining = document.getElementById('analysisProgressRemaining');
-  if (progressLabel) progressLabel.textContent = 'Анализ пользовательской позиции';
+  if (progressLabel) progressLabel.textContent = 'Анализ собственной вариации';
   if (progressValue) progressValue.textContent = '—';
-  if (progressRemaining) progressRemaining.textContent = 'Отдельная вариация';
-
-  evaluateCurrentPosition(analysisGame.fen(), moveWithUci);
+  if (progressRemaining) progressRemaining.textContent = 'Stockfish оценивает каждый ваш ход';
+  addAnalysisVariationMove(beforeFen, moveWithUci);
 }
 
+function moveObjectToUci(move) {
 function moveObjectToUci(move) {
   if (!move || !move.from || !move.to) return '';
   return `${move.from}${move.to}${move.promotion || ''}`;
@@ -3830,25 +4052,31 @@ window.playTopMove = function(uci) {
   const from = uci.slice(0, 2);
   const to = uci.slice(2, 4);
   const promotion = uci.length > 4 ? uci[4] : 'q';
-  
+
+  if (!analysisVariationActive) {
+    const expectedMove = analysisMoves[analysisExpectedMoveIndex];
+    if (expectedMove && String(expectedMove.uci || '') === uci) {
+      window.showAnalysisMove(analysisExpectedMoveIndex, { forceAfter: true });
+      return;
+    }
+  }
+
+  const beforeFen = analysisGame.fen();
   let move = null;
-  try { move = analysisGame.move({ from, to, promotion }); } catch(e) {}
+  try { move = analysisGame.move({ from, to, promotion }); } catch (error) {}
   if (!move) return;
   const moveWithUci = { ...move, uci: moveObjectToUci(move) };
-  currentAnalysisIndex = -1;
-
+  beginAnalysisVariation(beforeFen);
   playMoveSound();
   analysisBoard.position(analysisGame.fen());
   document.querySelectorAll('.move-cell').forEach(el => el.classList.remove('active'));
-  
   drawArrows(null);
   const overlay = document.querySelector('#analysisBoard .custom-overlay');
   if (overlay) overlay.innerHTML = '';
-  document.getElementById('topLinesList').innerHTML = 'Анализ вариации...';
-
-  evaluateCurrentPosition(analysisGame.fen(), moveWithUci);
+  addAnalysisVariationMove(beforeFen, moveWithUci);
 };
 
+// ТУТ БЫЛА ОШИБКА
 // ТУТ БЫЛА ОШИБКА, ТЕПЕРЬ ФУНКЦИЯ ЗАКРЫТА И ДОПИСАНА
 function formatMoveEvaluation(move) {
   if (!move) return '';
@@ -4219,7 +4447,8 @@ function renderAnalysisMoveInsight(moveData) {
   detailsEl.textContent = mover + ' · ' + meta.join(' · ');
 }
 
-window.showAnalysisMove = function(index) {
+window.showAnalysisMove = function(index, options = {}) {
+  resetAnalysisVariation();
   const targetIndex = Number(index);
   if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= analysisMoves.length) return;
   cancelCurrentPositionEvaluation();
@@ -4249,7 +4478,7 @@ window.showAnalysisMove = function(index) {
   // the engine's green suggestion and the played red move then start from
   // the correct piece placement. Other moves keep the usual resulting FEN.
   let nextGame = null;
-  const displayFen = isMissedTacticalOpportunity
+  const displayFen = isMissedTacticalOpportunity && !options.forceAfter
     ? moveData.before_fen
     : moveData?.fen;
   if (typeof displayFen === 'string' && displayFen.trim()) {
@@ -4271,6 +4500,9 @@ window.showAnalysisMove = function(index) {
     }
   }
   analysisGame = nextGame;
+  analysisExpectedMoveIndex = isMissedTacticalOpportunity && !options.forceAfter
+    ? targetIndex
+    : targetIndex + 1;
   if (analysisBoard) analysisBoard.position(analysisGame.fen());
 
   updateEvalBar(!!moveData.is_mate, Number(moveData.mate_in || 0), Number(moveData.eval || 0));
