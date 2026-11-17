@@ -3642,8 +3642,7 @@ async function evaluateAnalysisVariationMove(beforeFen, item, sessionId) {
     Object.assign(item, data, { pending: false, error: null });
     renderAnalysisVariationMoves();
 
-    const isCurrentPosition = analysisVariationMoves[analysisVariationMoves.length - 1] === item
-      && analysisGame.fen() === item.fen_after;
+    const isCurrentPosition = analysisVariationMoves[analysisVariationMoves.length - 1] === item;
     if (isCurrentPosition) {
       updateEvalBar(!!data.is_mate, Number(data.mate_in || 0), Number(data.eval_after_white || 0));
       updatePlayerNamesAndMaterial(analysisGame.fen());
