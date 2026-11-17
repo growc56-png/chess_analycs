@@ -24,8 +24,6 @@ from services.stockfish import (
 
 try:
     import services.stockfish as stockfish_service
-try:
-    import services.stockfish as stockfish_service
 except Exception:  # pragma: no cover - fallback for alternate import style
     stockfish_service = None
 
