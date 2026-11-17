@@ -3499,14 +3499,15 @@ function animateAnalysisMove(moveData) {
 function refreshAnalysisNavigation() {
   const hasMoves = analysisMoves.length > 0;
   const index = currentAnalysisIndex;
+  const variationMode = analysisVariationActive;
   const setDisabled = (id, disabled) => {
     const el = document.getElementById(id);
     if (el) el.disabled = disabled;
   };
-  setDisabled('analysisStart', !hasMoves || index <= 0);
-  setDisabled('analysisPrev', !hasMoves || index <= 0);
-  setDisabled('analysisNext', !hasMoves || index >= analysisMoves.length - 1);
-  setDisabled('analysisEnd', !hasMoves || index >= analysisMoves.length - 1);
+  setDisabled('analysisStart', variationMode || !hasMoves || index <= 0);
+  setDisabled('analysisPrev', variationMode || !hasMoves || index <= 0);
+  setDisabled('analysisNext', variationMode || !hasMoves || index >= analysisMoves.length - 1);
+  setDisabled('analysisEnd', variationMode || !hasMoves || index >= analysisMoves.length - 1);
   const drillsButton = document.getElementById('analysisSendToDrillsBtn');
   if (drillsButton) {
     const drillCount = getAnalysisTrainingOpportunities().length;
@@ -3515,6 +3516,7 @@ function refreshAnalysisNavigation() {
   }
   const play = document.getElementById('analysisPlay');
   if (play) {
+    play.disabled = variationMode || !hasMoves;
     play.textContent = analysisPlaybackTimer ? 'Ⅱ' : '▶';
     play.title = analysisPlaybackTimer ? 'Остановить воспроизведение' : 'Воспроизвести партию';
     play.setAttribute('aria-label', play.title);
@@ -3728,6 +3730,7 @@ function restoreAnalysisVariationBase() {
   if (analysisBoard) analysisBoard.position(analysisGame.fen());
   currentAnalysisIndex = -1;
   updatePlayerNamesAndMaterial(analysisGame.fen());
+  refreshAnalysisNavigation();
   evaluateCurrentPosition(analysisGame.fen(), null);
 }
 
