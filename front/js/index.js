@@ -3721,7 +3721,7 @@ function restoreAnalysisVariationBase() {
   const expectedIndex = analysisVariationBaseExpectedMoveIndex;
   resetAnalysisVariation();
   if (baseIndex >= 0) {
-    window.showAnalysisMove(baseIndex);
+    window.showAnalysisMove(baseIndex, { forceAfter: expectedIndex === baseIndex + 1 });
     return;
   }
   analysisExpectedMoveIndex = expectedIndex;
@@ -3818,7 +3818,6 @@ function handleAnalysisDrop(source, target) {
   addAnalysisVariationMove(beforeFen, moveWithUci);
 }
 
-function moveObjectToUci(move) {
 function moveObjectToUci(move) {
   if (!move || !move.from || !move.to) return '';
   return `${move.from}${move.to}${move.promotion || ''}`;
@@ -4076,7 +4075,6 @@ window.playTopMove = function(uci) {
   addAnalysisVariationMove(beforeFen, moveWithUci);
 };
 
-// ТУТ БЫЛА ОШИБКА
 // ТУТ БЫЛА ОШИБКА, ТЕПЕРЬ ФУНКЦИЯ ЗАКРЫТА И ДОПИСАНА
 function formatMoveEvaluation(move) {
   if (!move) return '';
