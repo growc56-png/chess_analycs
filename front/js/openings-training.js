@@ -154,6 +154,10 @@
       renderCatalogList();
       return;
     }
+    if (state.catalogFirstMove === 'all') {
+      renderCatalogList();
+      return;
+    }
     const next = state.openings.find(item => item.side === side && startsWithCatalogMove(item));
     if (next) {
       byId('openingTrainerSelect').value = String(next.id);
