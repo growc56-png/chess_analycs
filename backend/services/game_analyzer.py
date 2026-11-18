@@ -833,11 +833,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                 deep_after_info["score"], mover
                             )
                             sacrifice_confirmed = bool(
-                                sacrifice_mate_trap_verified
-                                or (
-                                    before_expected < brilliant_was_already_winning_limit
-                                    and after_expected >= brilliant_after_position_floor
-                                )
+                                before_expected < brilliant_was_already_winning_limit
+                                and after_expected >= brilliant_after_position_floor
                             )
 
                         if deep_best_info and deep_after_info.get("score") is not None:
