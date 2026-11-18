@@ -549,6 +549,48 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 played_move_mate_score = None
                 played_info = None
                 analysis_depth_used = int(best_info.get("depth") or ANALYSIS_DEPTH)
+
+                # If the deep-analysis quota has already been used, do one
+                # focused check of a sacrifice instead of silently skipping it.
+                # This catches queen offers that force mate without paying for
+                # the full MultiPV + resulting-position + recapture verification.
+                if (
+                    is_sacrifice
+                    and deep_positions_checked >= MAX_DEEP_ANALYSIS_MOVES
+                    and before_board.legal_moves.count() > 0
+                ):
+                    try:
+                        focused_limit = get_engine_limit(
+                            depth=min(20, BRILLIANT_ANALYSIS_DEPTH),
+                            time_limit=min(0.45, BRILLIANT_ANALYSIS_TIME),
+                        )
+                        played_info = engine.analyse(
+                            before_board,
+                            focused_limit,
+                            root_moves=[move],
+                        )
+                        if isinstance(played_info, list):
+                            played_info = played_info[0] if played_info else {}
+                        played_move_mate_score = (
+                            played_info.get("score") if played_info else None
+                        )
+                        played_move_forces_mate = (
+                            _forced_mate_in_for(played_move_mate_score, mover) is not None
+                        )
+                        if played_move_forces_mate:
+                            sacrifice_confirmed = True
+                            deep_analysis_performed = True
+                            is_best = True
+                            is_accepted_winning_mate = True
+                            after_score = played_move_mate_score
+                            win_points_loss = 0.0
+                            centipawn_loss = 0
+                            analysis_depth_used = int(
+                                (played_info or {}).get("depth") or min(20, BRILLIANT_ANALYSIS_DEPTH)
+                            )
+                    except Exception:
+                        played_move_forces_mate = False
+
                 if (
                     deep_reason
                     and (deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES)
