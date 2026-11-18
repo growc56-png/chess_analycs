@@ -494,7 +494,7 @@ def evaluate_played_move(body: EvaluateMoveBody):
         )
 
 
-@router.post("/api/openings/variations")@router.post("/api/openings/variations")
+@router.post("/api/openings/variations")
 def get_opening_variations(body: OpeningVariationsBody):
     """Возвращает до 15 лучших легальных ответвлений из Stockfish."""
     with ENGINE_LOCK:
