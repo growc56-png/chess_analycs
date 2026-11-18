@@ -329,6 +329,9 @@
     if (state.pgnTraining) {
       state.pgnTraining = false;
       state.pgnBranches = [];
+      byId('openingPgnStart').disabled = true;
+      byId('openingPgnStatus').textContent = 'Выбран другой дебют. Импортируй PGN заново, если хочешь продолжить его ветки.';
+      byId('openingPgnBranches').hidden = true;
       state.opening = state.pgnOriginalOpening || summary;
       state.pgnOriginalOpening = null;
     }
@@ -1325,6 +1328,9 @@
     if (state.pgnTraining) {
       state.pgnTraining = false;
       state.pgnBranches = [];
+      byId('openingPgnStart').disabled = true;
+      byId('openingPgnStatus').textContent = 'Тренировка PGN остановлена. Разбери PGN ещё раз, чтобы начать заново.';
+      byId('openingPgnBranches').hidden = true;
       state.opening = state.pgnOriginalOpening || state.openings[0] || null;
       state.pgnOriginalOpening = null;
       if (state.opening) describeOpening();
