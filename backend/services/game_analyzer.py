@@ -602,7 +602,12 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         )
                         focused_after_score = focused_after_info.get("score")
 
-                        if played_move_forces_mate:
+                        if (
+                            played_move_forces_mate
+                            and before_score is not None
+                            and expected_points_from_score(before_score, mover)
+                            < brilliant_was_already_winning_limit
+                        ):
                             sacrifice_confirmed = True
                             deep_analysis_performed = True
                             is_best = True
@@ -925,6 +930,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     is_sacrifice
                     and deep_analysis_performed
                     and played_move_forces_mate
+                    and before_score is not None
+                    and expected_points_from_score(before_score, mover)
+                    < brilliant_was_already_winning_limit
                 ):
                     sacrifice_confirmed = True
                     is_best = True
