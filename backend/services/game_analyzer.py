@@ -501,7 +501,11 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 # for its graph score, the top lines and the next loop's
                 # pre-move position. This avoids duplicate searches.
                 after_infos = _normalise_engine_infos(
-                    get_position_analysis(engine, board)
+                    get_position_analysis(
+                        engine,
+                        board,
+                        depth=min(18, ANALYSIS_DEPTH) if i == 0 else None,
+                    )
                 )
                 after_info = after_infos[0] if after_infos else {}
                 after_score = after_info.get("score")
