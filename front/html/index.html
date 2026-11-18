@@ -6,7 +6,7 @@
 <title>Chess Trainer — Шахматный тренажёр</title>
 <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
 <link rel="stylesheet" href="/css/index.css?v=20261102-analysis-v1">
-<link rel="stylesheet" href="/css/index-layout.css?v=20261102-analysis-v3">
+<link rel="stylesheet" href="/css/index-layout.css?v=20261118-opening-training-card">
 <link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261117-user-variation-v1">
 <link rel="stylesheet" href="/css/coach.css?v=20261107-weekly-explanations-v1">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
@@ -47,7 +47,7 @@
       <button class="side-link tab-btn active" data-tab="plan"><span class="side-icon">▦</span><span>План тренировок</span></button>
       <!-- Раздел задач скрыт из меню и интерфейса. Служебные элементы ниже оставлены для совместимости со старым index.js. -->
       <button class="side-link tab-btn" data-tab="endgames"><span class="side-icon">♜</span><span>Эндшпили</span></button>
-      <a href="/openings" class="side-link"><span class="side-icon">♘</span><span>Дебюты</span><span class="side-arrow">↗</span></a>
+      <a href="/openings" class="side-link"><span class="side-icon">♘</span><span>Тренировка дебютов</span><span class="side-arrow">↗</span></a>
       <button class="side-link tab-btn" data-tab="analysis"><span class="side-icon">⌕</span><span>Анализ партий</span></button>
       <button class="side-link tab-btn" data-tab="errors"><span class="side-icon">⚡</span><span>Ошибки и тактика</span></button>
       <button class="side-link tab-btn" data-tab="blindfold"><span class="side-icon">◉</span><span>Слепая игра</span></button>
@@ -108,6 +108,13 @@
           <button class="daily-coach-analyze" id="dailyTrainingAnalyze" type="button">✦ Анализировать 50 партий и собрать план</button>
           <p class="daily-coach-hint" id="dailyTrainingHint">Отмечай завершённый день после реальной тренировки — это попадёт в дневник активности.</p>
         </section>
+
+        <a class="home-opening-training-card" href="/openings#pgn-import">
+          <span class="home-opening-training-icon">♘</span>
+          <span class="home-opening-training-copy"><strong>Тренировка дебютов</strong><small>Изучай Цукерторта, Колле или вставь PGN и пройди все варианты по очереди.</small></span>
+          <span class="home-opening-training-arrow">Открыть →</span>
+        </a>
+
         <div class="progress-card"><div class="progress-heading"><strong>Общий прогресс</strong><span id="progressText"></span></div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div></div>
         <div class="layout">
           <aside class="plan-sidebar"><div id="phases"></div><div class="week-list" id="weeks"></div></aside>
