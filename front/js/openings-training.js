@@ -4,7 +4,7 @@
 
   const PIECE_THEME = '/img/pieces/{piece}.png';
   const state = {
-    openings: [], opening: null, side: 'white', catalogSide: 'white', catalogFirstMove: 'e4', level: 'medium',
+    openings: [], opening: null, side: 'white', catalogSide: 'white', catalogFirstMove: 'all', level: 'medium',
     game: null, board: null, mode: 'idle', moveIndex: 0,
     botThinking: false, runId: 0, loadToken: 0, lastError: '',
     premoveQueue: [], virtualGame: null, deviationTraining: false,
@@ -29,17 +29,22 @@
   }
 
   function startsWithCatalogMove(opening) {
-    return Array.isArray(opening?.moves) && opening.moves[0] === state.catalogFirstMove;
+    return state.catalogFirstMove === 'all'
+      || (Array.isArray(opening?.moves) && opening.moves[0] === state.catalogFirstMove);
   }
 
   function setCatalogFirstMove(move) {
-    if (!['e4', 'd4', 'Nf3', 'c4'].includes(move)) return;
+    if (!['all', 'e4', 'd4', 'Nf3', 'c4'].includes(move)) return;
     state.catalogFirstMove = move;
     document.querySelectorAll('[data-opening-first-move]').forEach(button => {
       const active = button.dataset.openingFirstMove === move;
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+    if (move === 'all') {
+      renderCatalogList();
+      return;
+    }
     const next = state.openings.find(item => item.side === state.catalogSide && startsWithCatalogMove(item));
     if (next) {
       byId('openingTrainerSelect').value = String(next.id);
@@ -140,9 +145,6 @@
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 
-    document.querySelectorAll('[data-featured-opening]').forEach(button => {
-      button.addEventListener('click', () => chooseCatalogOpening(button.dataset.featuredOpening));
-    });
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       const active = button.dataset.openingCategory === side;
       button.classList.toggle('active', active);

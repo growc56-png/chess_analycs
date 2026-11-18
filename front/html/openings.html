@@ -17,7 +17,7 @@
   <script src="/js/chess-premove.js?v=20261103-unified-premove-v3" defer></script>
   <script src="/js/board-drawing.js?v=20261108-post-theory-v1" defer></script>
   <script src="/js/openings-data.js?v=20261115-zukertort-colle-v1" defer></script>
-  <script src="/js/openings-training.js?v=20261118-pgn-branches-v1" defer></script>
+  <script src="/js/openings-training.js?v=20261118-full-opening-catalog" defer></script>
 </head>
 <body class="openings-page-body">
   <div class="openings-app">
@@ -126,17 +126,12 @@
               <button type="button" class="active" data-opening-category="white" aria-pressed="true">♔ За белых</button>
               <button type="button" data-opening-category="black" aria-pressed="false">♚ За чёрных</button>
             </div>
-            <div class="opening-category-switch opening-first-move-switch" role="group" aria-label="Первый ход">
-              <button type="button" class="active" data-opening-first-move="e4" aria-pressed="true">1.e4</button>
+            <div class="opening-category-switch opening-first-move-switch" role="group" aria-label="Фильтр дебютов по первому ходу">
+              <button type="button" class="active" data-opening-first-move="all" aria-pressed="true">Все</button>
+              <button type="button" data-opening-first-move="e4" aria-pressed="false">1.e4</button>
               <button type="button" data-opening-first-move="d4" aria-pressed="false">1.d4</button>
               <button type="button" data-opening-first-move="Nf3" aria-pressed="false">1.Nf3</button>
               <button type="button" data-opening-first-move="c4" aria-pressed="false">1.c4</button>
-            </div>
-
-            <div class="opening-featured-picks" aria-label="Популярные дебюты за белых">
-              <span>БЫСТРЫЙ ВЫБОР</span>
-              <button type="button" data-featured-opening="zuckertort_classical">Цукерторт</button>
-              <button type="button" data-featured-opening="colle_classical">Система Колле</button>
             </div>
             <div id="openingCatalogList" class="opening-catalog-list">
               <div class="opening-catalog-empty">Каталог загружается…</div>

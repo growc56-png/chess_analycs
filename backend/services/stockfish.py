@@ -228,9 +228,14 @@ def _info_score_sort_value(info, pov):
         return -1e9
 
 
-def get_position_analysis(engine, board):
-    """Get up to three unique legal root lines with resilient MultiPV fallback."""
-    limit = get_engine_limit()
+def get_position_analysis(engine, board, depth=None):
+    """Get up to three unique legal root lines with resilient MultiPV fallback.
+
+    The optional depth keeps the initial opening search quick while played
+    positions retain the configured deep analysis depth.
+    """
+    search_depth = ANALYSIS_DEPTH if depth is None else max(8, int(depth))
+    limit = get_engine_limit(depth=search_depth)
     legal_moves = list(board.legal_moves)
     desired_count = min(3, len(legal_moves))
 
@@ -285,7 +290,7 @@ def get_position_analysis(engine, board):
             pass
 
     if len(candidates) < desired_count:
-        fallback_depth = max(8, min(11, int(ANALYSIS_DEPTH or 11)))
+        fallback_depth = max(8, min(11, int(search_depth or 11)))
         fallback_time = max(0.045, min(0.10, float(ANALYSIS_TIME or 1.0) / 14.0))
         fallback_limit = chess.engine.Limit(
             depth=fallback_depth,

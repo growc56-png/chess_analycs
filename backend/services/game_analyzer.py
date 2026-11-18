@@ -392,7 +392,14 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
             if progress_callback:
                 progress_callback(0, total_moves, "initial_position")
 
-            prev_infos = get_position_analysis(engine, board)
+            # Стартовая позиция обычно находится в дебютной теории. Не заставляем
+            # игрока ждать полного depth 40 перед первым ходом: используем быстрый
+            # MultiPV-поиск, а все позиции после сыгранных ходов анализируем как прежде.
+            prev_infos = get_position_analysis(
+                engine,
+                board,
+                depth=min(18, ANALYSIS_DEPTH),
+            )
 
             if not prev_infos:
                 raise HTTPException(

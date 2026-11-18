@@ -107,6 +107,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab === 'openings' && openingBoard) setTimeout(() => openingBoard.resize(), 50);
     if (btn.dataset.tab === 'analysis' && analysisBoard) setTimeout(() => {
       analysisBoard.resize();
+      drawGraph(fullEvals, currentAnalysisIndex);
       if (currentAnalysisIndex >= 0 && analysisMoves[currentAnalysisIndex]) {
         drawBoardBadge(analysisMoves[currentAnalysisIndex]);
       }
@@ -2537,6 +2538,22 @@ function initAnalysis() {
   }
   initAnalysisArrowResize();
 
+  const evalChart = document.getElementById('evalGraph');
+  if (evalChart && !evalChart.dataset.bound) {
+    evalChart.addEventListener('click', event => {
+      if (!analysisMoves.length || typeof window.showAnalysisMove !== 'function') return;
+      const rect = evalChart.getBoundingClientRect();
+      if (!rect.width) return;
+      const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+      window.showAnalysisMove(Math.round(ratio * (analysisMoves.length - 1)));
+    });
+    evalChart.dataset.bound = '1';
+  }
+  if (!window.analysisEvalChartResizeBound) {
+    window.addEventListener('resize', () => drawGraph(fullEvals, currentAnalysisIndex), { passive: true });
+    window.analysisEvalChartResizeBound = true;
+  }
+
   const refreshLinesButton = document.getElementById('refreshEngineLinesBtn');
   if (refreshLinesButton) {
     refreshLinesButton.addEventListener('click', () => {
@@ -2887,40 +2904,63 @@ function renderEvalAdvantageDots(evals, currentIndex = -1) {
 }
 
 function drawGraph(evals, currentIndex = -1) {
-  renderEvalAdvantageDots(evals, currentIndex);
   const canvas = document.getElementById('evalGraph');
+  if (!canvas) return;
+  const compact = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+  const boardArea = document.querySelector('#tab-analysis .board-area');
+  const boardHeight = boardArea ? Math.round(boardArea.getBoundingClientRect().height) : 420;
+  const width = Math.max(120, Math.round(canvas.getBoundingClientRect().width || (compact ? 320 : 150)));
+  const height = compact ? 112 : Math.max(240, boardHeight || 420);
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+  canvas.style.height = height + 'px';
   const ctx = canvas.getContext('2d');
-  const w = canvas.width; const h = canvas.height;
-  
+  const w = canvas.width, h = canvas.height, middle = Math.round(h / 2);
+  const margin = Math.min(10, Math.max(5, w * 0.04));
+  const usableWidth = Math.max(1, w - margin * 2);
+  const values = Array.isArray(evals)
+    ? evals.map(value => Number.isFinite(Number(value)) ? Math.max(-8, Math.min(8, Number(value))) : 0)
+    : [];
   ctx.clearRect(0, 0, w, h);
-  if (!evals || evals.length === 0) return;
-  
-  ctx.fillStyle = '#262522'; ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#312e2b'; ctx.fillRect(0, 0, w, h / 2);
-  
-  const step = w / (evals.length || 1);
-  ctx.beginPath(); ctx.moveTo(0, h / 2);
-  
-  for (let i = 0; i < evals.length; i++) {
-    const x = i * step;
-    let evalVal = Math.max(-10, Math.min(10, evals[i]));
-    let y = (h / 2) - (evalVal / 10 * (h / 2)); 
-    ctx.lineTo(x, y);
+  ctx.fillStyle = '#e8eae7'; ctx.fillRect(0, 0, w, middle);
+  ctx.fillStyle = '#252b31'; ctx.fillRect(0, middle, w, h - middle);
+  ctx.fillStyle = '#59665c'; ctx.font = '800 9px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('БЕЛЫЕ +', 6, 12);
+  ctx.fillStyle = '#d6dadd'; ctx.fillText('ЧЁРНЫЕ −', 6, h - 5);
+  ctx.strokeStyle = 'rgba(110,125,132,.65)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, middle + .5); ctx.lineTo(w, middle + .5); ctx.stroke();
+  if (!values.length) {
+    ctx.fillStyle = '#6e777b'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Анализ появится здесь', w / 2, middle - 10);
+    return;
   }
-  
-  ctx.lineTo(w, h / 2);
-  ctx.strokeStyle = '#81b64c'; ctx.lineWidth = 2; ctx.stroke();
-  
-  ctx.lineTo(w, h); ctx.lineTo(0, h);
-  ctx.fillStyle = 'rgba(129, 182, 76, 0.2)'; ctx.fill();
-
-  if (currentIndex >= 0 && currentIndex < evals.length) {
-    const curX = currentIndex * step;
-    ctx.beginPath(); ctx.moveTo(curX, 0); ctx.lineTo(curX, h);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; ctx.lineWidth = 2; ctx.stroke();
-  }
+  const xAt = index => values.length === 1 ? w / 2 : margin + (index / (values.length - 1)) * usableWidth;
+  const yAt = value => middle - (value / 8) * (middle - 20);
+  const points = values.map((value, index) => ({ x: xAt(index), y: yAt(value), value }));
+  ctx.beginPath(); ctx.moveTo(points[0].x, middle);
+  points.forEach(point => ctx.lineTo(point.x, point.y));
+  ctx.lineTo(points[points.length - 1].x, middle); ctx.closePath();
+  ctx.fillStyle = 'rgba(112, 164, 91, .32)'; ctx.fill();
+  ctx.beginPath();
+  points.forEach((point, index) => index === 0 ? ctx.moveTo(point.x, point.y) : ctx.lineTo(point.x, point.y));
+  ctx.strokeStyle = '#5f984a'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+  points.forEach((point, index) => {
+    const selected = index === currentIndex, positive = point.value >= 0;
+    const color = selected ? '#e0a83e' : (positive ? '#3e5140' : '#f0f1ef');
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = selected ? 2.5 : 1;
+    ctx.beginPath(); ctx.moveTo(point.x, middle); ctx.lineTo(point.x, point.y); ctx.stroke();
+    const direction = positive ? -1 : 1, head = selected ? 5 : 3;
+    ctx.beginPath(); ctx.moveTo(point.x, point.y);
+    ctx.lineTo(point.x - head, point.y + direction * head * 1.6);
+    ctx.lineTo(point.x + head, point.y + direction * head * 1.6);
+    ctx.closePath(); ctx.fill();
+    if (selected) {
+      ctx.strokeStyle = 'rgba(224,168,62,.9)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(point.x, 18); ctx.lineTo(point.x, h - 18); ctx.stroke();
+      ctx.fillStyle = '#e0a83e'; ctx.beginPath(); ctx.arc(point.x, point.y, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  });
 }
-
 document.addEventListener('keydown', function(e) {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
@@ -3904,8 +3944,10 @@ function updateEvalBar(isMate, mateIn, evalScore) {
   if (isMate) whitePercent = mateIn > 0 ? 100 : 0;
   else whitePercent = Math.max(0, Math.min(100, 50 + (evalScore * 5)));
   
-  document.getElementById('evalBarWhite').style.height = whitePercent + '%';
-  document.getElementById('evalText').textContent = formatEvalString(isMate, mateIn, evalScore);
+  const whiteBar = document.getElementById('evalBarWhite');
+  if (whiteBar) whiteBar.style.height = whitePercent + '%';
+  const evalText = document.getElementById('evalText');
+  if (evalText) evalText.textContent = formatEvalString(isMate, mateIn, evalScore);
 }
 
 let currentPositionEvaluationId = 0;
