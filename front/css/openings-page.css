@@ -294,3 +294,8 @@ body.openings-page-body {
 .opening-pgn-branches li span { overflow:hidden; color:#b7c8d5; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
 .opening-pgn-branches li small { grid-column:2; color:#8098aa; font-size:9px; }
 @media(max-width:620px) { .opening-pgn-actions { grid-template-columns:1fr; } }
+
+.opening-featured-picks { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.opening-featured-picks > span { width:100%; color:#8199ab; font-size:9px; font-weight:900; letter-spacing:.1em; }
+.opening-featured-picks button { padding:7px 9px; border:1px solid rgba(100,198,162,.22); border-radius:8px; color:#a8e4c9; background:rgba(49,141,107,.1); cursor:pointer; font:inherit; font-size:10px; font-weight:800; }
+.opening-featured-picks button:hover { border-color:rgba(100,198,162,.6); background:rgba(49,141,107,.22); }
