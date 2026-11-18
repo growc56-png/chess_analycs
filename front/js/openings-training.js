@@ -9,7 +9,8 @@
     botThinking: false, runId: 0, loadToken: 0, lastError: '',
     premoveQueue: [], virtualGame: null, deviationTraining: false,
     detailCache: new Map(), openingBotVariants: [], openingBotFamily: '', openingBotSaved: false,
-    studyLine: [], explorerRequestId: 0
+    studyLine: [], explorerRequestId: 0,
+    pgnBranches: [], pgnBranchIndex: 0, pgnTraining: false, pgnOriginalOpening: null
   };
 
   const $ = (id) => document.getElementById(id);
@@ -321,6 +322,12 @@
     if (!summary) return;
 
     const token = ++state.loadToken;
+    if (state.pgnTraining) {
+      state.pgnTraining = false;
+      state.pgnBranches = [];
+      state.opening = state.pgnOriginalOpening || summary;
+      state.pgnOriginalOpening = null;
+    }
     byId('openingBotResult').hidden = true;
     state.runId++;
     state.botThinking = false;
@@ -647,6 +654,7 @@
     if (run !== state.runId || state.mode !== 'practice' || state.botThinking) return;
     if (state.game.turn() === userColor()) {
       if (state.moveIndex >= state.opening.moves.length) {
+        if (state.pgnTraining) { finishPgnBranch(run); return; }
         enterEngineMode(run);
         return;
       }
@@ -658,6 +666,7 @@
       return;
     }
     if (state.moveIndex >= state.opening.moves.length) {
+      if (state.pgnTraining) { finishPgnBranch(run); return; }
       enterEngineMode(run);
       return;
     }
@@ -681,10 +690,14 @@
       if (state.game.turn() === userColor() && state.premoveQueue.length) {
         // Если линия уже закончилась ходом соперника, переходим к игре
         // против движка и выполняем очередь как обычный легальный премув.
-        if (state.moveIndex >= state.opening.moves.length) enterEngineMode(run);
+        if (state.moveIndex >= state.opening.moves.length) {
+          if (state.pgnTraining) { finishPgnBranch(run); return; }
+          enterEngineMode(run);
+        }
         executeOpeningPremove(run);
       } else if (state.moveIndex >= state.opening.moves.length) {
-        enterEngineMode(run);
+        if (state.pgnTraining) finishPgnBranch(run);
+        else enterEngineMode(run);
       } else {
         maybePlayBookMove(run);
       }
@@ -830,6 +843,147 @@
     }
   }
 
+
+  function parsePgnBranches(source) {
+    const text = String(source || '');
+    if (!text.trim()) throw new Error('Вставь текст PGN.');
+    if (/\[FEN\s+"/i.test(text)) throw new Error('PGN с нестандартной начальной позицией пока не поддерживается. Удали тег FEN или используй обычную начальную позицию.');
+    const cleaned = text
+      .replace(/\[[^\]]*\]/g, ' ')
+      .replace(/\{[^}]*\}/gs, ' ')
+      .replace(/;[^\r\n]*/g, ' ')
+      .replace(/\$\d+/g, ' ')
+      .replace(/\d+\.(?:\.\.)?/g, ' ')
+      .replace(/\b(?:1-0|0-1|1\/2-1\/2|\*)\b/g, ' ');
+    const tokens = cleaned.match(/\(|\)|[^\s]+/g) || [];
+    let game = new Chess();
+    let path = [];
+    const stack = [];
+    const branches = [];
+    for (const raw of tokens) {
+      if (raw === '(') {
+        if (!path.length || !game.history().length) throw new Error('Не удалось определить позицию начала варианта PGN.');
+        const mainline = { game: new Chess(game.fen()), path: path.slice() };
+        game.undo();
+        path.pop();
+        stack.push(mainline);
+        continue;
+      }
+      if (raw === ')') {
+        if (!stack.length) throw new Error('В PGN есть закрывающая скобка без открывающей.');
+        if (path.length > stack[stack.length - 1].path.length) {
+          branches.push({ moves: path.slice(), source: 'variation' });
+        }
+        const mainline = stack.pop();
+        game = mainline.game;
+        path = mainline.path;
+        continue;
+      }
+      const san = raw.replace(/[!?]+$/g, '');
+      if (!san || /^(?:e\.p\.|ep)$/i.test(san) || /^(?:1-0|0-1|1\/2-1\/2|\*)$/.test(san)) continue;
+      let move = null;
+      try { move = game.move(san); } catch (_) {}
+      if (!move) throw new Error('Не удалось разобрать ход "' + raw + '". Проверь SAN и скобки в PGN.');
+      path.push(move.san);
+    }
+    if (stack.length) throw new Error('В PGN не закрыта одна или несколько скобок вариантов.');
+    if (path.length) branches.push({ moves: path.slice(), source: 'mainline' });
+    const unique = [];
+    const seen = new Set();
+    branches.forEach(branch => {
+      const key = branch.moves.join(' ');
+      if (branch.moves.length && !seen.has(key)) {
+        seen.add(key);
+        unique.push(branch);
+      }
+    });
+    if (!unique.length) throw new Error('В PGN не найдено ни одной последовательности ходов.');
+    unique.sort((a, b) => a.source === 'mainline' ? -1 : b.source === 'mainline' ? 1 : 0);
+    return unique;
+  }
+
+  function parseImportedPgn() {
+    const status = byId('openingPgnStatus');
+    const start = byId('openingPgnStart');
+    try {
+      state.pgnBranches = parsePgnBranches(byId('openingPgnInput').value);
+      state.pgnBranchIndex = 0;
+      const host = byId('openingPgnBranches');
+      host.hidden = false;
+      host.innerHTML = state.pgnBranches.map((branch, index) =>
+        '<li><strong>Ветка ' + (index + 1) + '</strong><span>' +
+        escapeHtml(branch.moves.slice(0, 12).join(' ')) +
+        (branch.moves.length > 12 ? ' …' : '') +
+        '</span><small>' + branch.moves.length + ' полуходов</small></li>'
+      ).join('');
+      status.textContent = 'Найдено веток: ' + state.pgnBranches.length + '. Каждая будет пройдена отдельно.';
+      start.disabled = false;
+    } catch (error) {
+      state.pgnBranches = [];
+      byId('openingPgnBranches').hidden = true;
+      status.textContent = error.message;
+      start.disabled = true;
+    }
+  }
+
+  function startPgnBranch(index) {
+    if (!state.pgnTraining || index >= state.pgnBranches.length) return;
+    state.pgnBranchIndex = index;
+    const branch = state.pgnBranches[index];
+    state.opening = {
+      id: 'pgn-import-' + index, side: state.side, family: 'Импортированный PGN',
+      name: 'Ветка ' + (index + 1) + ' из ' + state.pgnBranches.length,
+      moves: branch.moves, description: 'Повторение ветки из вставленного PGN.',
+      plans_white: 'Повтори точные ходы из импортированной партии.',
+      plans_black: 'Повтори точные ходы из импортированной партии.'
+    };
+    describeOpening();
+    state.runId++;
+    const run = state.runId;
+    state.botThinking = false;
+    resetGame();
+    setMode('practice');
+    refreshBoardClickToMove();
+    byId('openingPracticeStatus').textContent = 'Ветка ' + (index + 1) + ' из ' + state.pgnBranches.length + '. Вспоминай свои ходы.';
+    setMessage('PGN-тренировка: ветка ' + (index + 1) + ' из ' + state.pgnBranches.length + '.', 'info');
+    updateProgress();
+    maybePlayBookMove(run);
+  }
+
+  function finishPgnBranch(run) {
+    if (run !== state.runId || !state.pgnTraining) return false;
+    const completed = state.pgnBranchIndex + 1;
+    if (completed < state.pgnBranches.length) {
+      setMessage('Ветка ' + completed + ' пройдена! Загружаю следующую ветку…', 'success');
+      setTimeout(() => {
+        if (state.pgnTraining && run === state.runId) startPgnBranch(completed);
+      }, 900);
+      return true;
+    }
+    state.pgnTraining = false;
+    state.pgnBranches = [];
+    state.pgnBranchIndex = 0;
+    state.opening = state.pgnOriginalOpening || state.openings[0] || null;
+    state.pgnOriginalOpening = null;
+    state.runId++;
+    state.botThinking = false;
+    resetGame();
+    setMode('idle');
+    if (state.opening) describeOpening();
+    byId('openingPgnStatus').textContent = 'Все ветки PGN пройдены. Отличная работа!';
+    byId('openingPgnStart').disabled = false;
+    setMessage('Ты прошёл все ветки импортированного PGN!', 'success');
+    return true;
+  }
+
+  function startImportedPgnTraining() {
+    if (!state.pgnBranches.length) return;
+    state.pgnOriginalOpening = state.opening;
+    state.pgnTraining = true;
+    state.pgnBranchIndex = 0;
+    startPgnBranch(0);
+  }
+
   function enterEngineMode(run) {
     if (run !== state.runId) return;
     state.mode = 'engine';
@@ -933,6 +1087,7 @@
     setMessage('Премув выполнен: ' + executed.move.san + '.', 'success');
     byId('openingPracticeStatus').textContent = 'Премув выполнен. Бот отвечает…';
     if (state.mode === 'practice' && state.moveIndex >= state.opening.moves.length && !state.deviationTraining) {
+      if (state.pgnTraining) { finishPgnBranch(run); return; }
       enterEngineMode(run);
     } else if (state.mode === 'practice') {
       setTimeout(() => maybePlayBookMove(run), 160);
@@ -982,8 +1137,10 @@
       const run = state.runId;
       setTimeout(() => {
         if (run !== state.runId) return;
-        if (state.moveIndex >= state.opening.moves.length && !state.deviationTraining) enterEngineMode(run);
-        else maybePlayBookMove(run);
+        if (state.moveIndex >= state.opening.moves.length && !state.deviationTraining) {
+          if (state.pgnTraining) finishPgnBranch(run);
+          else enterEngineMode(run);
+        } else maybePlayBookMove(run);
       }, 220);
     } else if (state.mode === 'opening-bot') {
       updateProgress();
@@ -1159,6 +1316,13 @@
   }
 
   function resetTraining() {
+    if (state.pgnTraining) {
+      state.pgnTraining = false;
+      state.pgnBranches = [];
+      state.opening = state.pgnOriginalOpening || state.openings[0] || null;
+      state.pgnOriginalOpening = null;
+      if (state.opening) describeOpening();
+    }
     state.runId++;
     state.botThinking = false;
     resetGame();
@@ -1169,6 +1333,8 @@
 
   function bindEvents() {
     byId('openingTrainerSelect').addEventListener('change', () => selectOpening());
+    byId('openingPgnParse').addEventListener('click', parseImportedPgn);
+    byId('openingPgnStart').addEventListener('click', startImportedPgnTraining);
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       button.addEventListener('click', () => setCatalogSide(button.dataset.openingCategory));
     });
