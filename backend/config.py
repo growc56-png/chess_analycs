@@ -78,16 +78,16 @@ BOT_ENGINE_HASH_MB = _int_setting("CHESS_BOT_ENGINE_HASH_MB", 64, 16, 1024)
 
 # Game review always searches to the configured maximum depth. Time values
 # remain available as metadata, but are not used to cut the search short.
-ANALYSIS_DEPTH = 40
-ANALYSIS_TIME = _float_setting("CHESS_ANALYSIS_TIME", 2.5, 0.1, 120.0)
+ANALYSIS_DEPTH = _int_setting("CHESS_ANALYSIS_DEPTH", 16, 10, 24)
+ANALYSIS_TIME = _float_setting("CHESS_ANALYSIS_TIME", 0.18, 0.05, 5.0)
 
 # Critical positions and sacrifices receive an even deeper verification pass.
-DEEP_ANALYSIS_DEPTH = 45
-DEEP_ANALYSIS_TIME = _float_setting("CHESS_DEEP_ANALYSIS_TIME", 3.5, 0.2, 180.0)
-MAX_DEEP_ANALYSIS_MOVES = _int_setting("CHESS_MAX_DEEP_ANALYSIS_MOVES", 32, 0, 100)
+DEEP_ANALYSIS_DEPTH = _int_setting("CHESS_DEEP_ANALYSIS_DEPTH", 20, 12, 28)
+DEEP_ANALYSIS_TIME = _float_setting("CHESS_DEEP_ANALYSIS_TIME", 0.45, 0.1, 8.0)
+MAX_DEEP_ANALYSIS_MOVES = _int_setting("CHESS_MAX_DEEP_ANALYSIS_MOVES", 5, 0, 12)
 
-BRILLIANT_ANALYSIS_DEPTH = 50
-BRILLIANT_ANALYSIS_TIME = _float_setting("CHESS_BRILLIANT_ANALYSIS_TIME", 6.0, 0.3, 240.0)
+BRILLIANT_ANALYSIS_DEPTH = _int_setting("CHESS_BRILLIANT_ANALYSIS_DEPTH", 22, 14, 30)
+BRILLIANT_ANALYSIS_TIME = _float_setting("CHESS_BRILLIANT_ANALYSIS_TIME", 0.7, 0.15, 10.0)
 
 EVALUATE_DEPTH = _int_setting("CHESS_EVALUATE_DEPTH", 15, 8, 40)
 EVALUATE_TIME = _float_setting("CHESS_EVALUATE_TIME", 1.2, 0.1, 60.0)
