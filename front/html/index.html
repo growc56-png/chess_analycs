@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="/css/daily-dashboard.css?v=20261107-weekly-progress-v1">
 <link rel="stylesheet" href="/css/theme-unified.css?v=20261107-analysis-icons-pgn-v2">
 <link rel="stylesheet" href="/css/subscription.css?v=20261115-subscription-v1">
+<link rel="stylesheet" href="/css/chess-assessment.css?v=20261118-v1">
 <script src="/js/board-interactions.js?v=20261102-clickmove-v2" defer></script>
 <script src="/js/jquery.min.js"></script>
 <script src="/js/chessboard-1.0.0.min.js?v=20261102-rightclick-v1"></script>
@@ -27,6 +28,7 @@
 <script src="/js/coach.js?v=20261107-weekly-explanations-v1" defer></script>
 <script src="/js/errors.js?v=20261115-knight-fork-v1" defer></script>
 <script src="/js/subscription.js?v=20261115-two-year-v1" defer></script>
+<script src="/js/chess-assessment.js?v=20261118-v1" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -44,7 +46,7 @@
 
     <div class="sidebar-section-label">ТРЕНИРОВКА</div>
     <nav class="sidebar-nav">
-      <button class="side-link tab-btn active" data-tab="plan"><span class="side-icon">▦</span><span>План тренировок</span></button>
+      <button class="side-link tab-btn active" data-tab="assessment"><span class="side-icon">✓</span><span>Тест шахматиста</span></button>
       <!-- Раздел задач скрыт из меню и интерфейса. Служебные элементы ниже оставлены для совместимости со старым index.js. -->
       <button class="side-link tab-btn" data-tab="endgames"><span class="side-icon">♜</span><span>Эндшпили</span></button>
       <a href="/openings" class="side-link"><span class="side-icon">♘</span><span>Тренировка дебютов</span><span class="side-arrow">↗</span></a>
@@ -89,7 +91,28 @@
     <main class="main-content">
       <div id="error-banner"></div>
 
-      <section id="tab-plan" class="tab-content active">
+      <section id="tab-assessment" class="tab-content active">
+        <div class="section-heading"><div><div class="section-kicker">ШАХМАТНАЯ ДИАГНОСТИКА</div><h2>Тест шахматиста</h2><p>Ответь честно — так тренер поймёт, что именно мешает тебе расти</p></div><div class="section-badge">10 вопросов · 3 минуты</div></div>
+        <section class="assessment-intro coach-panel">
+          <div><span class="coach-label">ТВОЯ ТОЧКА СТАРТА</span><h3>Насколько хорошо ты знаешь свою игру?</h3><p>Здесь нет правильных и неправильных ответов. Укажи, как обычно играешь в рапид, а не как получается в лучшей партии. По результатам появятся твои сильные стороны и главные направления тренировки.</p></div>
+          <div class="assessment-progress"><div class="assessment-progress-track"><i id="assessmentProgressFill"></i></div><span id="assessmentProgressText">0 из 10 ответов</span></div>
+        </section>
+        <form id="chessAssessmentForm" class="assessment-form">
+          <div class="assessment-question"><label for="assRating"><span>01</span> Какой у тебя сейчас рейтинг в рапид?</label><select id="assRating" name="rating" required><option value="">Выбери диапазон</option><option value="under1000">До 1000</option><option value="1000-1200">1000–1200</option><option value="1200-1400">1200–1400</option><option value="1400-1600">1400–1600</option><option value="1600-1800">1600–1800</option><option value="1800-2000">1800–2000</option><option value="2000+">Выше 2000</option></select></div>
+          <div class="assessment-question"><label for="assCalculation"><span>02</span> На сколько полуходов вперёд ты обычно считаешь варианты?</label><select id="assCalculation" name="calculation" required><option value="">Выбери ответ</option><option value="1">1–2 полухода</option><option value="2">3–4 полухода</option><option value="3">5–6 полуходов</option><option value="4">7 и больше, если позиция требует</option><option value="0">Чаще играю интуитивно</option></select></div>
+          <div class="assessment-question"><label for="assBlunders"><span>03</span> Как часто ты зеваешь фигуры или тактику?</label><select id="assBlunders" name="blunders" required><option value="">Выбери ответ</option><option value="4">Почти в каждой партии</option><option value="3">Примерно раз в 2–3 партии</option><option value="2">Примерно раз в 4–6 партий</option><option value="1">Редко, раз в 7–10 партий</option><option value="0">Почти никогда</option></select></div>
+          <div class="assessment-question"><label for="assTactics"><span>04</span> Как чувствуешь себя в тактических позициях?</label><select id="assTactics" name="tactics" required><option value="">Выбери ответ</option><option value="0">Часто не замечаю даже простые угрозы</option><option value="1">Простые вилки и связки нахожу, сложные — редко</option><option value="2">Обычно вижу комбинации в 2–3 хода</option><option value="3">Хорошо рассчитываю сложные комбинации</option></select></div>
+          <div class="assessment-question"><label for="assTime"><span>05</span> Как часто попадаешь в цейтнот?</label><select id="assTime" name="time" required><option value="">Выбери ответ</option><option value="3">Почти каждую партию</option><option value="2">Часто, особенно в сложных позициях</option><option value="1">Иногда</option><option value="0">Редко, обычно хватает времени</option></select></div>
+          <div class="assessment-question"><label for="assOpening"><span>06</span> Насколько хорошо знаешь свои дебюты?</label><select id="assOpening" name="opening" required><option value="">Выбери ответ</option><option value="0">Знаю только первые 2–3 хода</option><option value="1">Знаю основные идеи и ловушки</option><option value="2">Помню типовые планы и варианты</option><option value="3">Понимаю планы и знаю, что делать при отклонениях</option></select></div>
+          <div class="assessment-question"><label for="assEndgame"><span>07</span> Как оцениваешь свои знания эндшпиля?</label><select id="assEndgame" name="endgame" required><option value="">Выбери ответ</option><option value="0">Часто теряюсь, когда фигур мало</option><option value="1">Знаю базовые маты и оппозицию</option><option value="2">Уверенно играю простые пешечные и ладейные окончания</option><option value="3">Знаю ключевые позиции и умею реализовывать перевес</option></select></div>
+          <div class="assessment-question"><label for="assReview"><span>08</span> Как часто разбираешь собственные партии?</label><select id="assReview" name="review" required><option value="">Выбери ответ</option><option value="0">Практически никогда</option><option value="1">Только после поражений</option><option value="2">Несколько партий в неделю</option><option value="3">Почти каждую важную партию</option></select></div>
+          <div class="assessment-question"><label for="assTraining"><span>09</span> Сколько времени реально готов уделять шахматам ежедневно?</label><select id="assTraining" name="training" required><option value="">Выбери ответ</option><option value="15">До 15 минут</option><option value="30">15–30 минут</option><option value="60">Около часа</option><option value="90">1–2 часа</option><option value="120">Больше 2 часов</option></select></div>
+          <div class="assessment-question"><label for="assGoal"><span>10</span> Какой рейтинг хочешь получить в ближайшей большой цели?</label><select id="assGoal" name="goal" required><option value="">Выбери цель</option><option value="1400">1400</option><option value="1600">1600</option><option value="1800">1800</option><option value="2000">2000</option><option value="2200">2200+</option></select></div>
+          <div class="assessment-actions"><button class="action-btn coach-primary-btn" type="submit">Получить мой профиль →</button><button class="action-btn" type="button" id="assessmentReset">Сбросить ответы</button></div>
+        </form>
+        <section class="coach-panel assessment-result" id="assessmentResult" hidden aria-live="polite"><div class="coach-label">ТВОЙ РЕЗУЛЬТАТ</div><h3 id="assessmentResultTitle">Твой профиль</h3><p id="assessmentResultSummary"></p><div id="assessmentPriorities" class="assessment-priorities"></div><div class="assessment-result-footer"><span id="assessmentTrainingTime"></span><button class="action-btn" type="button" id="assessmentEdit">Изменить ответы</button></div></section>
+      </section>
+      <section id="tab-plan-legacy" class="tab-content" hidden><section id="tab-plan-legacy" class="tab-content">
         <div class="section-heading"><div><div class="section-kicker">ТВОЙ МАРШРУТ</div><h2>План тренировок</h2><p id="planIntroText">Твой персональный маршрут к выбранному рейтингу</p></div><div class="section-badge" id="planDurationBadge">Персональный план</div></div>
         <div id="goalSummary" class="goal-summary" hidden></div>
         <div id="recommendations-banner"><h3>💡 Персональные рекомендации:</h3><ul id="recommendations-list"></ul></div>
@@ -123,11 +146,8 @@
             <div id="dayView"></div>
           </main>
         </div>
-      </section>
-
-
-
-      <section id="tab-errors" class="tab-content">
+      </section></section>
+      <section id="tab-errors"<section id="tab-errors" class="tab-content">
         <div class="section-heading">
           <div><div class="section-kicker">ТАКТИЧЕСКАЯ ДИАГНОСТИКА</div><h2>Ошибки и тактика</h2><p>Здесь только пропущенные тактические возможности: вилки, связки, вскрытые шахи и матовые идеи</p></div>
           <div class="section-badge">10 последних партий</div>
