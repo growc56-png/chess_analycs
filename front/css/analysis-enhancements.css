@@ -1565,7 +1565,7 @@
 /* Chess.com-style move evaluation mountain next to the analysis board. */
 #tab-analysis .left-panel {
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) 150px !important;
+  grid-template-columns: minmax(0, 1fr) 38px !important;
   align-items: start !important;
   justify-content: stretch !important;
   gap: 10px !important;
@@ -1578,8 +1578,9 @@
 #tab-analysis .left-panel > .analysis-eval-chart {
   position: relative;
   display: block;
-  width: 150px !important;
-  min-width: 0;
+  width: 38px !important;
+  min-width: 38px !important;
+  flex: 0 0 38px;
   margin: 43px 0 0 !important;
   padding: 0;
 }
@@ -1606,6 +1607,7 @@
   display: flex;
   justify-content: space-between;
   gap: 5px;
+  display: none;
   margin-top: 6px;
   color: #94a3ad;
   font-size: 9px;
