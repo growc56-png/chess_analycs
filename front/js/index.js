@@ -2909,7 +2909,7 @@ function drawGraph(evals, currentIndex = -1) {
   const compact = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
   const boardArea = document.querySelector('#tab-analysis .board-area');
   const boardHeight = boardArea ? Math.round(boardArea.getBoundingClientRect().height) : 420;
-  const width = Math.max(120, Math.round(canvas.getBoundingClientRect().width || (compact ? 320 : 150)));
+  const width = Math.max(compact ? 120 : 32, Math.round(canvas.getBoundingClientRect().width || (compact ? 320 : 38)));
   const height = compact ? 112 : Math.max(240, boardHeight || 420);
   if (canvas.width !== width) canvas.width = width;
   if (canvas.height !== height) canvas.height = height;
@@ -2924,9 +2924,11 @@ function drawGraph(evals, currentIndex = -1) {
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = '#e8eae7'; ctx.fillRect(0, 0, w, middle);
   ctx.fillStyle = '#252b31'; ctx.fillRect(0, middle, w, h - middle);
-  ctx.fillStyle = '#59665c'; ctx.font = '800 9px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText('БЕЛЫЕ +', 6, 12);
-  ctx.fillStyle = '#d6dadd'; ctx.fillText('ЧЁРНЫЕ −', 6, h - 5);
+  if (compact) {
+    ctx.fillStyle = '#59665c'; ctx.font = '800 9px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('БЕЛЫЕ +', 6, 12);
+    ctx.fillStyle = '#d6dadd'; ctx.fillText('ЧЁРНЫЕ −', 6, h - 5);
+  }
   ctx.strokeStyle = 'rgba(110,125,132,.65)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, middle + .5); ctx.lineTo(w, middle + .5); ctx.stroke();
   if (!values.length) {
