@@ -949,6 +949,7 @@
     setMode('practice');
     refreshBoardClickToMove();
     byId('openingPracticeStatus').textContent = 'Ветка ' + (index + 1) + ' из ' + state.pgnBranches.length + '. Вспоминай свои ходы.';
+    byId('openingPgnStatus').textContent = 'Тренировка: ветка ' + (index + 1) + ' из ' + state.pgnBranches.length + '.';
     setMessage('PGN-тренировка: ветка ' + (index + 1) + ' из ' + state.pgnBranches.length + '.', 'info');
     updateProgress();
     maybePlayBookMove(run);
@@ -958,14 +959,15 @@
     if (run !== state.runId || !state.pgnTraining) return false;
     const completed = state.pgnBranchIndex + 1;
     if (completed < state.pgnBranches.length) {
+      state.mode = 'pgn-transition';
       setMessage('Ветка ' + completed + ' пройдена! Загружаю следующую ветку…', 'success');
+      byId('openingPgnStatus').textContent = 'Пройдено ' + completed + ' из ' + state.pgnBranches.length + ' веток. Следующая — ' + (completed + 1) + '.';
       setTimeout(() => {
         if (state.pgnTraining && run === state.runId) startPgnBranch(completed);
       }, 900);
       return true;
     }
     state.pgnTraining = false;
-    state.pgnBranches = [];
     state.pgnBranchIndex = 0;
     state.opening = state.pgnOriginalOpening || state.openings[0] || null;
     state.pgnOriginalOpening = null;
@@ -974,8 +976,8 @@
     resetGame();
     setMode('idle');
     if (state.opening) describeOpening();
-    byId('openingPgnStatus').textContent = 'Все ветки PGN пройдены. Отличная работа!';
-    byId('openingPgnStart').disabled = false;
+    byId('openingPgnStatus').textContent = 'Все ветки PGN пройдены. Можно пройти их ещё раз.';
+    byId('openingPgnStart').disabled = !state.pgnBranches.length;
     setMessage('Ты прошёл все ветки импортированного PGN!', 'success');
     return true;
   }
