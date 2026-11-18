@@ -33,8 +33,8 @@ MATE_SCORE = 10000
 def get_engine_limit(depth=None, time_limit=None):
     """Build a depth-only limit unless a caller explicitly requests a time cap.
 
-    Game analysis must be allowed to reach its requested Stockfish depth;
-    the configured display/telemetry time is not a search deadline.
+    Both a depth ceiling and a strict wall-clock budget apply so long games
+    cannot spend minutes on a single position.
     """
     selected_depth = ANALYSIS_DEPTH if depth is None else depth
     return chess.engine.Limit(depth=selected_depth, time=ANALYSIS_TIME if time_limit is None else time_limit)
