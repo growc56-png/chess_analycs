@@ -425,6 +425,21 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 move_number = before_board.fullmove_number
                 phase = _classify_game_phase(before_board)
 
+                # Chess.com is more generous with sacrifice recognition for
+                # lower-rated players. PGN Elo is optional, so use a neutral
+                # default when the game does not contain ratings.
+                rating_header = "WhiteElo" if mover == chess.WHITE else "BlackElo"
+                try:
+                    player_rating = int(game.headers.get(rating_header, 1500))
+                except (TypeError, ValueError):
+                    player_rating = 1500
+                brilliant_was_already_winning_limit = (
+                    0.95 if player_rating < 1400 else 0.90
+                )
+                brilliant_after_position_floor = (
+                    0.40 if player_rating < 1400 else 0.45
+                )
+
                 before_infos = prev_infos
                 best_info = get_best_move_info(before_infos)
                 if best_info is None:
@@ -550,19 +565,20 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 played_info = None
                 analysis_depth_used = int(best_info.get("depth") or ANALYSIS_DEPTH)
 
-                # If the deep-analysis quota has already been used, do one
-                # focused check of a sacrifice instead of silently skipping it.
-                # This catches queen offers that force mate without paying for
-                # the full MultiPV + resulting-position + recapture verification.
+                # Once the full deep-check quota is used, sacrifices still
+                # receive a short independent verification. Check both the
+                # offered move and the best defence in the resulting position;
+                # this recognises sound positional sacrifices too, not only mate.
                 if (
                     is_sacrifice
                     and deep_positions_checked >= MAX_DEEP_ANALYSIS_MOVES
                     and before_board.legal_moves.count() > 0
                 ):
                     try:
+                        focused_depth = min(18, BRILLIANT_ANALYSIS_DEPTH)
                         focused_limit = get_engine_limit(
-                            depth=min(20, BRILLIANT_ANALYSIS_DEPTH),
-                            time_limit=min(0.45, BRILLIANT_ANALYSIS_TIME),
+                            depth=focused_depth,
+                            time_limit=min(0.30, BRILLIANT_ANALYSIS_TIME),
                         )
                         played_info = engine.analyse(
                             before_board,
@@ -577,6 +593,15 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         played_move_forces_mate = (
                             _forced_mate_in_for(played_move_mate_score, mover) is not None
                         )
+
+                        focused_after_infos = _normalise_engine_infos(
+                            engine.analyse(board, focused_limit, multipv=1)
+                        )
+                        focused_after_info = (
+                            focused_after_infos[0] if focused_after_infos else {}
+                        )
+                        focused_after_score = focused_after_info.get("score")
+
                         if played_move_forces_mate:
                             sacrifice_confirmed = True
                             deep_analysis_performed = True
@@ -586,8 +611,34 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             win_points_loss = 0.0
                             centipawn_loss = 0
                             analysis_depth_used = int(
-                                (played_info or {}).get("depth") or min(20, BRILLIANT_ANALYSIS_DEPTH)
+                                (played_info or {}).get("depth") or focused_depth
                             )
+                        elif before_score is not None and focused_after_score is not None:
+                            before_expected = expected_points_from_score(
+                                before_score, mover
+                            )
+                            after_expected = expected_points_from_score(
+                                focused_after_score, mover
+                            )
+                            focused_loss = max(0.0, before_expected - after_expected)
+                            if (
+                                before_expected < brilliant_was_already_winning_limit
+                                and after_expected >= brilliant_after_position_floor
+                                and focused_loss <= 0.02
+                            ):
+                                sacrifice_confirmed = True
+                                deep_analysis_performed = True
+                                is_best = True
+                                after_score = focused_after_score
+                                win_points_loss = focused_loss
+                                centipawn_loss = max(
+                                    0,
+                                    score_to_cp(before_score, mover)
+                                    - score_to_cp(focused_after_score, mover),
+                                )
+                                analysis_depth_used = int(
+                                    focused_after_info.get("depth") or focused_depth
+                                )
                     except Exception:
                         played_move_forces_mate = False
 
@@ -759,8 +810,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                         deep_after_info["score"], mover
                                     )
                                     sacrifice_confirmed = (
-                                        before_expected < 0.90
-                                        and after_expected >= 0.45
+                                        before_expected < brilliant_was_already_winning_limit
+                                        and after_expected >= brilliant_after_position_floor
                                     )
 
                         # A Brilliant sacrifice must not merely preserve a
@@ -779,8 +830,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             sacrifice_confirmed = bool(
                                 sacrifice_mate_trap_verified
                                 or (
-                                    before_expected < 0.90
-                                    and after_expected >= 0.45
+                                    before_expected < brilliant_was_already_winning_limit
+                                    and after_expected >= brilliant_after_position_floor
                                 )
                             )
 
