@@ -163,7 +163,7 @@
     const opening = state.openings.find(item => String(item.id) === String(id));
     if (!opening) return;
     state.catalogSide = opening.side === 'black' ? 'black' : 'white';
-    if (Array.isArray(opening.moves) && ['e4', 'd4', 'Nf3', 'c4'].includes(opening.moves[0])) state.catalogFirstMove = opening.moves[0];
+    if (state.catalogFirstMove !== 'all' && Array.isArray(opening.moves) && ['e4', 'd4', 'Nf3', 'c4'].includes(opening.moves[0])) state.catalogFirstMove = opening.moves[0];
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       const active = button.dataset.openingCategory === state.catalogSide;
       button.classList.toggle('active', active);
@@ -342,7 +342,7 @@
     state.botThinking = false;
     state.opening = summary;
     state.catalogSide = summary.side === 'black' ? 'black' : 'white';
-    if (Array.isArray(summary.moves) && ['e4', 'd4'].includes(summary.moves[0])) state.catalogFirstMove = summary.moves[0];
+    if (state.catalogFirstMove !== 'all' && Array.isArray(summary.moves) && ['e4', 'd4'].includes(summary.moves[0])) state.catalogFirstMove = summary.moves[0];
     byId('openingTrainerSelect').value = String(summary.id);
     describeOpening();
     resetGame();
