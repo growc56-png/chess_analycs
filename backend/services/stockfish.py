@@ -37,7 +37,7 @@ def get_engine_limit(depth=None, time_limit=None):
     the configured display/telemetry time is not a search deadline.
     """
     selected_depth = ANALYSIS_DEPTH if depth is None else depth
-    return chess.engine.Limit(depth=selected_depth, time=time_limit)
+    return chess.engine.Limit(depth=selected_depth, time=ANALYSIS_TIME if time_limit is None else time_limit)
 
 
 def configure_engine(engine, profile="analysis"):
