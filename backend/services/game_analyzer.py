@@ -551,7 +551,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 analysis_depth_used = int(best_info.get("depth") or ANALYSIS_DEPTH)
                 if (
                     deep_reason
-                    and (deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES or is_sacrifice)
+                    and (deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES)
                     and before_board.legal_moves.count() > 0
                 ):
                     deep_positions_checked += 1
