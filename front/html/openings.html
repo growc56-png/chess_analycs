@@ -17,7 +17,7 @@
   <script src="/js/chess-premove.js?v=20261103-unified-premove-v3" defer></script>
   <script src="/js/board-drawing.js?v=20261108-post-theory-v1" defer></script>
   <script src="/js/openings-data.js?v=20261115-zukertort-colle-v1" defer></script>
-  <script src="/js/openings-training.js?v=20261115-zukertort-colle-v1" defer></script>
+  <script src="/js/openings-training.js?v=20261118-pgn-branches-v1" defer></script>
 </head>
 <body class="openings-page-body">
   <div class="openings-app">
@@ -101,6 +101,22 @@
         </section>
 
         <aside class="opening-right-panel" aria-label="Выбор дебюта и настройки тренировки">
+
+          <section class="opening-panel-section opening-pgn-section" id="pgn-import">
+            <div class="opening-panel-heading compact">
+              <div><span class="opening-card-eyebrow">СВОЙ РЕПЕРТУАР</span><h2>Тренировка по PGN</h2></div>
+              <span class="opening-panel-icon">♧</span>
+            </div>
+            <p class="opening-pgn-help">Вставь PGN из Chess.com, Lichess или файла. Варианты в скобках будут выделены в отдельные ветки и пройдены по очереди.</p>
+            <textarea id="openingPgnInput" class="opening-pgn-input" rows="6" spellcheck="false" placeholder='[Event "Моя партия"]&#10;1. d4 d5 2. Nf3 Nf6 (2... c5 3. e3) 3. e3 e6'></textarea>
+            <div class="opening-pgn-actions">
+              <button type="button" class="opening-btn secondary" id="openingPgnParse">Разобрать PGN</button>
+              <button type="button" class="opening-btn primary" id="openingPgnStart" disabled>▶ Тренировать ветки</button>
+            </div>
+            <div id="openingPgnStatus" class="opening-pgn-status" role="status" aria-live="polite">Пока PGN не загружен.</div>
+            <ol id="openingPgnBranches" class="opening-pgn-branches" hidden></ol>
+          </section>
+
           <section class="opening-panel-section opening-catalog-section">
             <div class="opening-panel-heading">
               <div><span class="opening-card-eyebrow">РЕПЕРТУАР</span><h2>Выбери дебют</h2></div>
