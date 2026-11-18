@@ -537,7 +537,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 if (
                     progress_callback
                     and deep_reason
-                    and (deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES or is_sacrifice)
+                    and (deep_positions_checked < MAX_DEEP_ANALYSIS_MOVES)
                 ):
                     progress_callback(len(moves_data), total_moves, "deep_check")
 
@@ -561,6 +561,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         # to shallow-horizon evaluation errors.
                         deep_limit = get_engine_limit(
                             depth=(BRILLIANT_ANALYSIS_DEPTH if is_sacrifice else DEEP_ANALYSIS_DEPTH),
+                            time_limit=(BRILLIANT_ANALYSIS_TIME if is_sacrifice else DEEP_ANALYSIS_TIME),
                         )
                         # Search the principal move separately with MultiPV=1.
                         # MultiPV alternatives are retained for near-equal move
