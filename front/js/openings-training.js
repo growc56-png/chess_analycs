@@ -139,6 +139,10 @@
       button.classList.toggle('active', active);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+
+    document.querySelectorAll('[data-featured-opening]').forEach(button => {
+      button.addEventListener('click', () => chooseCatalogOpening(button.dataset.featuredOpening));
+    });
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       const active = button.dataset.openingCategory === side;
       button.classList.toggle('active', active);
@@ -157,7 +161,7 @@
     const opening = state.openings.find(item => String(item.id) === String(id));
     if (!opening) return;
     state.catalogSide = opening.side === 'black' ? 'black' : 'white';
-    if (Array.isArray(opening.moves) && ['e4', 'd4'].includes(opening.moves[0])) state.catalogFirstMove = opening.moves[0];
+    if (Array.isArray(opening.moves) && ['e4', 'd4', 'Nf3', 'c4'].includes(opening.moves[0])) state.catalogFirstMove = opening.moves[0];
     document.querySelectorAll('[data-opening-category]').forEach(button => {
       const active = button.dataset.openingCategory === state.catalogSide;
       button.classList.toggle('active', active);
