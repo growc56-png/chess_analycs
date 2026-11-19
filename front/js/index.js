@@ -3138,47 +3138,10 @@ async function analyzePGN(pgn, gameUrl) {
   });
   stopAnalysisPlayback();
 
-  const ANALYSIS_VERSION = 'v15-background-analysis-live-eta';
-  const cacheKey = `analysis_${ANALYSIS_VERSION}_${gameUrl || currentAnalysisPgn.slice(0, 50)}`;
-  let cachedData = null;
-  try {
-    cachedData = localStorage.getItem(cacheKey);
-  } catch (cacheError) {
-    console.warn('Локальный кеш анализа недоступен:', cacheError);
-  }
-
-  if (cachedData) {
-    try {
-      const data = JSON.parse(cachedData);
-      if (data && Array.isArray(data.moves) && data.moves.every(move => Object.prototype.hasOwnProperty.call(move, 'next_top_moves'))) {
-        updateAnalysisJobProgress({
-          status: 'completed',
-          stage: 'completed',
-          cached: true,
-          processed: data.moves.length,
-          total: data.moves.length,
-          percent: 100,
-          elapsed_seconds: 0,
-          eta_seconds: 0
-        });
-        saveMyEndgameFromPgn(currentAnalysisPgn, gameUrl, data);
-        loadAnalysisData(data);
-        isAnalyzing = false;
-        return;
-      }
-      // Старый кеш без линий Stockfish не используем.
-    } catch (cacheError) {
-      console.warn('Кеш анализа повреждён, запускаю новый анализ.', cacheError);
-    }
-  }
-
+  // Every explicit analysis request runs Stockfish fresh. Old localStorage reports
+  // are deliberately ignored so repeat analysis can update classifications/evals.
   try {
     const data = await runBackgroundGameAnalysis(currentAnalysisPgn);
-    try {
-      localStorage.setItem(cacheKey, JSON.stringify(data));
-    } catch (cacheError) {
-      console.warn('Не удалось сохранить кеш анализа:', cacheError);
-    }
     saveMyEndgameFromPgn(currentAnalysisPgn, gameUrl, data);
     loadAnalysisData(data);
   } catch (e) {
