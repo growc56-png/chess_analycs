@@ -3934,15 +3934,21 @@ function normaliseEngineLines(payload) {
 }
 
 function formatEvalString(isMate, mateIn, evalScore) {
-  if (isMate) return (mateIn > 0 ? 'М' : '-М') + Math.abs(Number(mateIn) || 0);
+  if (isMate) {
+    const distance = Math.abs(Number(mateIn) || 0);
+    return distance === 0 ? 'Мат' : (mateIn > 0 ? 'М' : '-М') + distance;
+  }
   const score = Number.isFinite(Number(evalScore)) ? Number(evalScore) : 0;
   return (score > 0 ? '+' : '') + score.toFixed(1);
 }
 
 function updateEvalBar(isMate, mateIn, evalScore) {
   let whitePercent = 50;
-  if (isMate) whitePercent = mateIn > 0 ? 100 : 0;
-  else whitePercent = Math.max(0, Math.min(100, 50 + (evalScore * 5)));
+  if (isMate) {
+    whitePercent = Number(mateIn) === 0
+      ? (Number(evalScore) >= 0 ? 100 : 0)
+      : (mateIn > 0 ? 100 : 0);
+  } else whitePercent = Math.max(0, Math.min(100, 50 + (evalScore * 5)));
   
   const whiteBar = document.getElementById('evalBarWhite');
   if (whiteBar) whiteBar.style.height = whitePercent + '%';
