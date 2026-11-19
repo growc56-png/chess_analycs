@@ -131,7 +131,7 @@ def get_acceptable_move_candidates(board, infos, mover, expected_points_toleranc
 
 
 def _is_profitable_fork(board, move, after):
-    """Conservative fork detector: attacks two valuable targets and can win material."""
+    """Detect a fork only when every legal defence still permits material gain."""
     mover = board.turn
     opponent = not mover
     moved_piece = after.piece_at(move.to_square)
@@ -142,20 +142,50 @@ def _is_profitable_fork(board, move, after):
         chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
         chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 100,
     }
-    targets = [
+    attacked_targets = [
         square for square, piece in after.piece_map().items()
         if piece.color == opponent
         and piece.piece_type in (chess.KING, chess.QUEEN, chess.ROOK)
         and square in after.attacks(move.to_square)
     ]
-    if len(targets) < 2:
+    if len(attacked_targets) < 2:
         return False
 
-    # A king among the targets means the opponent must answer check;
-    # otherwise require a material target more valuable than the fork piece.
-    if chess.KING in [after.piece_at(sq).piece_type for sq in targets]:
-        return True
-    return any(values[after.piece_at(sq).piece_type] > values[moved_piece.piece_type] for sq in targets)
+    replies = list(after.legal_moves)
+    if not replies:
+        return False
+
+    # Check every legal defence, not just the attractive-looking position.
+    # The fork counts only if the forked piece survives and a profitable
+    # capture remains available after each reply.
+    for reply in replies:
+        reply_board = after.copy(stack=False)
+        reply_board.push(reply)
+        remaining_piece = reply_board.piece_at(move.to_square)
+        if remaining_piece is None or remaining_piece.color != mover:
+            return False
+
+        profitable_capture_exists = False
+        for target_square in attacked_targets:
+            target = reply_board.piece_at(target_square)
+            if target is None or target.color != opponent:
+                continue
+            capture = chess.Move(move.to_square, target_square)
+            if capture not in reply_board.legal_moves:
+                continue
+
+            capture_board = reply_board.copy(stack=False)
+            capture_board.push(capture)
+            recaptured = any(candidate.to_square == target_square for candidate in capture_board.legal_moves)
+            gain = values[target.piece_type] - (values[moved_piece.piece_type] if recaptured else 0)
+            if gain > 0:
+                profitable_capture_exists = True
+                break
+
+        if not profitable_capture_exists:
+            return False
+
+    return True
 
 
 def get_tactical_motifs(board, move, mate_in=None):
