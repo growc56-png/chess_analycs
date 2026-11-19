@@ -671,7 +671,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             engine.analyse(
                                 before_board,
                                 deep_limit,
-                                multipv=min(5, before_board.legal_moves.count()),
+                                multipv=min(3, before_board.legal_moves.count()),
                             )
                         )
                         try:
