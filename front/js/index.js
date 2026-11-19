@@ -113,7 +113,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       }
     }, 50);
     if (btn.dataset.tab === 'blindfold' && blindfoldBoard) setTimeout(() => blindfoldBoard.resize(), 50);
-    if (btn.dataset.tab === 'diary') drawDiary();
     if (btn.dataset.tab === 'streak') loadStreak();
   };
 });
@@ -371,48 +370,6 @@ const streakInput = document.getElementById('streakUsername');
 if (streakInput) streakInput.addEventListener('keydown', event => {
   if (event.key === 'Enter') loadStreak(true);
 });
-
-async function drawDiary() {
-  const canvas = document.getElementById('diaryCanvas');
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
-  
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#312e2b'; ctx.fillRect(0, 0, w, h);
-  
-  try {
-    const res = await fetch('/api/diary');
-    const data = await res.json();
-    const activity = data.activity || [];
-    
-    if (activity.length === 0) {
-      ctx.fillStyle = '#b3b3b3'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('Пока нет данных. Заходи на сайт каждый день!', w/2, h/2);
-      return;
-    }
-    
-    ctx.strokeStyle = '#3d3a37'; ctx.lineWidth = 1;
-    for(let i=0; i<=6; i++) {
-        const y = (h/6)*i;
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-    }
-    
-    ctx.fillStyle = '#81b64c';
-    const stepX = w / Math.max(30, activity.length);
-    
-    activity.forEach((dateStr, i) => {
-        const x = i * stepX + 10;
-        ctx.beginPath();
-        ctx.arc(x, h/2, 6, 0, Math.PI*2);
-        ctx.fill();
-    });
-    
-    ctx.fillStyle = '#b3b3b3'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText('Дни активности (слева направо)', 10, 20);
-    
-  } catch(e) { console.error(e); }
-}
-
 
 function getMyEndgamesStorageKey() {
   const account = window.getChessTrainerUser ? window.getChessTrainerUser() : null;
@@ -2110,7 +2067,6 @@ function showDay(dayNum) {
       updateProgress();
       renderPhases();
       window.dispatchEvent(new CustomEvent('chess-plan-updated'));
-      if (document.getElementById('tab-diary').classList.contains('active') && window.drawDiary) window.drawDiary();
     } catch (error) {
       checkbox.checked = !checkbox.checked;
       showError('Не удалось сохранить прогресс: ' + error.message);
