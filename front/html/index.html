@@ -24,7 +24,7 @@
 <script src="/js/auth.js?v=20261115-remember-me-2y-v1" defer></script>
 <script src="/js/index.js?v=20261118-eval-mountain-v1" defer></script>
 <script src="/js/daily-dashboard.js?v=20261107-weekly-progress-v1" defer></script>
-<script src="/js/diary-ui.js" defer></script>
+
 <script src="/js/coach.js?v=20261107-weekly-explanations-v1" defer></script>
 <script src="/js/errors.js?v=20261115-knight-fork-v1" defer></script>
 <script src="/js/subscription.js?v=20261115-two-year-v1" defer></script>
@@ -57,7 +57,7 @@
 
     <div class="sidebar-section-label">МОЙ ПРОГРЕСС</div>
     <nav class="sidebar-nav">
-      <button class="side-link tab-btn" data-tab="diary"><span class="side-icon">▤</span><span>Дневник</span></button>
+      
       <button class="side-link tab-btn" data-tab="streak"><span class="side-icon">🔥</span><span>Винстрик</span></button>
       <button class="side-link tab-btn" data-tab="coach"><span class="side-icon">✦</span><span>Мой тренер</span><span class="coach-nav-tag">NEW</span></button>
     </nav>
@@ -129,7 +129,7 @@
             <button class="daily-coach-secondary" id="dailyTrainingComplete" type="button" disabled>Отметить день выполненным</button>
           </div>
           <button class="daily-coach-analyze" id="dailyTrainingAnalyze" type="button">✦ Анализировать 50 партий и собрать план</button>
-          <p class="daily-coach-hint" id="dailyTrainingHint">Отмечай завершённый день после реальной тренировки — это попадёт в дневник активности.</p>
+          <p class="daily-coach-hint" id="dailyTrainingHint">Отмечай завершённый день после реальной тренировки, чтобы отслеживать прогресс плана.</p>
         </section>
 
         <a class="home-opening-training-card" href="/openings#pgn-import">
@@ -487,18 +487,6 @@
       <section id="tab-blindfold" class="tab-content">
         <div class="section-heading"><div><div class="section-kicker">ТРЕНИРОВКА ПАМЯТИ</div><h2>Слепая игра</h2><p>Представляй позицию и называй ходы без доски</p></div></div>
         <div class="blindfold-card"><div class="board-wrap blindfold-board-wrap" oncontextmenu="return false;"><div class="blindfold-board-shell"><div id="blindfoldBoard"></div><svg id="userDraw_blindfoldBoard" class="user-draw-overlay"></svg></div><input type="text" id="blindfoldInput" class="blindfold-input" placeholder="Введи ход (например, e4 или Nf3)" autocomplete="off"><div class="feedback" id="blindfoldFeedback"></div><div class="blindfold-history" id="blindfoldHistory"></div><div class="btn-row"><button class="action-btn" id="blindfoldToggleBtn">👁️ Показать доску</button><button class="action-btn" id="blindfoldResetBtn">↺ Новая игра</button></div></div></div>
-      </section>
-
-      <section id="tab-diary" class="tab-content">
-        <div class="section-heading"><div><div class="section-kicker">РЕГУЛЯРНОСТЬ</div><h2>Дневник активности</h2><p>Здесь отмечаются дни, когда ты завершил тренировку по плану</p></div></div>
-        <div class="diary-dashboard">
-          <div class="diary-stats">
-            <article class="diary-stat"><span class="diary-stat-label">Активных дней</span><strong id="diaryDaysTotal">0</strong><small>За всё время</small></article>
-            <article class="diary-stat"><span class="diary-stat-label">В этом месяце</span><strong id="diaryMonthTotal">0</strong><small>Дней с активностью</small></article>
-            <article class="diary-stat"><span class="diary-stat-label">Последняя тренировка</span><strong id="diaryLastDate">—</strong><small>Последняя отмеченная дата</small></article>
-          </div>
-          <div class="diary-chart-card"><div class="diary-chart-heading"><div><h3>Календарь активности</h3><p>Каждая клетка — один день</p></div><div class="diary-legend"><span>Меньше</span><i class="level-0"></i><i class="level-1"></i><span>Больше</span></div></div><div class="diary-canvas-wrap"><canvas id="diaryCanvas" width="1100" height="190"></canvas></div><div class="diary-empty" id="diaryEmpty" hidden>Пока нет отмеченных дней. Заходи на сайт каждый день — активность появится здесь.</div></div>
-        </div>
       </section>
 
       <section id="tab-streak" class="tab-content">
