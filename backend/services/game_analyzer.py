@@ -972,6 +972,17 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 else:
                     curr_parsed = parse_score(after_score.white())
                 curr_eval = curr_parsed["eval"]
+                # A delivered checkmate is a winning move even when Stockfish's
+                # mate-distance score reports zero or parser sign is ambiguous.
+                # Override horizon/score noise so it can never be labeled Blunder.
+                if board.is_checkmate():
+                    curr_parsed["is_mate"] = True
+                    curr_parsed["mate_in"] = 0
+                    curr_parsed["eval"] = 0
+                    curr_eval = 0
+                    is_best = True
+                    win_points_loss = 0.0
+                    centipawn_loss = 0
                 # Store every move's resulting evaluation from White's point of view.
                 eval_after_white = curr_parsed["eval"]
                 eval_after_is_mate = curr_parsed["is_mate"]
@@ -984,7 +995,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 )
 
                 mate_won = True
-                if after_score is not None and after_score.is_mate():
+                if board.is_checkmate():
+                    mate_won = True
+                elif after_score is not None and after_score.is_mate():
                     mate_distance = after_score.pov(mover).mate()
                     mate_won = mate_distance is not None and mate_distance > 0
 
