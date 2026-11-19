@@ -1628,3 +1628,35 @@
   #tab-analysis #evalGraph { height: 112px; }
   #tab-analysis .analysis-eval-chart-caption { margin-top: 4px; }
 }
+
+/* Expandable move explanation and alternating PV roles */
+.analysis-explain-button {
+  margin-top: 10px;
+  padding: 8px 13px;
+  border: 1px solid rgba(116,166,230,.4);
+  border-radius: 9px;
+  background: #2d4770;
+  color: #f6f8fb;
+  font-weight: 700;
+  cursor: pointer;
+}
+.analysis-explain-button:hover { filter: brightness(1.12); }
+.analysis-explain-details {
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid rgba(130,160,200,.2);
+  border-radius: 10px;
+  background: rgba(20,24,30,.45);
+}
+.analysis-explain-details[hidden], .analysis-explain-button[hidden] { display: none !important; }
+.analysis-explain-summary { line-height: 1.55; }
+.analysis-explain-line { display: grid; gap: 6px; margin-top: 10px; }
+.analysis-explain-ply {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 10px; border-radius: 7px; background: rgba(255,255,255,.045);
+}
+.analysis-explain-ply span { color: #aeb9c7; font-size: 12px; }
+.analysis-explain-ply strong { color: #b7d5ff; font-size: 14px; }
+@media (max-width: 600px) {
+  .analysis-explain-ply { padding: 8px; }
+}
