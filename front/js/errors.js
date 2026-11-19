@@ -316,10 +316,16 @@
         const ownMoves = (analysis.moves || []).filter(move => move.mover === playerColor);
         allOwnMoves += ownMoves.length;
 
+        const gameFound = [];
         ownMoves.forEach((move, moveIndex) => {
           const opportunity = normalizeOpportunity(game, move, moveIndex, playerColor);
-          if (opportunity) opportunities.push(opportunity);
+          if (opportunity) { opportunities.push(opportunity); gameFound.push(opportunity); }
         });
+        if (gameFound.length) {
+          window.dispatchEvent(new CustomEvent('chessTrainer:add-analysis-drills', { detail: { opportunities: gameFound } }));
+          setProgress(((index + 1) / sourceGames.length) * 100,
+            'Партия ' + (index + 1) + ' из ' + sourceGames.length + ' · задачи добавлены сразу');
+        }
         completed.push({ game, analysis, playerColor });
       }
 
