@@ -978,8 +978,10 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 if board.is_checkmate():
                     curr_parsed["is_mate"] = True
                     curr_parsed["mate_in"] = 0
-                    curr_parsed["eval"] = 0
-                    curr_eval = 0
+                    # Checkmate score from White's perspective keeps the eval
+                    # graph and advantage bar at the winning side's extreme.
+                    curr_parsed["eval"] = 1000 if mover == chess.WHITE else -1000
+                    curr_eval = curr_parsed["eval"]
                     is_best = True
                     win_points_loss = 0.0
                     centipawn_loss = 0
