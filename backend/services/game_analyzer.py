@@ -145,7 +145,7 @@ def _is_profitable_fork(board, move, after):
     attacked_targets = [
         square for square, piece in after.piece_map().items()
         if piece.color == opponent
-        and piece.piece_type in (chess.KING, chess.QUEEN, chess.ROOK)
+        and piece.piece_type in (chess.KING, chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT)
         and square in after.attacks(move.to_square)
     ]
     if len(attacked_targets) < 2:
