@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="/css/chessboard-1.0.0.min.css">
 <link rel="stylesheet" href="/css/index.css?v=20261102-analysis-v1">
 <link rel="stylesheet" href="/css/index-layout.css?v=20261118-opening-training-card">
-<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261118-eval-slim-v2">
+<link rel="stylesheet" href="/css/analysis-enhancements.css?v=20261119-explain-button-v1">
 <link rel="stylesheet" href="/css/coach.css?v=20261107-weekly-explanations-v1">
 <link rel="stylesheet" href="/css/auth.css?v=20261102-auth-v4">
 <link rel="stylesheet" href="/css/site-refinement.css?v=20261104-daily-v1">
@@ -461,6 +461,8 @@
               <p id="analysisMoveInsightText">Здесь появится объяснение, почему ход получил свою оценку.</p>
               <div id="analysisMoveInsightBest" class="analysis-move-insight-best"></div>
               <div id="analysisMoveInsightMeta" class="analysis-move-insight-meta"></div>
+               <button type="button" id="analysisExplainButton" class="analysis-explain-button" hidden>Объяснить</button>
+               <div id="analysisExplainDetails" class="analysis-explain-details" hidden></div>
               <button type="button" id="analysisRetryMistakeBtn" class="analysis-retry-btn" hidden>Попробовать найти лучший ход</button>
             </section>
             <section class="analysis-insights" aria-label="Статистика анализа"><div class="analysis-accuracy-card"><div class="analysis-insights-title">Точность ходов (CPL)</div><div class="analysis-accuracy-note">Оценка по потере в сантипешках. Это приближение, не точная формула CAPS2 Chess.com.</div><div class="analysis-accuracy-grid"><div class="analysis-accuracy-side white"><span class="analysis-accuracy-name" id="analysisWhiteName">Белые</span><strong id="analysisWhiteAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisWhiteAccuracyFill"></i></div></div><div class="analysis-accuracy-side black"><span class="analysis-accuracy-name" id="analysisBlackName">Чёрные</span><strong id="analysisBlackAccuracy">—</strong><div class="analysis-accuracy-track"><i id="analysisBlackAccuracyFill"></i></div></div></div></div>
