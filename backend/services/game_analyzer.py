@@ -272,6 +272,24 @@ def _forced_mate_in_for(score_obj, color):
     return None
 
 
+def _material_balance(board, color):
+    values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
+    return sum(values.get(piece.piece_type, 0) * (1 if piece.color == color else -1) for piece in board.piece_map().values())
+
+
+def _pv_material_gain(board, pv, color, plies=10):
+    line_board = board.copy(stack=False)
+    initial = _material_balance(line_board, color)
+    count = 0
+    for line_move in (pv or [])[:plies]:
+        if line_move not in line_board.legal_moves:
+            break
+        line_board.push(line_move)
+        count += 1
+    gain = _material_balance(line_board, color) - initial
+    return count >= plies and gain >= 1.5, gain, count
+
+
 def _classify_game_phase(board):
     """Approximate phase from remaining non-pawn material."""
     phase_weights = {
@@ -769,16 +787,26 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                     if isinstance(capture_info, list):
                                         capture_info = capture_info[0] if capture_info else {}
                                     capture_score = capture_info.get("score") if capture_info else None
+                                    capture_pv = (capture_info or {}).get("pv") or []
+                                    material_win, material_gain, searched_plies = _pv_material_gain(
+                                        before_board, capture_pv, mover, plies=10
+                                    )
                                     if capture_score is not None:
                                         capture_points.append(
                                             expected_points_from_score(capture_score, mover)
                                         )
                                         mate_distance = _forced_mate_in_for(capture_score, mover)
-                                        capture_forced_mates.append(mate_distance is not None)
+                                        capture_forced_mates.append(mate_distance is not None or material_win)
                                         if mate_distance is not None:
                                             sacrifice_mate_trap_replies.append({
                                                 "san": board.san(capture_move),
                                                 "mate_in": mate_distance,
+                                            })
+                                        elif material_win:
+                                            sacrifice_mate_trap_replies.append({
+                                                "san": board.san(capture_move),
+                                                "material_gain": material_gain,
+                                                "searched_plies": searched_plies,
                                             })
                                 except Exception:
                                     continue
