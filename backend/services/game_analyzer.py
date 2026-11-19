@@ -130,57 +130,36 @@ def get_acceptable_move_candidates(board, infos, mover, expected_points_toleranc
 
 
 
-def _is_winning_knight_fork(board, move, after):
-    """Detect a knight fork only when every legal defence leaves a profitable capture."""
+def _is_profitable_fork(board, move, after):
+    """Conservative fork detector: attacks two valuable targets and can win material."""
     mover = board.turn
     opponent = not mover
-    knight = after.piece_at(move.to_square)
-    if knight is None or knight.color != mover or knight.piece_type != chess.KNIGHT:
+    moved_piece = after.piece_at(move.to_square)
+    if moved_piece is None or moved_piece.color != mover:
         return False
 
-    values = {chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
+    values = {
+        chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3,
+        chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 100,
+    }
     targets = [
         square for square, piece in after.piece_map().items()
         if piece.color == opponent
-        and piece.piece_type in values
-        and move.to_square in after.attackers(mover, square)
+        and piece.piece_type in (chess.KING, chess.QUEEN, chess.ROOK)
+        and square in after.attacks(move.to_square)
     ]
-    if len(targets) < 2 and not (after.is_check() and len(targets) == 1):
+    if len(targets) < 2:
         return False
 
-    replies = list(after.legal_moves)
-    if not replies:
-        return False
-
-    for reply in replies:
-        reply_board = after.copy(stack=False)
-        reply_board.push(reply)
-        remaining_knight = reply_board.piece_at(move.to_square)
-        if remaining_knight is None or remaining_knight.color != mover or remaining_knight.piece_type != chess.KNIGHT:
-            return False
-
-        profitable_capture = False
-        for square in targets:
-            target = reply_board.piece_at(square)
-            if target is None or target.color != opponent or target.piece_type not in values:
-                continue
-            capture = chess.Move(move.to_square, square)
-            if capture not in reply_board.legal_moves:
-                continue
-            after_capture = reply_board.copy(stack=False)
-            after_capture.push(capture)
-            can_recapture = any(candidate.to_square == square for candidate in after_capture.legal_moves)
-            material_gain = values[target.piece_type] - (values[chess.KNIGHT] if can_recapture else 0)
-            if material_gain > 0:
-                profitable_capture = True
-                break
-        if not profitable_capture:
-            return False
-    return True
+    # A king among the targets means the opponent must answer check;
+    # otherwise require a material target more valuable than the fork piece.
+    if chess.KING in [after.piece_at(sq).piece_type for sq in targets]:
+        return True
+    return any(values[after.piece_at(sq).piece_type] > values[moved_piece.piece_type] for sq in targets)
 
 
 def get_tactical_motifs(board, move, mate_in=None):
-    """Отмечает короткие тактические идеи в ходе: шах, мат, вилка, связка."""
+    """Detects tactical motifs; fork is conservative and must target valuable material."""
     mover = board.turn
     opponent = not mover
     after = board.copy(stack=False)
@@ -202,7 +181,7 @@ def get_tactical_motifs(board, move, mate_in=None):
         if "mate" not in motifs:
             motifs.append("mate_in_2")
 
-    if moved_piece is not None and _is_winning_knight_fork(board, move, after):
+    if moved_piece is not None and _is_profitable_fork(board, move, after):
         motifs.append("fork")
 
     newly_pinned = []
@@ -1003,7 +982,10 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                     mate_distance = after_score.pov(mover).mate()
                     mate_won = mate_distance is not None and mate_distance > 0
 
-                if is_book and win_points_loss <= 0.015:
+                if board.is_checkmate():
+                    # Delivered mate must never be downgraded by score parsing noise.
+                    classification = "best"
+                elif is_book and win_points_loss <= 0.015:
                     classification = "book"
                 else:
                     classification = classify_move(
