@@ -128,49 +128,5 @@
     dateNode.innerHTML = `<span class="today-label">СЕГОДНЯ</span><strong>${capitalizedWeekday}</strong><small>${dateText}</small>`;
   });
 
-  window.drawDiary = async function drawDiary() {
-    const canvas = document.getElementById("diaryCanvas");
-    if (!canvas) return;
 
-    const emptyMessage = document.getElementById("diaryEmpty");
-    const totalElement = document.getElementById("diaryDaysTotal");
-    const monthElement = document.getElementById("diaryMonthTotal");
-    const lastElement = document.getElementById("diaryLastDate");
-
-    try {
-      const response = await fetch("/api/diary", { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`Сервер вернул ${response.status}`);
-      }
-
-      const data = await response.json();
-      const rawDates = Array.isArray(data.activity) ? data.activity : [];
-      const parsedDates = rawDates.map(parseLocalDate).filter(Boolean);
-      const uniqueDates = new Map(parsedDates.map(date => [dateKey(date), date]));
-      const dates = [...uniqueDates.values()].sort((a, b) => a - b);
-      const activeDates = new Set(uniqueDates.keys());
-
-      const today = new Date();
-      const thisMonthCount = dates.filter(date => sameMonth(date, today)).length;
-
-      if (totalElement) totalElement.textContent = String(dates.length);
-      if (monthElement) monthElement.textContent = String(thisMonthCount);
-      if (lastElement) lastElement.textContent = dates.length ? formatDate(dates[dates.length - 1]) : "Пока нет";
-
-      drawCalendar(canvas, activeDates);
-
-      if (emptyMessage) {
-        emptyMessage.hidden = dates.length > 0;
-      }
-    } catch (error) {
-      console.error("Не удалось загрузить дневник активности:", error);
-      if (totalElement) totalElement.textContent = "—";
-      if (monthElement) monthElement.textContent = "—";
-      if (lastElement) lastElement.textContent = "Нет данных";
-      if (emptyMessage) {
-        emptyMessage.hidden = false;
-        emptyMessage.textContent = "Не удалось загрузить календарь активности. Обнови страницу и попробуй снова.";
-      }
-    }
-  };
 })();
