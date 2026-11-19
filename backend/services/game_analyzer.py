@@ -774,6 +774,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                             )
                             capture_points = []
                             capture_forced_mates = []
+                            capture_material_wins = []
                             for capture_uci in capture_moves:
                                 try:
                                     capture_move = chess.Move.from_uci(capture_uci)
@@ -796,7 +797,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                             expected_points_from_score(capture_score, mover)
                                         )
                                         mate_distance = _forced_mate_in_for(capture_score, mover)
-                                        capture_forced_mates.append(mate_distance is not None or material_win)
+                                        capture_forced_mates.append(mate_distance is not None)
+                                        capture_material_wins.append(material_win)
                                         if mate_distance is not None:
                                             sacrifice_mate_trap_replies.append({
                                                 "san": board.san(capture_move),
@@ -826,8 +828,8 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                     len(capture_points) == len(capture_moves)
                                     and bool(capture_points)
                                     and all(
-                                        points > best_reply_points + 0.025
-                                        for points in capture_points
+                                        (points > best_reply_points + 0.025) or material_win
+                                        for points, material_win in zip(capture_points, capture_material_wins)
                                     )
                                 )
                                 # Mate trap only counts as Brilliant when the
