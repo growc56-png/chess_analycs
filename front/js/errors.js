@@ -113,19 +113,19 @@
     }, extra || {});
   }
 
-  async function fetchLastTen() {
+  async function fetchLastFive() {
     const source = $('errorsSource').value;
     const username = $('errorsUsername').value.trim();
     if (!username) throw new Error('Введи свой ник на выбранной платформе.');
 
     if (source === 'chesscom') {
-      const response = await fetch('/api/chesscom/' + encodeURIComponent(username) + '/games?limit=10');
+      const response = await fetch('/api/chesscom/' + encodeURIComponent(username) + '/games?limit=5');
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Не удалось загрузить Chess.com.');
       const games = (data.games || [])
         .filter(game => game && game.pgn)
         .sort((a, b) => Number(b.end_time || 0) - Number(a.end_time || 0))
-        .slice(0, 10)
+        .slice(0, 5)
         .map((game, index) => buildGame(game.pgn, {
           id: 'chesscom-' + index,
           source: 'Chess.com',
@@ -140,7 +140,7 @@
     }
 
     const response = await fetch(
-      'https://lichess.org/api/games/user/' + encodeURIComponent(username) + '?max=10&clocks=true',
+      'https://lichess.org/api/games/user/' + encodeURIComponent(username) + '?max=5&clocks=true',
       { headers: { Accept: 'application/x-chess-pgn' } }
     );
     if (!response.ok) {
@@ -149,7 +149,7 @@
       throw new Error('Lichess вернул ошибку ' + response.status + '.');
     }
     const raw = await response.text();
-    const games = splitPgnGames(raw).slice(0, 10).map((pgn, index) => buildGame(pgn, {
+    const games = splitPgnGames(raw).slice(0, 5).map((pgn, index) => buildGame(pgn, {
       id: 'lichess-' + index,
       source: 'Lichess',
       username,
@@ -282,7 +282,7 @@
       : 'Эти задания уже есть в сохранённом наборе.', 'success');
   }
 
-  async function runLastTenAnalysis() {
+  async function runLastFiveAnalysis() {
     if (isAnalyzing) return;
     isAnalyzing = true;
     $('errorsAnalyzeBtn').disabled = true;
@@ -294,8 +294,8 @@
     renderOpportunities();
 
     try {
-      setStatus('Загружаю последние десять партий…');
-      const imported = await fetchLastTen();
+      setStatus('Загружаю последние пять партий…');
+      const imported = await fetchLastFive();
       sourceGames = imported.games;
       if (!sourceGames.length) throw new Error('Не найдено десяти доступных партий. Убедись, что профиль публичный.');
       const selectedSide = $('errorsColor').value;
@@ -561,7 +561,7 @@
     if (!$('tab-errors') || $('tab-errors').dataset.ready === '1') return;
     $('tab-errors').dataset.ready = '1';
 
-    $('errorsAnalyzeBtn').addEventListener('click', runLastTenAnalysis);
+    $('errorsAnalyzeBtn').addEventListener('click', runLastFiveAnalysis);
     window.addEventListener('chessTrainer:add-analysis-drills', importAnalysisDrills);
     const savedDrills = readSavedAnalysisDrills();
     if (savedDrills.length) {
