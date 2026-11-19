@@ -423,6 +423,29 @@ function updateBoardVisuals() {
 }
 function validationPosition(){return game.turn()===playerColor&&!isBotThinking&&!premoveQueue.length?game:getPremoveGame();}
 function isPlayerPiece(square){const position=validationPosition();const piece=position&&position.get(square);return !!piece&&piece.color===playerColor;}
+let pendingBotPromotion = null;
+function applyBotUserMove(source,target,promotion='q') {
+  let move=null;try{move=game.move({from:source,to:target,promotion});}catch(_){}
+  if(!move){playSound('error');return false;}
+  premoveQueue=[];selectedSquare=null;clearHighlights();
+  playSound(move.flags.includes('c')||move.flags.includes('e')?'capture':'move');
+  updateBoardVisuals();updateMaterial();if(checkGameOver())return true;
+  switchTurn();makeBotMove();return true;
+}
+function showBotPromotionChoice(source,target) {
+  pendingBotPromotion={source,target};
+  const modal=document.getElementById('promotionModal');
+  if(modal)modal.style.display='flex';
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const modal=document.getElementById('promotionModal');if(!modal)return;
+  modal.querySelectorAll('.promotion-btn').forEach(button=>button.addEventListener('click',()=>{
+    if(!pendingBotPromotion)return;
+    const pending=pendingBotPromotion;pendingBotPromotion=null;modal.style.display='none';
+    if(gameActive&&game)applyBotUserMove(pending.source,pending.target,button.dataset.piece||'q');
+  }));
+  modal.addEventListener('click',event=>{if(event.target===modal&&pendingBotPromotion){pendingBotPromotion=null;modal.style.display='none';}});
+});
 function playUserMoveOrQueue(source,target) {
   if(!gameActive||game.game_over())return 'snapback';
   const isPremove=game.turn()!==playerColor||isBotThinking||premoveQueue.length>0;
@@ -435,12 +458,10 @@ function playUserMoveOrQueue(source,target) {
     updateStatus(`Премув ${source} → ${target} поставлен. Можно добавить следующий ход в очередь.`,'thinking');
     return undefined;
   }
-  let move=null;try{move=game.move({from:source,to:target,promotion:'q'});}catch(_){}
-  if(!move){playSound('error');return 'snapback';}
-  premoveQueue=[];selectedSquare=null;clearHighlights();
-  playSound(move.flags.includes('c')||move.flags.includes('e')?'capture':'move');
-  updateBoardVisuals();updateMaterial();if(checkGameOver())return undefined;
-  switchTurn();makeBotMove();return undefined;
+  if(game.moves({verbose:true}).some(m=>m.from===source&&m.to===target&&m.flags.includes('p')) {
+    showBotPromotionChoice(source,target);return 'snapback';
+  }
+  return applyBotUserMove(source,target,'q') ? undefined : 'snapback';
 }
 function onDragStart(source,piece) {
   if(!gameActive||game.game_over())return false;
