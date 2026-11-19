@@ -219,12 +219,10 @@ async function initApp() {
     renderEndgamesList();
     renderSideButtons();
     initAnalysis();
-    initBlindfold();
 
     initRightClickDrawing('analysisBoard');
     initRightClickDrawing('puzzleBoard');
     initRightClickDrawing('endgameBoard');
-    initRightClickDrawing('blindfoldBoard');
     initRightClickDrawing('openingBoard');
 
   } catch (e) {
