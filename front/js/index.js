@@ -4479,6 +4479,33 @@ function renderAnalysisMoveInsight(moveData) {
       ? 'Лучший ход Stockfish: ' + moveData.best_move_san
       : 'Для этой позиции нет сохранённой лучшей линии.';
 
+  // Toggleable plain-language explanation with the engine's actual PV:
+  // label the player's move and opponent response, alternating thereafter.
+  const explainButton = document.getElementById('analysisExplainButton');
+  const explainDetails = document.getElementById('analysisExplainDetails');
+  if (explainButton && explainDetails) {
+    const line = Array.isArray(moveData.best_line_san) && moveData.best_line_san.length
+      ? moveData.best_line_san
+      : moveData.best_move_san ? [moveData.best_move_san] : [];
+    const lineHtml = line.map((san, ply) => {
+      const playerTurn = (ply % 2 === 0);
+      const isMySide = (moveData.mover !== 'black') === playerTurn;
+      const label = isMySide ? 'Твой ход' : 'Ход соперника';
+      return '<div class="analysis-explain-ply"><span>' + label + '</span><strong>' + escapeHtml(san) + '</strong></div>';
+    }).join('');
+    const explainText = messages.join(' ');
+    explainButton.hidden = !line.length && !explainText;
+    explainButton.textContent = explainDetails.hidden ? 'Объяснить' : 'Скрыть объяснение';
+    explainDetails.innerHTML = '<div class="analysis-explain-summary">' + escapeHtml(explainText) + '</div>'
+      + (lineHtml ? '<div class="analysis-explain-line">' + lineHtml + '</div>' : '');
+    explainDetails.hidden = true;
+    explainButton.textContent = 'Объяснить';
+    explainButton.onclick = () => {
+      explainDetails.hidden = !explainDetails.hidden;
+      explainButton.textContent = explainDetails.hidden ? 'Объяснить' : 'Скрыть объяснение';
+    };
+  }
+
   const actualDepth = Number(moveData.analysis_depth_used);
   const meta = [
     accuracy.toFixed(1) + '% точность хода',
