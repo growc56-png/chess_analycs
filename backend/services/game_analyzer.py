@@ -1007,7 +1007,13 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
 
                 # Prevent pin-only moves from being labeled Brilliant,
                 # even if sacrifice heuristics misidentify the move.
-                if classification == "brilliant" and "pin" in played_move_motifs:
+                if (
+                    classification == "brilliant"
+                    and "pin" in played_move_motifs
+                    and not sacrifice_confirmed
+                    and not sacrifice_mate_trap_verified
+                    and not played_move_forces_mate
+                ):
                     classification = classify_move(
                         win_percent_loss=win_points_loss,
                         is_best=is_best,
