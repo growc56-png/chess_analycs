@@ -22,9 +22,9 @@
 <script src="/js/chess-premove.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/board-drawing.js?v=20261103-unified-premove-v3" defer></script>
 <script src="/js/auth.js?v=20261115-remember-me-2y-v1" defer></script>
-<script src="/js/index.js?v=20261119-tasks-coach-removal-v1" defer></script>
+<script src="/js/index.js?v=20261119-promotion-live-tasks-v2" defer></script>
 
-<script src="/js/errors.js?v=20261119-tasks-fast-analysis-v1" defer></script>
+<script src="/js/errors.js?v=20261119-live-task-import-v2" defer></script>
 <script src="/js/subscription.js?v=20261115-two-year-v1" defer></script>
 <script src="/js/chess-assessment.js?v=20261118-v1" defer></script>
 </head>
@@ -50,7 +50,6 @@
       <a href="/openings" class="side-link"><span class="side-icon">♘</span><span>Тренировка дебютов</span><span class="side-arrow">↗</span></a>
       <button class="side-link tab-btn" data-tab="analysis"><span class="side-icon">⌕</span><span>Анализ партий</span></button>
       <button class="side-link tab-btn" data-tab="errors"><span class="side-icon">⚡</span><span>Задачи</span></button>
-      <button class="side-link tab-btn" data-tab="blindfold"><span class="side-icon">◉</span><span>Слепая игра</span></button>
     </nav>
 
     <div class="sidebar-section-label">МОЙ ПРОГРЕСС</div>
@@ -367,11 +366,6 @@
                 <div class="analysis-categories-card"><div class="analysis-insights-title">Качество ходов</div><div class="analysis-category-header"><span>Категория</span><span>Белые</span><span></span><span>Чёрные</span></div><div id="analysisCategoryRows" class="analysis-category-rows"><div class="analysis-stats-empty">Пока нет данных</div></div></div></section></div>
           
         </div>
-      </section>
-
-      <section id="tab-blindfold" class="tab-content">
-        <div class="section-heading"><div><div class="section-kicker">ТРЕНИРОВКА ПАМЯТИ</div><h2>Слепая игра</h2><p>Представляй позицию и называй ходы без доски</p></div></div>
-        <div class="blindfold-card"><div class="board-wrap blindfold-board-wrap" oncontextmenu="return false;"><div class="blindfold-board-shell"><div id="blindfoldBoard"></div><svg id="userDraw_blindfoldBoard" class="user-draw-overlay"></svg></div><input type="text" id="blindfoldInput" class="blindfold-input" placeholder="Введи ход (например, e4 или Nf3)" autocomplete="off"><div class="feedback" id="blindfoldFeedback"></div><div class="blindfold-history" id="blindfoldHistory"></div><div class="btn-row"><button class="action-btn" id="blindfoldToggleBtn">👁️ Показать доску</button><button class="action-btn" id="blindfoldResetBtn">↺ Новая игра</button></div></div></div>
       </section>
 
       <section id="tab-streak" class="tab-content">
