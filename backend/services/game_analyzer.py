@@ -277,9 +277,10 @@ def _material_balance(board, color):
     return sum(values.get(piece.piece_type, 0) * (1 if piece.color == color else -1) for piece in board.piece_map().values())
 
 
-def _pv_material_gain(board, pv, color, plies=10):
+def _pv_material_gain(board, pv, color, plies=10, baseline_board=None):
     line_board = board.copy(stack=False)
-    initial = _material_balance(line_board, color)
+    baseline = baseline_board if baseline_board is not None else line_board
+    initial = _material_balance(baseline, color)
     count = 0
     for line_move in (pv or [])[:plies]:
         if line_move not in line_board.legal_moves:
@@ -790,7 +791,7 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                     capture_score = capture_info.get("score") if capture_info else None
                                     capture_pv = (capture_info or {}).get("pv") or []
                                     material_win, material_gain, searched_plies = _pv_material_gain(
-                                        before_board, capture_pv, mover, plies=10
+                                        board, capture_pv, mover, plies=10, baseline_board=before_board
                                     )
                                     if capture_score is not None:
                                         capture_points.append(
@@ -878,9 +879,14 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                     after_expected = expected_points_from_score(
                                         deep_after_info["score"], mover
                                     )
+                                    no_take_pv = (deep_after_info or {}).get("pv") or []
+                                    material_win, material_gain, searched_plies = _pv_material_gain(
+                                        board, no_take_pv, mover, plies=10, baseline_board=before_board
+                                    )
                                     sacrifice_confirmed = (
                                         before_expected < brilliant_was_already_winning_limit
                                         and after_expected >= brilliant_after_position_floor
+                                        and (material_win or after_expected >= before_expected - 0.02)
                                     )
 
                         # A Brilliant sacrifice must not merely preserve a
