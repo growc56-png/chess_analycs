@@ -2907,10 +2907,8 @@ function drawGraph(evals, currentIndex = -1) {
   const canvas = document.getElementById('evalGraph');
   if (!canvas) return;
   const compact = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
-  const boardArea = document.querySelector('#tab-analysis .board-area');
-  const boardHeight = boardArea ? Math.round(boardArea.getBoundingClientRect().height) : 420;
-  const width = Math.max(compact ? 120 : 32, Math.round(canvas.getBoundingClientRect().width || (compact ? 320 : 38)));
-  const height = compact ? 112 : Math.max(240, boardHeight || 420);
+  const width = Math.max(compact ? 120 : 320, Math.round(canvas.getBoundingClientRect().width || (compact ? 320 : 520)));
+  const height = compact ? 112 : 132;
   if (canvas.width !== width) canvas.width = width;
   if (canvas.height !== height) canvas.height = height;
   canvas.style.height = height + 'px';
