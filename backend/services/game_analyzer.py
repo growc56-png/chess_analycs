@@ -467,6 +467,9 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                 is_forced = before_board.legal_moves.count() == 1
 
                 san_move = before_board.san(move)
+                # A pin (including a pin against the queen) is not by itself
+                # grounds for a Brilliant classification.
+                played_move_motifs = get_tactical_motifs(before_board, move)
                 before_fen = before_board.fen()
                 best_move_san = (
                     before_board.san(best_pv[0])
@@ -1000,6 +1003,23 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         mate_won=mate_won,
                         missed_tactic=missed_tactic,
                         verified_mate_trap=sacrifice_mate_trap_verified,
+                    )
+
+                # Prevent pin-only moves from being labeled Brilliant,
+                # even if sacrifice heuristics misidentify the move.
+                if classification == "brilliant" and "pin" in played_move_motifs:
+                    classification = classify_move(
+                        win_percent_loss=win_points_loss,
+                        is_best=is_best,
+                        is_sacrifice=False,
+                        is_forced=is_forced,
+                        prev_eval=(before_cp / 100.0),
+                        curr_eval=(after_cp / 100.0),
+                        second_best_gap=second_best_gap,
+                        is_mate=curr_parsed["is_mate"],
+                        mate_won=mate_won,
+                        missed_tactic=missed_tactic,
+                        verified_mate_trap=False,
                     )
 
                 time_pressure = _is_time_pressure(
