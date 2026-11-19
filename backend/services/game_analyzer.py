@@ -802,7 +802,29 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                                         for points in capture_points
                                     )
                                 )
-                                sacrifice_mate_trap_verified = bool(all_acceptances_mated)
+                                # Mate trap only counts as Brilliant when the
+                                # offered move is itself near the deep engine best.
+                                # Otherwise a speculative sacrifice with a trap
+                                # against one reply is not enough.
+                                played_score = (played_info or {}).get("score")
+                                deep_best_score_for_mover = (
+                                    deep_best_info.get("score")
+                                    if deep_best_info else None
+                                )
+                                played_near_best = False
+                                if played_score is not None and deep_best_score_for_mover is not None:
+                                    played_points = expected_points_from_score(
+                                        played_score, mover
+                                    )
+                                    deep_best_points = expected_points_from_score(
+                                        deep_best_score_for_mover, mover
+                                    )
+                                    played_near_best = (
+                                        played_points >= deep_best_points - 0.02
+                                    )
+                                sacrifice_mate_trap_verified = bool(
+                                    all_acceptances_mated and played_near_best
+                                )
                                 sacrifice_confirmed = (
                                     sacrifice_mate_trap_verified or all_acceptances_refuted
                                 )
@@ -835,7 +857,12 @@ def analyze_game(pgn, progress_callback=None, book_move_checker=None):
                         # position that was already completely winning, and
                         # Stockfish must still regard the resulting position
                         # as at least approximately playable for the mover.
-                        if sacrifice_confirmed and deep_best_info and deep_after_info.get("score") is not None:
+                        if (
+                            sacrifice_confirmed
+                            and not sacrifice_mate_trap_verified
+                            and deep_best_info
+                            and deep_after_info.get("score") is not None
+                        ):
                             before_deep_score = deep_best_info.get("score")
                             before_expected = (
                                 expected_points_from_score(before_deep_score, mover)
