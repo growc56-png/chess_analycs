@@ -4487,16 +4487,18 @@ function renderAnalysisMoveInsight(moveData) {
     const line = Array.isArray(moveData.best_line_san) && moveData.best_line_san.length
       ? moveData.best_line_san
       : moveData.best_move_san ? [moveData.best_move_san] : [];
+    const escapeExplainText = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
     const lineHtml = line.map((san, ply) => {
-      const playerTurn = (ply % 2 === 0);
-      const isMySide = (moveData.mover !== 'black') === playerTurn;
+      const isMySide = ply % 2 === 0;
       const label = isMySide ? 'Твой ход' : 'Ход соперника';
-      return '<div class="analysis-explain-ply"><span>' + label + '</span><strong>' + escapeHtml(san) + '</strong></div>';
+      return '<div class="analysis-explain-ply"><span>' + label + '</span><strong>' + escapeExplainText(san) + '</strong></div>';
     }).join('');
     const explainText = messages.join(' ');
     explainButton.hidden = !line.length && !explainText;
     explainButton.textContent = explainDetails.hidden ? 'Объяснить' : 'Скрыть объяснение';
-    explainDetails.innerHTML = '<div class="analysis-explain-summary">' + escapeHtml(explainText) + '</div>'
+    explainDetails.innerHTML = '<div class="analysis-explain-summary">' + escapeExplainText(explainText) + '</div>'
       + (lineHtml ? '<div class="analysis-explain-line">' + lineHtml + '</div>' : '');
     explainDetails.hidden = true;
     explainButton.textContent = 'Объяснить';
