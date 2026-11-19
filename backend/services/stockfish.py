@@ -289,26 +289,20 @@ def get_position_analysis(engine, board, depth=None):
         except Exception:
             pass
 
+    # If MultiPV returned fewer legal candidates, fall back to a single
+    # principal variation search. Do not analyze every legal root move:
+    # that can turn one position into dozens of separate Stockfish searches.
     if len(candidates) < desired_count:
-        fallback_depth = max(8, min(11, int(search_depth or 11)))
-        fallback_time = max(0.045, min(0.10, float(ANALYSIS_TIME or 1.0) / 14.0))
-        fallback_limit = chess.engine.Limit(
-            depth=fallback_depth,
-            time=fallback_time,
-        )
-        for move in legal_moves:
-            if move.uci() in candidates:
-                continue
-            try:
-                collect(engine.analyse(
-                    board,
-                    fallback_limit,
-                    root_moves=[move],
-                ))
-            except Exception:
-                continue
-            if len(candidates) >= desired_count:
-                break
+        try:
+            fallback_depth = max(8, min(12, int(search_depth or 12)))
+            fallback_time = max(0.05, min(0.12, float(ANALYSIS_TIME or 0.12)))
+            fallback_limit = chess.engine.Limit(
+                depth=fallback_depth,
+                time=fallback_time,
+            )
+            collect(engine.analyse(board, fallback_limit, multipv=1))
+        except Exception:
+            pass
 
     result = sorted(
         candidates.values(),
