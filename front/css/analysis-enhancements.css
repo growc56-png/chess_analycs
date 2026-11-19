@@ -1660,3 +1660,48 @@
 @media (max-width: 600px) {
   .analysis-explain-ply { padding: 8px; }
 }
+
+
+/* Eval chart: compact horizontal advantage graph above the move list. */
+#tab-analysis .right-panel > .analysis-eval-chart {
+  order: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  border: 1px solid rgba(116,151,179,.34) !important;
+  border-radius: 11px !important;
+  background: #1d2a33 !important;
+}
+#tab-analysis .right-panel > .move-list-container { order: 1 !important; }
+#tab-analysis .right-panel > .top-lines { order: 2 !important; }
+#tab-analysis .right-panel > .analysis-move-insight,
+#tab-analysis .right-panel > .analysis-insights { order: 3 !important; }
+#tab-analysis .right-panel .analysis-eval-chart .eval-text {
+  position: static !important;
+  width: max-content !important;
+  margin: 0 0 5px !important;
+  padding: 3px 7px !important;
+}
+#tab-analysis .right-panel #evalGraph {
+  width: 100% !important;
+  height: 132px !important;
+  max-height: 132px !important;
+  display: block !important;
+}
+#tab-analysis .right-panel .analysis-eval-chart-caption {
+  display: flex !important;
+  margin-top: 4px !important;
+}
+@media (max-width: 900px) {
+  #tab-analysis .right-panel > .analysis-eval-chart {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  #tab-analysis .right-panel #evalGraph {
+    height: 112px !important;
+    max-height: 112px !important;
+  }
+}
