@@ -1235,3 +1235,5 @@ button:disabled {
 #trainingRatingDelta.rating-up { color: #8bd26a; font-weight: 800; }
 #trainingRatingDelta.rating-down { color: #e77e7e; font-weight: 800; }
 .training-rating-note { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+.setting-group[hidden] { display: none !important; }
