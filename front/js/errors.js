@@ -744,13 +744,17 @@
     const importPanel = document.querySelector('#tab-errors .errors-import-panel');
     if (importPanel) importPanel.parentNode.insertBefore(panel, importPanel);
     $('generatedTaskNext').addEventListener('click', () => {
-      if (!generatedTaskStarted || (generatedTaskGoal && generatedTaskCount >= generatedTaskGoal)) startGeneratedTaskSeries();
+      const selected = $('generatedTaskAmount').value;
+      const selectedGoal = selected === 'endless' ? 0 : Number(selected);
+      if (!generatedTaskStarted || selectedGoal !== generatedTaskGoal || (generatedTaskGoal && generatedTaskCount >= generatedTaskGoal)) startGeneratedTaskSeries();
       else loadGeneratedTask(false);
     });
     $('generatedTaskHint').addEventListener('click', generatedTaskHint);
     $('generatedTaskReveal').addEventListener('click', generatedTaskReveal);
-    // Auto-start endless mode on opening the Tasks section.
-    startGeneratedTaskSeries();
+    // Load the first puzzle immediately when the user opens the Tasks tab.
+    document.querySelector('.tab-btn[data-tab="errors"]')?.addEventListener('click', () => {
+      if (!generatedTaskStarted) startGeneratedTaskSeries();
+    });
   }
 
   function init() {
