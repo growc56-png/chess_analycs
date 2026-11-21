@@ -739,7 +739,7 @@
       '<select id="generatedTaskTheme" style="padding:10px;border-radius:10px"><option value="">Все темы</option><option value="fork">Вилки</option><option value="pin">Связки</option><option value="mateIn1">Мат в 1</option><option value="mateIn2">Мат в 2</option><option value="mateIn3">Мат в 3</option><option value="sacrifice">Жертвы</option><option value="doubleAttack">Двойная атака</option><option value="discoveredAttack">Вскрытая атака</option></select>' +
       '<button type="button" class="action-btn coach-primary-btn" id="generatedTaskNext">Начать задачи</button><button type="button" class="action-btn" id="generatedTaskHint">Подсказка</button><button type="button" class="action-btn" id="generatedTaskReveal">Показать решение</button></div>' +
       '<div id="generatedTaskRating" style="font-weight:600;margin-bottom:6px">Задача появится сразу</div><div id="generatedTaskCounter" style="opacity:.7;font-size:.9em;margin-bottom:8px"></div>' +
-      '<div class="coach-board-shell" style="max-width:520px;margin:auto"><div id="generatedTaskBoard" style="width:100%;"></div></div>' +
+      '<div class="coach-board-shell" style="max-width:620px;margin:auto"><div id="generatedTaskBoard" style="width:100%;"></div></div>' +
       '<div id="generatedTaskStatus" class="coach-drill-feedback" role="status" style="margin-top:10px">Подготавливаю первую задачу…</div>';
     const importPanel = document.querySelector('#tab-errors .errors-import-panel');
     if (importPanel) importPanel.parentNode.insertBefore(panel, importPanel);
