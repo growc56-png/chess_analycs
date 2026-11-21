@@ -583,14 +583,14 @@
     if (!replay.load_pgn(payload.game.pgn)) throw new Error('Не получилось восстановить позицию из PGN.');
     const moves = replay.history({ verbose: true });
     const initialPly = Number(payload.puzzle.initialPly);
-    if (!Number.isInteger(initialPly) || initialPly < 0 || initialPly > moves.length) throw new Error('Некорректная позиция задачи.');
+    // The Lichess PGN contains the whole source game. initialPly points
+    // to the opponent move that precedes the puzzle solution.
+    if (!Number.isInteger(initialPly) || initialPly < 0 || initialPly >= moves.length) throw new Error('Некорректная позиция задачи.');
     replay.reset();
-    for (let i = 0; i < initialPly; i++) {
+    for (let i = 0; i <= initialPly; i++) {
       const m = moves[i];
-      if (!replay.move({ from: m.from, to: m.to, promotion: m.promotion || 'q' })) throw new Error('Ошибка восстановления позиции.');
+      if (!replay.move({ from: m.from, to: m.to, promotion: m.promotion || 'q' })) throw new Error('Ошибка восстановления позиции PGN на ходе ' + (i + 1) + '.');
     }
-    // Lichess initialPly is already the starting position for the solver.
-    // solution[0] is the player's first move, so do not apply it here.
     const firstSolutionMove = payload.puzzle.solution && payload.puzzle.solution[0];
     if (!firstSolutionMove || firstSolutionMove.length < 4) throw new Error('Отсутствует первый ход решения.');
     return replay.fen();
@@ -681,7 +681,7 @@
       const data = await response.json();
       if (!data || !data.puzzle || !Array.isArray(data.puzzle.solution) || !data.puzzle.solution.length) throw new Error('Не удалось получить решение.');
       generatedTask = data;
-      generatedTaskSolutionIndex = 0;
+      generatedTaskSolutionIndex = 1;
       generatedTaskBusy = false;
       generatedTaskSolved = false;
       generatedTaskGame = new Chess(taskBoardFen());
