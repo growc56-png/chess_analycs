@@ -1224,3 +1224,14 @@ button:disabled {
     }
     .move-history-san { padding-inline: 4px; font-size: 13px; }
 }
+
+
+/* Adaptive training bot and personal rating */
+.bot-style-hint { color: var(--muted); font-size: 10px; line-height: 1.45; }
+.training-rating-panel { overflow: hidden; }
+.training-rating-value { margin-top: 4px; color: var(--green); font-size: 38px; line-height: 1.1; font-weight: 900; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.training-rating-caption { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.training-rating-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; color: #b6c5cf; font-size: 11px; }
+#trainingRatingDelta.rating-up { color: #8bd26a; font-weight: 800; }
+#trainingRatingDelta.rating-down { color: #e77e7e; font-weight: 800; }
+.training-rating-note { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; line-height: 1.5; }
