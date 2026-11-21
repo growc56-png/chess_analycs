@@ -15,6 +15,56 @@ class BotMoveRequest(BaseModel):
     fen: str
     level: int = Field(default=6, ge=1, le=20)
     mode: str = "unlimited"
+    style: str = Field(default="balanced", pattern="^(adaptive|balanced|tactical|attacking|defensive)$")
+    training_rating: int = Field(default=1000, ge=400, le=3000)
+
+
+def rating_to_skill(rating: int) -> int:
+    """Approximate training rating -> Stockfish Skill Level 0..20."""
+    return max(0, min(20, round((rating - 400) / 95)))
+
+
+def fixed_level_to_skill(level: int) -> int:
+    # The 10 UI levels are evenly distributed across Stockfish's 0..20 range.
+    return max(0, min(20, round((level - 1) * 20 / 9)))
+
+
+def _choose_style_move(engine, board, skill, style, limit):
+    infos = engine.analyse(board, limit, multipv=4)
+    if not infos:
+        return None
+    scored = []
+    for info in infos:
+        pv = info.get("pv") or []
+        if not pv:
+            continue
+        move = pv[0]
+        score = info.get("score")
+        cp = score.pov(board.turn).score(mate_score=100000) if score else 0
+        scored.append((move, cp, info))
+    if not scored:
+        return None
+
+    best_cp = max(item[1] for item in scored)
+    tolerance = max(70, 360 - skill * 14)
+    candidates = [item for item in scored if best_cp - item[1] <= tolerance]
+    if not candidates:
+        candidates = [scored[0]]
+
+    def weight(item):
+        move, cp, _ = item
+        loss = max(0, best_cp - cp)
+        tactical = (board.is_capture(move) * 2.0) + (board.gives_check(move) * 2.4)
+        if style == "tactical":
+            return max(0.15, 1.0 + tactical * 2.2 - loss / 180)
+        if style == "attacking":
+            return max(0.15, 1.0 + board.gives_check(move) * 3.0 + board.is_capture(move) * 1.1 - loss / 220)
+        if style == "defensive":
+            return max(0.15, 1.0 + (0.8 if not board.is_capture(move) else 0.0) - loss / 240)
+        return max(0.15, 1.0 - loss / max(90, tolerance))
+
+    selected = random.choices(candidates, weights=[weight(item) for item in candidates], k=1)[0]
+    return selected[0]
 
 
 @router.post("/api/bot_move")
@@ -31,36 +81,36 @@ def get_bot_move(req: BotMoveRequest):
         raise HTTPException(status_code=503, detail="Stockfish не найден. Проверь STOCKFISH_PATH.")
 
     engine = None
-    # Все маршруты используют одну блокировку: бот не должен незаметно
-    # запускать дополнительные тяжёлые процессы во время анализа партий.
     with ENGINE_LOCK:
         try:
             engine = chess.engine.SimpleEngine.popen_uci(str(STOCKFISH_PATH), timeout=10)
             configure_engine(engine, profile="bot")
 
-            level_map = {
-                1: (0, 1), 2: (3, 2), 3: (6, 3),
-                4: (10, 5), 5: (15, 8), 6: (20, 12),
-            }
-            skill, depth = level_map.get(req.level, (20, 12))
+            if req.style == "adaptive":
+                skill = rating_to_skill(req.training_rating)
+                opponent_rating = req.training_rating
+            else:
+                skill = fixed_level_to_skill(req.level)
+                opponent_rating = 500 + req.level * 160
+
             if "Skill Level" in getattr(engine, "options", {}):
                 engine.configure({"Skill Level": skill})
 
             if req.mode == "bullet":
-                infos = engine.analyse(board, chess.engine.Limit(time=0.1), multipv=3)
-                if not infos:
-                    return {"move": None}
-                if random.random() < 0.5 and len(infos) > 1:
-                    chosen = random.choice(infos[1:])
-                else:
-                    chosen = infos[0]
-                return {"move": chosen["pv"][0].uci() if chosen.get("pv") else None}
-
-            if req.mode in ("blitz", "rapid"):
-                result = engine.play(board, chess.engine.Limit(time=0.5))
+                limit = chess.engine.Limit(time=0.12)
+            elif req.mode in ("blitz", "rapid"):
+                limit = chess.engine.Limit(time=0.45 if req.mode == "blitz" else 0.65)
             else:
-                result = engine.play(board, chess.engine.Limit(depth=depth, time=1.0))
-            return {"move": result.move.uci() if result.move else None}
+                depth = max(2, min(22, 3 + skill))
+                limit = chess.engine.Limit(depth=depth, time=0.8 if skill < 10 else 1.2)
+
+            if req.style in ("tactical", "attacking", "defensive"):
+                move = _choose_style_move(engine, board, skill, req.style, limit)
+            else:
+                result = engine.play(board, limit)
+                move = result.move if result else None
+
+            return {"move": move.uci() if move else None, "skill": skill, "opponent_rating": opponent_rating}
 
         except HTTPException:
             raise
