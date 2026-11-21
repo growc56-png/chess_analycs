@@ -589,6 +589,12 @@
       const m = moves[i];
       if (!replay.move({ from: m.from, to: m.to, promotion: m.promotion || 'q' })) throw new Error('Ошибка восстановления позиции.');
     }
+    // Lichess solution[0] is the opponent's blunder. The solving position
+    // is after it; player's first move is solution[1].
+    const opponentBlunder = payload.puzzle.solution && payload.puzzle.solution[0];
+    if (!opponentBlunder || opponentBlunder.length < 4) throw new Error('Отсутствует первый ход задачи.');
+    const firstMove = replay.move({ from: opponentBlunder.slice(0, 2), to: opponentBlunder.slice(2, 4), promotion: opponentBlunder[4] || 'q' });
+    if (!firstMove) throw new Error('Не удалось применить стартовый ход задачи.');
     return replay.fen();
   }
 
@@ -672,7 +678,7 @@
       const data = await response.json();
       if (!data || !data.puzzle || !Array.isArray(data.puzzle.solution) || !data.puzzle.solution.length) throw new Error('Не удалось получить решение.');
       generatedTask = data;
-      generatedTaskSolutionIndex = 0;
+      generatedTaskSolutionIndex = 1;
       generatedTaskBusy = false;
       generatedTaskSolved = false;
       generatedTaskGame = new Chess(taskBoardFen());
@@ -723,13 +729,20 @@
     if (!generatedTask || !generatedTaskGame || generatedTaskSolved) return;
     const replay = new Chess(generatedTaskGame.fen());
     const moves = generatedTask.puzzle.solution || [];
+    const lineSan = [];
     for (let i = generatedTaskSolutionIndex; i < moves.length; i++) {
       const u = moves[i];
-      replay.move({ from: u.slice(0,2), to: u.slice(2,4), promotion: u[4] || 'q' });
+      let move = null;
+      try { move = replay.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] || 'q' }); } catch (_) {}
+      if (!move) {
+        taskStatus('Не удалось проиграть решение: ход ' + u.slice(0, 2) + '–' + u.slice(2, 4) + ' незаконен в этой позиции. Задача загружена некорректно.', 'error');
+        return;
+      }
+      lineSan.push(move.san);
     }
     generatedTaskBoard.position(replay.fen());
     generatedTaskSolved = true;
-    taskStatus('Показано решение — задача не засчитана. Нажми «Следующая задача».', '');
+    taskStatus(lineSan.length ? 'Решение: ' + lineSan.join(' ') + ' · задача не засчитана.' : 'Решение уже выполнено. Задача не засчитана.', '');
   }
 
   function startGeneratedTaskSeries() {
