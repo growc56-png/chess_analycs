@@ -87,6 +87,13 @@ function updateTrainingRating(result) {
   try { localStorage.setItem(TRAINING_RATING_KEY, JSON.stringify(trainingRatingData)); } catch (_) {}
   renderTrainingRating('Рейтинг меняется в зависимости от результата и силы соперника. В адаптивном режиме бот играет на уровне твоего рейтинга.');
 }
+function updateBotStyleControls() {
+  const style = document.getElementById('botStyle')?.value || 'balanced';
+  const levelGroup = document.getElementById('botLevelGroup');
+  if (levelGroup) levelGroup.hidden = style === 'adaptive';
+}
+updateBotStyleControls();
+document.getElementById('botStyle')?.addEventListener('change', updateBotStyleControls);
 renderTrainingRating();
 
 const statusEl = document.getElementById('gameStatus');
@@ -649,7 +656,10 @@ function showGameOverModal(result, isWin) {
   else if (result === 'resign') { title.textContent = isWin ? 'Бот сдался! Ты победил!' : 'Ты сдался.'; title.className = isWin ? 'win' : 'loss'; }
   else { title.textContent = 'Ничья'; title.className = 'draw'; }
   const description = document.getElementById('resultDescription');
-  if (description) description.textContent = 'Сыграно полных ходов: ' + Math.ceil(game.history().length / 2) + '. Партия добавляется в историю.';
+  if (description) {
+    const deltaText = trainingRatingData.lastDelta > 0 ? ' +' + trainingRatingData.lastDelta : trainingRatingData.lastDelta < 0 ? ' ' + trainingRatingData.lastDelta : ' ±0';
+    description.textContent = 'Сыграно полных ходов: ' + Math.ceil(game.history().length / 2) + '. Тренировочный рейтинг: ' + trainingRatingData.rating + ' (' + deltaText + ' Elo).';
+  }
   modal.classList.add('active');
 }
 
