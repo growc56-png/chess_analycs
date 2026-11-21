@@ -17,6 +17,7 @@ const SAVED_GAMES_PAGE_SIZE = 10;
 const TRAINING_RATING_KEY = 'chessTrainerBotRating_v1';
 const DEFAULT_TRAINING_RATING = 1000;
 let ratingProcessedCurrentGame = false;
+let currentGameRatingDelta = null;
 
 function readTrainingRating() {
   try {
@@ -68,6 +69,7 @@ function estimateOpponentRating() {
 function updateTrainingRating(result) {
   if (ratingProcessedCurrentGame || !['win', 'loss', 'draw'].includes(result)) return;
   ratingProcessedCurrentGame = true;
+  currentGameRatingDelta = null;
   const plies = game ? game.history().length : 0;
   if (plies < 8) {
     renderTrainingRating('Рейтинг не изменён: рейтинковая партия требует минимум 8 полуходов.');
@@ -79,6 +81,7 @@ function updateTrainingRating(result) {
   const kFactor = trainingRatingData.games < 20 ? 32 : 24;
   const newRating = Math.max(400, Math.round(trainingRatingData.rating + kFactor * (actual - expected)));
   trainingRatingData.lastDelta = newRating - trainingRatingData.rating;
+  currentGameRatingDelta = trainingRatingData.lastDelta;
   trainingRatingData.rating = newRating;
   trainingRatingData.games += 1;
   if (result === 'win') trainingRatingData.wins += 1;
@@ -657,7 +660,7 @@ function showGameOverModal(result, isWin) {
   else { title.textContent = 'Ничья'; title.className = 'draw'; }
   const description = document.getElementById('resultDescription');
   if (description) {
-    const deltaText = trainingRatingData.lastDelta > 0 ? ' +' + trainingRatingData.lastDelta : trainingRatingData.lastDelta < 0 ? ' ' + trainingRatingData.lastDelta : ' ±0';
+    const deltaText = currentGameRatingDelta === null ? ' рейтинг не изменён' : currentGameRatingDelta > 0 ? ' +' + currentGameRatingDelta : currentGameRatingDelta < 0 ? ' ' + currentGameRatingDelta : ' ±0';
     description.textContent = 'Сыграно полных ходов: ' + Math.ceil(game.history().length / 2) + '. Тренировочный рейтинг: ' + trainingRatingData.rating + ' (' + deltaText + ' Elo).';
   }
   modal.classList.add('active');
@@ -696,6 +699,7 @@ function startNewGame() {
   game = new Chess(); isBotThinking = false; premoveQueue = []; selectedSquare = null;
   currentGameSaveState = 'idle';
   ratingProcessedCurrentGame = false;
+  currentGameRatingDelta = null;
   setGameSaveNotice('', '');
   clearBoardArrows('botBoard'); clearHighlights();
   if (board) board.position('start', false);
