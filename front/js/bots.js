@@ -14,6 +14,81 @@ let botMoveRequestVersion = 0;
 let savedGamesOffset = 0;
 const SAVED_GAMES_PAGE_SIZE = 10;
 
+const TRAINING_RATING_KEY = 'chessTrainerBotRating_v1';
+const DEFAULT_TRAINING_RATING = 1000;
+let ratingProcessedCurrentGame = false;
+
+function readTrainingRating() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TRAINING_RATING_KEY) || '{}');
+    return {
+      rating: Math.max(400, Math.min(3000, Number(saved.rating) || DEFAULT_TRAINING_RATING)),
+      games: Math.max(0, Number(saved.games) || 0),
+      wins: Math.max(0, Number(saved.wins) || 0),
+      draws: Math.max(0, Number(saved.draws) || 0),
+      losses: Math.max(0, Number(saved.losses) || 0),
+      lastDelta: Number(saved.lastDelta) || 0
+    };
+  } catch (_) {
+    return { rating: DEFAULT_TRAINING_RATING, games: 0, wins: 0, draws: 0, losses: 0, lastDelta: 0 };
+  }
+}
+
+let trainingRatingData = readTrainingRating();
+
+function renderTrainingRating(message) {
+  const ratingEl = document.getElementById('trainingRatingValue');
+  const deltaEl = document.getElementById('trainingRatingDelta');
+  const recordEl = document.getElementById('trainingRatingRecord');
+  const noteEl = document.getElementById('trainingRatingNote');
+  if (ratingEl) ratingEl.textContent = String(trainingRatingData.rating);
+  if (deltaEl) {
+    deltaEl.className = '';
+    if (trainingRatingData.lastDelta > 0) {
+      deltaEl.classList.add('rating-up');
+      deltaEl.textContent = '+' + trainingRatingData.lastDelta + ' Elo за последнюю партию';
+    } else if (trainingRatingData.lastDelta < 0) {
+      deltaEl.classList.add('rating-down');
+      deltaEl.textContent = trainingRatingData.lastDelta + ' Elo за последнюю партию';
+    } else {
+      deltaEl.textContent = trainingRatingData.games ? 'Рейтинг стабилен' : 'Первые партии — калибровка';
+    }
+  }
+  if (recordEl) recordEl.textContent = trainingRatingData.games + ' игр · ' + trainingRatingData.wins + ' побед';
+  if (noteEl && message) noteEl.textContent = message;
+}
+
+function estimateOpponentRating() {
+  const style = document.getElementById('botStyle')?.value || 'balanced';
+  if (style === 'adaptive') return trainingRatingData.rating;
+  const level = Math.max(1, parseInt(botLevelEl?.value, 10) || 1);
+  return 500 + level * 160;
+}
+
+function updateTrainingRating(result) {
+  if (ratingProcessedCurrentGame || !['win', 'loss', 'draw'].includes(result)) return;
+  ratingProcessedCurrentGame = true;
+  const plies = game ? game.history().length : 0;
+  if (plies < 8) {
+    renderTrainingRating('Рейтинг не изменён: рейтинковая партия требует минимум 8 полуходов.');
+    return;
+  }
+  const opponentRating = estimateOpponentRating();
+  const expected = 1 / (1 + Math.pow(10, (opponentRating - trainingRatingData.rating) / 400));
+  const actual = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0;
+  const kFactor = trainingRatingData.games < 20 ? 32 : 24;
+  const newRating = Math.max(400, Math.round(trainingRatingData.rating + kFactor * (actual - expected)));
+  trainingRatingData.lastDelta = newRating - trainingRatingData.rating;
+  trainingRatingData.rating = newRating;
+  trainingRatingData.games += 1;
+  if (result === 'win') trainingRatingData.wins += 1;
+  else if (result === 'draw') trainingRatingData.draws += 1;
+  else trainingRatingData.losses += 1;
+  try { localStorage.setItem(TRAINING_RATING_KEY, JSON.stringify(trainingRatingData)); } catch (_) {}
+  renderTrainingRating('Рейтинг меняется в зависимости от результата и силы соперника. В адаптивном режиме бот играет на уровне твоего рейтинга.');
+}
+renderTrainingRating();
+
 const statusEl = document.getElementById('gameStatus');
 const botLevelEl = document.getElementById('botLevel');
 const sideSelectEl = document.getElementById('sideSelect');
@@ -145,6 +220,7 @@ async function saveCurrentGame(result, termination) {
     return;
   }
 
+  updateTrainingRating(result);
   currentGameSaveState = 'saving';
   setGameSaveNotice('Сохраняю партию в историю…', 'saving');
   const body = {
@@ -519,7 +595,9 @@ async function makeBotMove() {
       body: JSON.stringify({
         fen: requestedFen,
         level: parseInt(botLevelEl.value, 10),
-        mode: timeControlMode === 'unlimited' ? 'unlimited' : (timeControlMode === '1+0' ? 'bullet' : 'blitz')
+        mode: timeControlMode === 'unlimited' ? 'unlimited' : (timeControlMode === '1+0' ? 'bullet' : (timeControlMode.startsWith('10') ? 'rapid' : 'blitz')),
+        style: document.getElementById('botStyle')?.value || 'balanced',
+        training_rating: trainingRatingData.rating
       })
     });
 
@@ -607,6 +685,7 @@ function startNewGame() {
   stopClock();
   game = new Chess(); isBotThinking = false; premoveQueue = []; selectedSquare = null;
   currentGameSaveState = 'idle';
+  ratingProcessedCurrentGame = false;
   setGameSaveNotice('', '');
   clearBoardArrows('botBoard'); clearHighlights();
   if (board) board.position('start', false);
@@ -624,7 +703,10 @@ function startNewGame() {
 
   gameActive = true; updateBoardVisuals(); updateMaterial(); updateClocksUI();
   const botDescription = document.getElementById('botDescription');
-  if (botDescription) botDescription.textContent = 'Уровень ' + (parseInt(botLevelEl.value, 10) || 1);
+  if (botDescription) {
+    const styleNames = { adaptive: 'Адаптивный · рейтинг ' + trainingRatingData.rating, balanced: 'Обычная игра', tactical: 'Тактический стиль', attacking: 'Атакующий стиль', defensive: 'Защитный стиль' };
+    botDescription.textContent = styleNames[document.getElementById('botStyle')?.value || 'balanced'] || 'Уровень ' + (parseInt(botLevelEl.value, 10) || 1);
+  }
   const evalBar = document.getElementById('evalBarWhite');
   if (evalBar) evalBar.style.height = '50%';
   document.getElementById('gameOverModal').classList.remove('active');
