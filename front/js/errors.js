@@ -589,12 +589,10 @@
       const m = moves[i];
       if (!replay.move({ from: m.from, to: m.to, promotion: m.promotion || 'q' })) throw new Error('Ошибка восстановления позиции.');
     }
-    // Lichess solution[0] is the opponent's blunder. The solving position
-    // is after it; player's first move is solution[1].
-    const opponentBlunder = payload.puzzle.solution && payload.puzzle.solution[0];
-    if (!opponentBlunder || opponentBlunder.length < 4) throw new Error('Отсутствует первый ход задачи.');
-    const firstMove = replay.move({ from: opponentBlunder.slice(0, 2), to: opponentBlunder.slice(2, 4), promotion: opponentBlunder[4] || 'q' });
-    if (!firstMove) throw new Error('Не удалось применить стартовый ход задачи.');
+    // Lichess initialPly is already the starting position for the solver.
+    // solution[0] is the player's first move, so do not apply it here.
+    const firstSolutionMove = payload.puzzle.solution && payload.puzzle.solution[0];
+    if (!firstSolutionMove || firstSolutionMove.length < 4) throw new Error('Отсутствует первый ход решения.');
     return replay.fen();
   }
 
@@ -683,7 +681,7 @@
       const data = await response.json();
       if (!data || !data.puzzle || !Array.isArray(data.puzzle.solution) || !data.puzzle.solution.length) throw new Error('Не удалось получить решение.');
       generatedTask = data;
-      generatedTaskSolutionIndex = 1;
+      generatedTaskSolutionIndex = 0;
       generatedTaskBusy = false;
       generatedTaskSolved = false;
       generatedTaskGame = new Chess(taskBoardFen());
