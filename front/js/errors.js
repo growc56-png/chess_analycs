@@ -563,10 +563,162 @@
     setDrillFeedback('Позиция сброшена. Найди лучший ход самостоятельно.', '');
   }
 
+  // Endless Lichess puzzle mode.
+  let generatedTaskBoard = null, generatedTaskGame = null, generatedTask = null;
+  let generatedTaskSolutionIndex = 0, generatedTaskBusy = false, generatedTaskSolved = false;
+  const TASKS_SOLVED_KEY = 'chessTrainer.generatedTasksSolved.v1';
+
+  function taskStatus(message, type) {
+    const el = $('generatedTaskStatus');
+    if (!el) return;
+    el.textContent = message;
+    el.style.color = type === 'success' ? '#18865b' : type === 'error' ? '#c74343' : '';
+  }
+
+  function taskBoardFen() {
+    const payload = generatedTask;
+    if (!payload || !payload.game || !payload.game.pgn || !payload.puzzle) throw new Error('Lichess не прислал PGN позиции.');
+    const replay = new Chess();
+    if (!replay.load_pgn(payload.game.pgn)) throw new Error('Не получилось восстановить позицию из PGN.');
+    const moves = replay.history({ verbose: true });
+    const initialPly = Number(payload.puzzle.initialPly);
+    if (!Number.isInteger(initialPly) || initialPly < 0 || initialPly > moves.length) throw new Error('У задачи некорректный номер хода.');
+    replay.reset();
+    for (let i = 0; i < initialPly; i++) {
+      const m = moves[i];
+      if (!replay.move({ from: m.from, to: m.to, promotion: m.promotion || 'q' })) throw new Error('Не удалось восстановить ход задачи.');
+    }
+    return replay.fen();
+  }
+
+  function taskMove(source, target) {
+    if (!generatedTaskGame || generatedTaskBusy || generatedTaskSolved) return 'snapback';
+    let move;
+    try { move = generatedTaskGame.move({ from: source, to: target, promotion: 'q' }); } catch (_) { move = null; }
+    if (!move) return 'snapback';
+    const uci = move.from + move.to + (move.promotion || '');
+    const solution = generatedTask.puzzle.solution || [];
+    if (uci !== solution[generatedTaskSolutionIndex]) {
+      generatedTaskGame.undo();
+      taskStatus('Не тот ход. Попробуй ещё раз — ищи тактический удар.', 'error');
+      return 'snapback';
+    }
+    generatedTaskSolutionIndex++;
+    generatedTaskBoard.position(generatedTaskGame.fen());
+    generatedTaskBusy = true;
+    if (generatedTaskSolutionIndex >= solution.length) {
+      generatedTaskSolved = true;
+      generatedTaskBusy = false;
+      try {
+        const solved = JSON.parse(localStorage.getItem(TASKS_SOLVED_KEY) || '[]');
+        if (!solved.includes(generatedTask.puzzle.id)) {
+          solved.push(generatedTask.puzzle.id);
+          localStorage.setItem(TASKS_SOLVED_KEY, JSON.stringify(solved.slice(-5000)));
+        }
+      } catch (_) {}
+      taskStatus('Верно! Комбинация решена. Нажми «Новая задача».', 'success');
+      return;
+    }
+    const replyUci = solution[generatedTaskSolutionIndex];
+    setTimeout(() => {
+      if (!generatedTaskGame || generatedTaskSolved) return;
+      const reply = generatedTaskGame.move({ from: replyUci.slice(0,2), to: replyUci.slice(2,4), promotion: replyUci[4] || 'q' });
+      if (!reply) {
+        generatedTaskBusy = false;
+        taskStatus('Ошибка в продолжении. Загрузи следующую задачу.', 'error');
+        return;
+      }
+      generatedTaskSolutionIndex++;
+      generatedTaskBoard.position(generatedTaskGame.fen());
+      generatedTaskBusy = false;
+      taskStatus('Отлично! Найди следующий ход комбинации.');
+    }, 450);
+  }
+
+  async function loadGeneratedTask() {
+    if (generatedTaskBusy) return;
+    const button = $('generatedTaskNext');
+    button.disabled = true;
+    taskStatus('Загружаю задачу Lichess…');
+    try {
+      const theme = $('generatedTaskTheme').value;
+      const url = 'https://lichess.org/api/puzzle/next' + (theme ? '?angle=' + encodeURIComponent(theme) : '');
+      const response = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(response.status === 429 ? 'Lichess просит подождать минуту.' : 'Lichess вернул HTTP ' + response.status);
+      const data = await response.json();
+      if (!data || !data.puzzle || !Array.isArray(data.puzzle.solution) || !data.puzzle.solution.length) throw new Error('Не удалось получить решение задачи.');
+      generatedTask = data;
+      generatedTaskSolutionIndex = 0;
+      generatedTaskBusy = false;
+      generatedTaskSolved = false;
+      generatedTaskGame = new Chess(taskBoardFen());
+      const orientation = generatedTaskGame.turn() === 'w' ? 'white' : 'black';
+      const config = {
+        position: generatedTaskGame.fen(), draggable: true, pieceTheme: '/img/pieces/{piece}.png',
+        onDragStart: (from, piece) => !generatedTaskBusy && !generatedTaskSolved && generatedTaskGame && piece[0] === generatedTaskGame.turn() && generatedTaskGame.moves({ square: from }).length > 0,
+        onDrop: taskMove,
+        onSnapEnd: () => generatedTaskBoard && generatedTaskGame && generatedTaskBoard.position(generatedTaskGame.fen())
+      };
+      if (!generatedTaskBoard) generatedTaskBoard = Chessboard('generatedTaskBoard', config);
+      else generatedTaskBoard.position(generatedTaskGame.fen(), false);
+      if (window.initRightClickDrawing) window.initRightClickDrawing('generatedTaskBoard');
+      if (generatedTaskBoard.orientation) generatedTaskBoard.orientation(orientation);
+      generatedTaskBoard.resize();
+      if (window.initBoardClickToMove) window.initBoardClickToMove('generatedTaskBoard', () => generatedTaskGame, taskMove);
+      $('generatedTaskRating').textContent = 'Рейтинг ' + (data.puzzle.rating || '—') + ' · ' + (data.puzzle.themes || []).slice(0, 3).join(' / ');
+      const solved = JSON.parse(localStorage.getItem(TASKS_SOLVED_KEY) || '[]');
+      $('generatedTaskCounter').textContent = 'Решено в этом браузере: ' + solved.length;
+      taskStatus('Твоя очередь — найди комбинацию!', '');
+    } catch (error) {
+      taskStatus('Не удалось загрузить: ' + error.message + ' Проверь соединение и попробуй снова.', 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function generatedTaskHint() {
+    if (!generatedTask || generatedTaskSolved) return;
+    const uci = generatedTask.puzzle.solution[generatedTaskSolutionIndex];
+    taskStatus('Подсказка: ход начинается с поля ' + uci.slice(0, 2) + '.');
+  }
+
+  function generatedTaskReveal() {
+    if (!generatedTask || !generatedTaskGame || generatedTaskSolved) return;
+    const replay = new Chess(generatedTaskGame.fen());
+    const moves = generatedTask.puzzle.solution || [];
+    for (let i = generatedTaskSolutionIndex; i < moves.length; i++) {
+      const u = moves[i];
+      replay.move({ from: u.slice(0,2), to: u.slice(2,4), promotion: u[4] || 'q' });
+    }
+    generatedTaskBoard.position(replay.fen());
+    generatedTaskSolved = true;
+    taskStatus('Решение показано. Это не засчитано как решённая задача.');
+  }
+
+  function initGeneratedTasks() {
+    if (!$('tab-errors') || $('generatedTaskBoard')) return;
+    const panel = document.createElement('section');
+    panel.className = 'coach-panel';
+    panel.style.cssText = 'margin-bottom:18px;padding:18px;';
+    panel.innerHTML = '<div class="coach-panel-heading"><div><div class="coach-label">БЕСКОНЕЧНАЯ ТРЕНИРОВКА</div><h3>Новые задачи из Lichess</h3><p>Каждый запрос загружает новую позицию из огромной открытой базы задач.</p></div></div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0"><select id="generatedTaskTheme" style="padding:10px;border-radius:10px"><option value="">Любая тема</option><option value="fork">Вилки</option><option value="pin">Связки</option><option value="mateIn1">Мат в 1</option><option value="mateIn2">Мат в 2</option><option value="mateIn3">Мат в 3</option><option value="sacrifice">Жертвы</option><option value="doubleAttack">Двойная атака</option><option value="discoveredAttack">Вскрытая атака</option></select>' +
+      '<button type="button" class="action-btn coach-primary-btn" id="generatedTaskNext">♟ Новая задача</button><button type="button" class="action-btn" id="generatedTaskHint">Подсказка</button><button type="button" class="action-btn" id="generatedTaskReveal">Показать решение</button></div>' +
+      '<div id="generatedTaskRating" style="font-weight:600;margin-bottom:6px">Выбери «Новая задача»</div><div id="generatedTaskCounter" style="opacity:.7;font-size:.9em;margin-bottom:8px"></div>' +
+      '<div class="coach-board-shell" style="max-width:520px;margin:auto"><div id="generatedTaskBoard" style="width:100%;"></div></div>' +
+      '<div id="generatedTaskStatus" class="coach-drill-feedback" role="status" style="margin-top:10px">Нажми «Новая задача», чтобы начать.</div>' +
+      '<p style="font-size:.8em;opacity:.65;margin-top:8px">Источник: <a href="https://lichess.org/training" target="_blank" rel="noopener">Lichess</a> · открытая база тактических задач.</p>';
+    const importPanel = document.querySelector('#tab-errors .errors-import-panel');
+    if (importPanel) importPanel.parentNode.insertBefore(panel, importPanel);
+    $('generatedTaskNext').addEventListener('click', loadGeneratedTask);
+    $('generatedTaskHint').addEventListener('click', generatedTaskHint);
+    $('generatedTaskReveal').addEventListener('click', generatedTaskReveal);
+  }
+
   function init() {
     if (!$('tab-errors') || $('tab-errors').dataset.ready === '1') return;
     $('tab-errors').dataset.ready = '1';
 
+    initGeneratedTasks();
     $('errorsAnalyzeBtn').addEventListener('click', runLastFiveAnalysis);
     window.addEventListener('chessTrainer:add-analysis-drills', importAnalysisDrills);
     const savedDrills = readSavedAnalysisDrills();
