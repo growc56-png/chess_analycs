@@ -544,7 +544,7 @@ function playUserMoveOrQueue(source,target) {
     updateStatus(`Премув ${source} → ${target} поставлен. Можно добавить следующий ход в очередь.`,'thinking');
     return undefined;
   }
-  if(game.moves({verbose:true}).some(m=>m.from===source&&m.to===target&&m.flags.includes('p')) {
+  if(game.moves({verbose:true}).some(m=>m.from===source&&m.to===target&&m.flags.includes('p'))) {
     showBotPromotionChoice(source,target);return 'snapback';
   }
   return applyBotUserMove(source,target,'q') ? undefined : 'snapback';
