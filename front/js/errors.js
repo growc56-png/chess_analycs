@@ -701,9 +701,29 @@
   }
 
   function generatedTaskHint() {
-    if (!generatedTask || generatedTaskSolved) return;
+    if (!generatedTask || !generatedTaskGame || generatedTaskSolved) return;
     const uci = generatedTask.puzzle.solution[generatedTaskSolutionIndex];
-    taskStatus('Подсказка: первый ход начинается с ' + uci.slice(0, 2) + '.', '');
+    if (!uci || uci.length < 4) {
+      taskStatus('Подсказка недоступна для этой задачи. Загружаю корректную позицию…', 'error');
+      setTimeout(() => loadGeneratedTask(true), 500);
+      return;
+    }
+    const from = uci.slice(0, 2), to = uci.slice(2, 4), promotion = uci[4] || 'q';
+    const piece = generatedTaskGame.get(from);
+    if (!piece) {
+      taskStatus('Позиция задачи повреждена. Загружаю другую задачу…', 'error');
+      setTimeout(() => loadGeneratedTask(true), 500);
+      return;
+    }
+    const temp = new Chess(generatedTaskGame.fen());
+    let move = null;
+    try { move = temp.move({ from, to, promotion }); } catch (_) {}
+    const pieceNames = { p: 'пешку', n: 'коня', b: 'слона', r: 'ладью', q: 'ферзя', k: 'короля' };
+    const san = move && move.san;
+    const destinationHint = piece.type === 'p' && promotion !== 'q' ? ' с превращением' : '';
+    const action = (pieceNames[piece.type] || 'фигуру') + ' на ' + to + destinationHint;
+    const extra = san && (san.includes('+') || san.includes('#')) ? ' (с шахом/матом)' : '';
+    taskStatus('Подсказка: ' + action + extra + '.', '');
   }
 
   function generatedTaskReveal() {
