@@ -1,4 +1,5 @@
 import random
+from typing import Literal
 
 import chess
 import chess.engine
@@ -15,7 +16,7 @@ class BotMoveRequest(BaseModel):
     fen: str
     level: int = Field(default=6, ge=1, le=20)
     mode: str = "unlimited"
-    style: str = Field(default="balanced", pattern="^(adaptive|balanced|tactical|attacking|defensive)$")
+    style: Literal["adaptive", "balanced", "tactical", "attacking", "defensive"] = "balanced"
     training_rating: int = Field(default=1000, ge=400, le=3000)
 
 
