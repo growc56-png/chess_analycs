@@ -669,10 +669,15 @@
     if (generatedTaskBusy) return;
     const button = $('generatedTaskNext');
     if (button) button.disabled = true;
+    generatedTaskBusy = true;
+    generatedTask = null;
+    generatedTaskGame = null;
+    generatedTaskSolved = false;
+    if (generatedTaskBoard) generatedTaskBoard.position('start');
     taskStatus('Загружаю следующую задачу…');
     try {
       const theme = $('generatedTaskTheme').value;
-      const url = 'https://lichess.org/api/puzzle/next' + (theme ? '?angle=' + encodeURIComponent(theme) : '');
+      const url = '/api/puzzles/next' + (theme ? '?theme=' + encodeURIComponent(theme) : '');
       const response = await fetch(url, { headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error(response.status === 429 ? 'Слишком много запросов подряд, попробуй позже.' : 'Ошибка загрузки (' + response.status + ').');
       const data = await response.json();
