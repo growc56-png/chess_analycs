@@ -2738,7 +2738,7 @@ function drawBoardBadge(moveData) {
   if (!squareEl) return;
 
   const classMap = {
-    brilliant: { text: '!!', title: 'Бриллиантовый ход', css: 'badge-brilliant' },
+    brilliant: { text: '💎', title: 'Бриллиантовый ход', css: 'badge-brilliant' },
     great: { text: '!', title: 'Замечательный ход', css: 'badge-great' },
     best: { text: '★', title: 'Лучший ход', css: 'badge-best' },
     excellent: { text: '✓', title: 'Отличный ход', css: 'badge-excellent' },
@@ -3181,7 +3181,7 @@ function formatSpentTime(seconds) {
 }
 
 const ANALYSIS_CLASS_ROWS = [
-  { key: 'brilliant', label: 'Бриллиантовый', icon: '!!', className: 'brilliant' },
+  { key: 'brilliant', label: 'Бриллиантовый', icon: '💎', className: 'brilliant' },
   { key: 'great', label: 'Замечательный', icon: '!', className: 'great' },
   { key: 'best', label: 'Лучший', icon: '★', className: 'best' },
   { key: 'excellent', label: 'Отличный', icon: '✓', className: 'excellent' },

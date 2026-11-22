@@ -31,10 +31,9 @@ MATE_SCORE = 10000
 
 
 def get_engine_limit(depth=None, time_limit=None):
-    """Build a depth-only limit unless a caller explicitly requests a time cap.
+    """Build a search limit using the configured depth and time budget.
 
-    Both a depth ceiling and a strict wall-clock budget apply so long games
-    cannot spend minutes on a single position.
+    A caller can override the per-position time cap with time_limit.
     """
     selected_depth = ANALYSIS_DEPTH if depth is None else depth
     return chess.engine.Limit(depth=selected_depth, time=ANALYSIS_TIME if time_limit is None else time_limit)

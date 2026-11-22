@@ -14,13 +14,12 @@ class FakeEngine:
 
 
 class StockfishConfigurationTests(unittest.TestCase):
-    def test_default_analysis_limit_uses_max_depth_without_time_cutoff(self):
-        from config import ANALYSIS_DEPTH
+    def test_default_analysis_limit_uses_configured_depth_and_time_budget(self):
+        from config import ANALYSIS_DEPTH, ANALYSIS_TIME
 
         limit = get_engine_limit()
-        self.assertEqual(ANALYSIS_DEPTH, 40)
-        self.assertEqual(limit.depth, 40)
-        self.assertIsNone(limit.time)
+        self.assertEqual(limit.depth, ANALYSIS_DEPTH)
+        self.assertEqual(limit.time, ANALYSIS_TIME)
 
     def test_analysis_profile_uses_configured_threads_and_hash(self):
         from config import ENGINE_THREADS, ENGINE_HASH_MB
